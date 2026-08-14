@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel operatora — ocinanie wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Maszyna — ocinanie wlewków płytek optyki</h1>
+    <a href="/editor">Edytor technologa →</a>
+  </header>
+
+  <main>
+    <div class="grid-3">
+      <section class="panel">
+        <h2>Stan maszyny</h2>
+        <div id="state" class="state-badge state-INIT">—</div>
+        <p style="margin:14px 0 0">
+          <span id="enable-dot" class="enable-dot"></span>
+          <span id="enable-text">sygnał zezwolenia: —</span>
+        </p>
+        <p id="alarm" class="msg err"></p>
+        <label class="muted" style="display:none; margin-top:10px" id="sim-enable-row">
+          <input type="checkbox" id="sim-enable" style="width:auto"> [symulacja] sygnał zezwolenia
+        </label>
+      </section>
+
+      <section class="panel">
+        <h2>Zlecenie / program</h2>
+        <div class="field"><label>Zlecenie MES</label><div id="order">—</div></div>
+        <div class="field"><label>Program (12 NC)</label><div id="prog-number">—</div></div>
+        <div class="field"><label>Nazwa</label><div id="prog-name">—</div></div>
+        <div class="field">
+          <label>Symulacja wyboru zlecenia w MES</label>
+          <div style="display:flex; gap:8px">
+            <input id="mes-order" placeholder="nr zlecenia" style="flex:1">
+            <input id="mes-program" placeholder="12 cyfr programu" maxlength="12" pattern="\d{12}" style="flex:1">
+            <button class="small" id="btn-mes">Wybierz</button>
+          </div>
+        </div>
+        <p id="mes-msg" class="msg"></p>
+      </section>
+
+      <section class="panel">
+        <h2>Pozycja osi [mm]</h2>
+        <div class="axes">
+          <div class="axis"><span>X</span><span id="pos-x">0.000</span></div>
+          <div class="axis"><span>Y</span><span id="pos-y">0.000</span></div>
+          <div class="axis"><span>Z</span><span id="pos-z">0.000</span></div>
+        </div>
+        <p class="muted" style="margin-top:12px">Wrzeciono: <b id="spindle">WYŁ</b></p>
+      </section>
+    </div>
+
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Sterowanie</h2>
+        <div class="btn-row" style="margin-bottom:12px">
+          <button class="big start" id="btn-start">START</button>
+          <button class="big stop" id="btn-stop">STOP</button>
+        </div>
+        <div class="btn-row">
+          <button id="btn-home">Bazowanie</button>
+          <button id="btn-reset">Kasuj alarm</button>
+        </div>
+        <p id="ctrl-msg" class="msg"></p>
+
+        <h2 style="margin-top:20px">Ruch ręczny (JOG)</h2>
+        <div style="display:flex; gap:24px; align-items:center; flex-wrap:wrap">
+          <div class="jog-grid">
+            <span></span><button class="small jog" data-axis="y" data-dir="1">Y+</button><span></span>
+            <button class="small jog" data-axis="x" data-dir="-1">X−</button>
+            <span style="text-align:center; align-self:center" class="muted">XY</span>
+            <button class="small jog" data-axis="x" data-dir="1">X+</button>
+            <span></span><button class="small jog" data-axis="y" data-dir="-1">Y−</button><span></span>
+          </div>
+          <div class="jog-grid" style="grid-template-columns: 60px">
+            <button class="small jog" data-axis="z" data-dir="1">Z+</button>
+            <button class="small jog" data-axis="z" data-dir="-1">Z−</button>
+          </div>
+          <div>
+            <label class="muted">krok [mm]</label>
+            <select id="jog-step" style="width:90px">
+              <option>0.1</option><option selected>1</option><option>5</option><option>10</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Operacje programu</h2>
+        <table>
+          <thead>
+            <tr><th>LP</th><th>Operacja</th><th>X</th><th>Y</th><th>Z</th><th>X2</th><th>Y2</th><th>Uwagi</th></tr>
+          </thead>
+          <tbody id="ops"></tbody>
+        </table>
+        <p class="muted" id="progress"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
