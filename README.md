@@ -36,6 +36,14 @@ firmware/clearcore/    firmware C++ sterownika ClearCore (osie, wrzeciono,
 
 ## Uruchomienie serwera (tryb symulacji — bez sprzętu)
 
+Najprościej — skrypt startowy (sam tworzy środowisko i instaluje zależności;
+wymaga Pythona 3.10+):
+
+- **Windows**: podwójne kliknięcie `start.bat` (otworzy też przeglądarkę)
+- **Linux/macOS**: `./start.sh`
+
+Albo ręcznie:
+
 ```bash
 cd server
 pip install -r requirements.txt
