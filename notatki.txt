@@ -1,0 +1,14 @@
+    • Bazowanie na zasadzie dojazdu do końców osi bez wyłaczników krańcówych wykożystac fukncje bazowania serwonapędu dla modelu silnika z wersja A
+    •  
+    • 
+    • Konfiguracja siły globalna =20%
+    • konfiguracja siły dla ruchu w podczas pracy maszyny dla kazdego zdefiniowanego ruchu oddzielnie ustawiony poziom siły (ustawienie domyślne = 15%
+    • konfiguracja siłu dla rychu w czasie wykonywania programu technoloda =10%
+    • ustawienie prędkości maksymalnych i roboczych dla osi podczas bazowania , i pracy jog 
+    • # ustawianie prędkości dla ruchu poszcególnych osi maszyny i oddzielnie dla ruchów roboczych podczsa wykonywanego programy to jest zrobione 
+    •  
+    • właczenie wrzeciona podczas startu maszyny, 
+      właczenie wrzeciona poczas uruchomienia programu dwie opcje do zdefiniowania w konfiguracji maszyny
+    • do sterowania prędkościa  wrzeciona wykorzystać port sterownika z wyjściem PWM
+    • ustawianie w konfiguracji dla rozpędzania i hamownia wrzeciona przy sterowaniu PWM 
+    • zdefiniowac dodatkowy port do sterowania włącz wyłącz wrzeciona 
