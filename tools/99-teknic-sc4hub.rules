@@ -1,0 +1,14 @@
+# Trwałe przypięcie SC4-Hub do sterownika Exar zamiast cdc_acm.
+#
+# Bez tej reguły po każdym resecie huba (np. załączeniu zasilania silników)
+# cdc_acm przejmuje urządzenie i sFoundation przestaje je widzieć.
+#
+# Instalacja:
+#   sudo install -m 0755 tools/sc4hub-rebind.sh /usr/local/sbin/sc4hub-rebind.sh
+#   sudo cp tools/99-teknic-sc4hub.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload
+# Weryfikacja: przewtyknąć hub i sprawdzić, czy jest /dev/ttyXRUSB0
+
+ACTION=="bind", SUBSYSTEM=="usb", DRIVER=="cdc_acm", \
+  ATTRS{idVendor}=="2890", ATTRS{idProduct}=="0213", \
+  RUN+="/usr/local/sbin/sc4hub-rebind.sh"

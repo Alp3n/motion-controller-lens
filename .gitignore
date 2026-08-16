@@ -1,0 +1,8 @@
+# SDK Teknica (sFoundation) — pobierane ze strony producenta, nie trzymamy w gicie
+vendor/
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/

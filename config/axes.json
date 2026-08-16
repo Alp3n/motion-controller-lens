@@ -1,0 +1,31 @@
+{
+  "axes": {
+    "x": {
+      "length": 200.0,
+      "home": "srodek",
+      "soft_min": -90.0,
+      "soft_max": 90.0,
+      "mm_per_rev": 5.0,
+      "phys_min": -100.0,
+      "phys_max": 100.0
+    },
+    "y": {
+      "length": 200.0,
+      "home": "srodek",
+      "soft_min": -90.0,
+      "soft_max": 90.0,
+      "mm_per_rev": 5.0,
+      "phys_min": -100.0,
+      "phys_max": 100.0
+    },
+    "z": {
+      "length": 100.0,
+      "home": "srodek",
+      "soft_min": -20.0,
+      "soft_max": 40.0,
+      "mm_per_rev": 5.0,
+      "phys_min": -50.0,
+      "phys_max": 50.0
+    }
+  }
+}

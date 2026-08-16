@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edytor technologa — programy ocinania wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Edytor technologa — programy (.prg)</h1>
+    <a href="/">← Panel operatora</a>
+    <a href="/axes">Konfiguracja osi →</a>
+  </header>
+
+  <main>
+    <div class="grid-2" style="grid-template-columns: 320px 1fr">
+      <section class="panel">
+        <h2>Programy</h2>
+        <div style="display:flex; gap:8px; margin-bottom:10px">
+          <input id="new-number" placeholder="nowy numer (12 cyfr)" maxlength="12">
+          <button class="small" id="btn-new">Nowy</button>
+        </div>
+        <table>
+          <thead><tr><th>Numer</th><th>Nazwa</th></tr></thead>
+          <tbody id="program-list"></tbody>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Program: <span id="edit-number">—</span></h2>
+
+        <div class="grid-3" style="gap:10px">
+          <div class="field"><label>Nazwa</label><input id="f-name"></div>
+          <div class="field"><label>Materiał</label><input id="f-material"></div>
+          <div class="field"><label>Autor</label><input id="f-author"></div>
+          <div class="field"><label>Obroty frezu [obr/min]</label><input id="f-rpm" type="number"></div>
+          <div class="field"><label>Posuw roboczy [mm/min]</label><input id="f-feed-work" type="number"></div>
+          <div class="field"><label>Posuw dojazdu [mm/min]</label><input id="f-feed-travel" type="number"></div>
+          <div class="field"><label>Z bezpieczne [mm]</label><input id="f-z-safe" type="number" step="0.1"></div>
+        </div>
+
+        <h2 style="margin-top:16px">Operacje</h2>
+        <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>LP</th><th>Operacja</th>
+              <th>X</th><th>Y</th><th>Z</th><th>X2</th><th>Y2</th>
+              <th title="posuw tylko dla tej operacji; puste = posuw roboczy z nagłówka">Posuw</th>
+              <th title="obroty wrzeciona — tylko operacja WRZECIONO; 0 wyłącza">Obroty</th>
+              <th title="liczba przejść na głębokość">Przejścia</th>
+              <th title="przyrost głębokości na przejście [mm]">Przyrost</th>
+              <th>Uwagi</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="op-rows"></tbody>
+        </table>
+        </div>
+        <p id="validate-info" class="msg"></p>
+        <div class="btn-row" style="margin-top:12px; max-width:420px">
+          <button class="small" id="btn-add-op">+ Dodaj operację</button>
+          <button class="small" id="btn-save">💾 Zapisz program</button>
+          <button class="small" id="btn-download">⬇ Pobierz plik</button>
+        </div>
+        <p id="editor-msg" class="msg"></p>
+
+        <h2 style="margin-top:20px">Podgląd toru</h2>
+        <div class="view-wrap"><canvas id="edit-view"></canvas></div>
+        <p class="muted view-legend">
+          <span class="key key-tool"></span> operacje w kolejności LP
+          <span class="key key-op"></span> przejazdy między operacjami
+          <span class="key key-op"></span> kreskowany obrys — granica obszaru roboczego
+          <span style="margin-left:10px">Rysunek pokazuje zawartość tabeli — także przed zapisem.</span>
+        </p>
+        <p class="muted">
+          Plik zapisywany jest jako <code>NUMER.prg</code> w katalogu programów maszyny —
+          format opisany w dokumentacji (sekcje [NAGLOWEK] i [OPERACJE], separator „;”,
+          można edytować także w Excelu). MES ładuje program po tym numerze.
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <script src="/static/editor.js"></script>
+</body>
+</html>
