@@ -29,7 +29,11 @@ server/                serwer maszyny: API REST + WebSocket + panel WWW (Python/
   app/main.py          endpointy API (MES, programy, sterowanie)
   app/program.py       parser/walidator plików .prg
   app/machine.py       warstwa maszyny: symulator + łącze TCP do ClearCore
-  app/static/          panel operatora (/) i edytor technologa (/editor)
+  app/axes.py          konfiguracja osi: długości, limity, przełożenia
+  app/static/          panel operatora (/), konfiguracja osi (/axes),
+                       edytor technologa (/editor)
+config/axes.json       konfiguracja osi maszyny (tworzona przy pierwszym zapisie)
+tools/                 skrypty pomocnicze: start z pulpitu, PDF-y dokumentacji
 firmware/clearcore/    firmware C++ sterownika ClearCore (osie, wrzeciono,
                        sygnał zezwolenia, protokół TCP)
 ```
@@ -51,8 +55,26 @@ PROGRAMS_DIR=../programs uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 - Panel operatora: http://localhost:8000/
+- Konfiguracja osi: http://localhost:8000/axes
 - Edytor technologa: http://localhost:8000/editor
 - Dokumentacja API (OpenAPI): http://localhost:8000/docs
+
+## Uruchomienie całości z pulpitu (maszyna albo symulator)
+
+```bash
+tools/zainstaluj-skrot.sh      # zakłada skrót „Maszyna — ocinanie wlewków" na pulpicie
+```
+
+Kliknięcie skrótu uruchamia mostek SC4-Hub (jeśli jest zbudowany i widzi
+sprzęt), serwer maszyny i panel w przeglądarce; bez sprzętu wchodzi w tryb
+symulacji i mówi o tym wprost. Zamknięcie okna zatrzymuje wszystko.
+Bez pulpitu: `tools/uruchom-maszyne.sh [sim|maszyna]`.
+
+## Dokumentacja w PDF
+
+```bash
+tools/docs-pdf.py              # docs/**.md -> docs/pdf/*.pdf
+```
 
 W panelu można zasymulować wybór zlecenia w MES (numer zlecenia + 12-cyfrowy
 numer programu, np. `583912004711`), wykonać bazowanie i uruchomić cykl —

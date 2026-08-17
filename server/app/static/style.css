@@ -134,3 +134,121 @@ input:invalid { border-color: var(--err); }
 
 .muted { color: var(--muted); font-size: 13px; }
 .jog-grid { display: grid; grid-template-columns: repeat(3, 60px); gap: 8px; justify-content: start; }
+
+/* Luzowanie osi: wyraźnie widoczny stan "zluzowana" — operator musi wiedzieć,
+   że oś nie trzyma momentu, zanim o nią oprze rękę. */
+button.rel.released {
+  background: #4d431a;
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+/* Podgląd pozycji: rysunek XY + wskaźnik Z, odświeżany z każdą ramką statusu. */
+.view-wrap {
+  position: relative;
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.view-wrap canvas { display: block; width: 100%; height: 360px; }
+
+.view-legend { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.view-legend .key {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  margin-left: 10px;
+}
+.view-legend .key:first-child { margin-left: 0; }
+.key-op { background: var(--muted); }
+.key-tool { background: var(--accent); height: 10px; width: 10px; border-radius: 50%; }
+.key-trail { background: #2b6ea8; }
+#view-info { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* Edytor: pola nieużywane przez dany rodzaj operacji oraz błędy walidacji. */
+#op-rows td.off input { opacity: 0.25; }
+#op-rows input.bad, #op-rows select.bad {
+  border-color: var(--err);
+  background: #3a1f1c;
+}
+#op-rows .row-actions { white-space: nowrap; }
+#op-rows button.icon {
+  padding: 2px 7px;
+  margin-right: 2px;
+  line-height: 1.2;
+}
+
+/* Tabela operacji: pola muszą pokazywać wartość, a nie same strzałki.
+   Strzałki spinnera zabierały całą szerokość wąskich kolumn. */
+#op-rows td, #op-rows th { padding: 5px 4px; }
+#op-rows input[type="number"] {
+  width: 72px;
+  padding: 6px 6px;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+#op-rows input[type="number"]::-webkit-inner-spin-button,
+#op-rows input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+#op-rows select { width: 92px; padding: 6px 4px; }
+#op-rows input[data-field="note"] { min-width: 150px; }
+#op-rows td:nth-last-child(2) { width: 100%; }   /* Uwagi zabierają resztę */
+
+/* Tabela operacji jest szersza niż panel — przewijamy ją poziomo, żeby
+   przyciski akcji wiersza nie stawały się nieosiągalne na węższym ekranie. */
+.table-scroll { overflow-x: auto; }
+.table-scroll table { min-width: 900px; }
+
+/* Elementy siatki mają domyślnie min-width:auto i nie kurczą się poniżej
+   szerokości treści — przez to zamiast przewijać tabelę rozjeżdżała się
+   cała strona. */
+.grid-2 > *, .grid-3 > * { min-width: 0; }
+
+/* --- konfiguracja osi --- */
+
+/* Pole z błędem widoczne wszędzie, nie tylko w tabeli operacji edytora. */
+input.bad, select.bad { border-color: var(--err); background: #3a1f1c; }
+
+#axis-table input, #axis-table select { width: 130px; }
+#axis-table td, #axis-table th { vertical-align: middle; }
+#axis-table { min-width: 860px; }
+
+.axis-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.axis-bar-name { width: 22px; font-size: 18px; font-weight: 700; }
+.axis-bar-end { color: var(--muted); min-width: 56px; text-align: right; }
+.axis-bar {
+  position: relative;
+  flex: 1;
+  height: 20px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+/* zakres dozwolony programowo — wycinek zakresu fizycznego */
+.axis-bar-soft {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #2b6ea8;
+}
+/* punkt bazowania (zero osi) */
+.axis-bar-zero {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--warn);
+}

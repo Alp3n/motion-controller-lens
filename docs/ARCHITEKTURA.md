@@ -47,6 +47,10 @@ przy maszynie. Zapewnia:
 - **Edytor technologa** (`/editor`) — tworzenie i edycja programów w formie
   tabeli, bez programowania; zapis do pliku w formacie opisanym w
   [FORMAT_PROGRAMU.md](FORMAT_PROGRAMU.md).
+- **Konfiguracja osi** (`/axes`) — długość fizyczna, punkt bazowania, limity
+  programowe i przełożenie posuwu każdej osi; limity są obszarem roboczym przy
+  walidacji programów i granicą ruchu ręcznego. Model:
+  [konfiguracja-osi.md](konfiguracja-osi.md).
 - **API REST dla MES** — MES po wybraniu zlecenia wywołuje
   `POST /api/mes/select-order` z numerem zlecenia i 12-cyfrowym numerem
   programu; serwer ładuje plik programu i przygotowuje maszynę.

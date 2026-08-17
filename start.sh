@@ -12,7 +12,10 @@ fi
 
 echo
 echo "  Panel operatora:    http://localhost:8000/"
+echo "  Konfiguracja osi:   http://localhost:8000/axes"
 echo "  Edytor technologa:  http://localhost:8000/editor"
 echo "  Dokumentacja API:   http://localhost:8000/docs"
 echo
-PROGRAMS_DIR=../programs exec .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+export PROGRAMS_DIR=../programs
+export AXES_CONFIG=../config/axes.json
+exec .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000

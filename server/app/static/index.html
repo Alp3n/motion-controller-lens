@@ -9,6 +9,7 @@
 <body>
   <header>
     <h1>Maszyna — ocinanie wlewków płytek optyki</h1>
+    <a href="/axes">Konfiguracja osi →</a>
     <a href="/editor">Edytor technologa →</a>
   </header>
 
@@ -54,6 +55,19 @@
       </section>
     </div>
 
+    <section class="panel">
+      <h2>Podgląd pozycji</h2>
+      <div class="view-wrap">
+        <canvas id="view"></canvas>
+      </div>
+      <p class="muted view-legend">
+        <span class="key key-op"></span> operacje programu
+        <span class="key key-tool"></span> pozycja narzędzia
+        <span class="key key-trail"></span> przebyty tor
+        <span id="view-info"></span>
+      </p>
+    </section>
+
     <div class="grid-2">
       <section class="panel">
         <h2>Sterowanie</h2>
@@ -87,6 +101,19 @@
             </select>
           </div>
         </div>
+
+        <h2 style="margin-top:20px">Luzowanie osi</h2>
+        <p class="muted" style="margin-top:-8px; margin-bottom:10px">
+          Zdejmuje moment z serwa — oś można przestawić ręcznie.
+          Oś pionowa bez hamulca opadnie pod własnym ciężarem.
+        </p>
+        <div class="btn-row">
+          <button class="small rel" data-axis="x">X</button>
+          <button class="small rel" data-axis="y">Y</button>
+          <button class="small rel" data-axis="z">Z</button>
+          <button class="small rel" data-axis="all">WSZYSTKIE</button>
+        </div>
+        <p id="rel-msg" class="msg"></p>
       </section>
 
       <section class="panel">

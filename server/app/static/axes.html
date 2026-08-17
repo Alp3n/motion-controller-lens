@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Konfiguracja osi — maszyna do ocinania wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Konfiguracja osi maszyny</h1>
+    <a href="/">← Panel operatora</a>
+    <a href="/editor">Edytor technologa →</a>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Osie X / Y / Z</h2>
+      <p class="muted" style="margin-top:-6px">
+        Zakres fizyczny nie jest wpisywany wprost — wynika z długości osi
+        i punktu bazowania, czyli miejsca, w którym po bazowaniu leży zero osi.
+        Limity programowe muszą się mieścić w zakresie fizycznym; to one
+        ograniczają maszynę na co dzień.
+      </p>
+
+      <div class="table-scroll">
+        <table id="axis-table">
+          <thead>
+            <tr>
+              <th>Oś</th>
+              <th title="całkowity skok mechaniczny osi">Długość fizyczna [mm]</th>
+              <th title="gdzie po bazowaniu leży zero osi">Punkt bazowania</th>
+              <th title="wynika z długości i punktu bazowania">Zakres fizyczny [mm]</th>
+              <th title="dolny limit programowy">Limit MIN [mm]</th>
+              <th title="górny limit programowy">Limit MAX [mm]</th>
+              <th title="ile milimetrów przejeżdża oś na jeden obrót silnika">mm / obrót</th>
+            </tr>
+          </thead>
+          <tbody id="axis-rows"></tbody>
+        </table>
+      </div>
+
+      <div class="btn-row" style="margin-top:14px; max-width:520px">
+        <button id="btn-save">💾 Zapisz konfigurację</button>
+        <button class="small" id="btn-reload">Przywróć zapisane</button>
+        <button class="small" id="btn-full">Limity = zakres fizyczny</button>
+      </div>
+      <p id="axes-msg" class="msg"></p>
+      <p class="muted" id="axes-file"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Zakresy osi</h2>
+      <p class="muted" style="margin-top:-6px">
+        Jasny pas — zakres fizyczny, niebieski — obszar dozwolony programowo,
+        znacznik „0" — punkt bazowania.
+      </p>
+      <div id="axis-bars"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Co zmienia ta konfiguracja</h2>
+      <ul class="muted" style="margin:0; padding-left:18px; line-height:1.7">
+        <li><b>Limity programowe</b> ograniczają ruch ręczny (JOG) i są obszarem
+          roboczym przy walidacji programów — program z punktem poza limitem
+          nie zostanie wczytany.</li>
+        <li><b>Przełożenie (mm/obrót)</b> przelicza milimetry na obroty serwa.
+          Zła wartość to ruch o złą wielkość mimo poprawnie wyglądającego
+          odczytu pozycji — po każdej zmianie sprawdź skok przejazdem
+          kontrolnym na wolnym posuwie.</li>
+        <li><b>Punkt bazowania</b> określa, gdzie leży zero układu współrzędnych.
+          Samą procedurę bazowania (czujniki, kierunek najazdu) konfiguruje się
+          w serwie — w programie ClearView. Ten ekran nie zastępuje tamtej
+          konfiguracji ani nie jest funkcją bezpieczeństwa: krańcówki i wyłączenie
+          awaryjne realizuje niezależny układ sprzętowy.</li>
+        <li>Zmiana zapisuje plik konfiguracji i od razu trafia do sterownika.
+          W trakcie cyklu i bazowania zapis jest odrzucany.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="/static/axes.js"></script>
+</body>
+</html>

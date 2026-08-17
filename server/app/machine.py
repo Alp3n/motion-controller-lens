@@ -12,7 +12,8 @@ import math
 from dataclasses import dataclass, field
 from enum import Enum
 
-from .program import Operation, Program
+from .axes import AXIS_NAMES, AxisConfig
+from .program import Operation, Program, cut_path, pass_depths
 
 
 class MachineState(str, Enum):
@@ -39,6 +40,8 @@ class MachineStatus:
     current_op: int | None = None  # LP aktualnej operacji
     total_ops: int = 0
     alarm_message: str = ""
+    # osie zluzowane (moment zdjęty, da się ruszyć ręcznie), np. ["z"]
+    released_axes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -52,6 +55,7 @@ class MachineStatus:
             "current_op": self.current_op,
             "total_ops": self.total_ops,
             "alarm_message": self.alarm_message,
+            "released_axes": sorted(self.released_axes),
         }
 
 
@@ -66,8 +70,37 @@ class Machine:
         self.status = MachineStatus()
         self._program: Program | None = None
         self._resume_event = asyncio.Event()
+        # konfiguracja osi z ekranu „Konfiguracja osi" — limity programowe
+        # i przełożenia; pusta oznacza brak ograniczeń po stronie serwera
+        self.axes: dict[str, AxisConfig] = {}
+
+    # --- konfiguracja osi (wspólna) ---------------------------------------
+
+    def apply_axis_config(self, axes: dict[str, AxisConfig]) -> None:
+        """Podmienia konfigurację osi; podklasy dosyłają ją do sprzętu."""
+        self.axes = dict(axes)
+
+    def _check_soft_limit(self, axis: str, target: float) -> None:
+        """Odrzuca ruch poza limit programowy osi (JOG i ruchy pojedynczej osi).
+
+        Punkty programu są sprawdzane wcześniej, przy jego wczytaniu — tu
+        chodzi o ruch ręczny, którego nikt wcześniej nie zweryfikował.
+        """
+        cfg = self.axes.get(axis)
+        if cfg is None:
+            return
+        if not (cfg.soft_min - 1e-6 <= target <= cfg.soft_max + 1e-6):
+            raise MachineError(
+                f"oś {axis.upper()}: pozycja {target:.3f} mm poza limitem programowym "
+                f"({cfg.soft_min:.3f}..{cfg.soft_max:.3f} mm)"
+            )
 
     # --- ładowanie programu (wspólne) -------------------------------------
+
+    @property
+    def program(self) -> Program | None:
+        """Załadowany program — do ponownej walidacji po zmianie limitów osi."""
+        return self._program
 
     def load_program(self, program: Program, order_id: str | None) -> None:
         if self.status.state in (MachineState.RUNNING, MachineState.HOMING):
@@ -95,6 +128,28 @@ class Machine:
 
     async def jog(self, axis: str, distance: float, feed: float) -> None:
         raise NotImplementedError
+
+    async def set_released(self, axes: list[str], released: bool) -> None:
+        """Luzuje (zdejmuje moment) lub zaciska wskazane osie."""
+        raise NotImplementedError
+
+    @staticmethod
+    def _parse_axes(spec: str) -> list[str]:
+        """'all' -> wszystkie osie; 'x'/'y'/'z' -> jedna."""
+        spec = spec.lower()
+        if spec == "all":
+            return ["x", "y", "z"]
+        if spec not in ("x", "y", "z"):
+            raise MachineError(f"nieznana oś: {spec}")
+        return [spec]
+
+    def _require_not_released(self, axes: list[str]) -> None:
+        blocked = [a for a in axes if a in self.status.released_axes]
+        if blocked:
+            raise MachineError(
+                "osie zluzowane: " + ", ".join(sorted(blocked)).upper()
+                + " — zaciśnij je przed ruchem"
+            )
 
     def resume(self) -> None:
         """Wznowienie po operacji PAUZA."""
@@ -139,16 +194,30 @@ class SimulatedMachine(Machine):
         self.status.alarm_message = message
 
     async def home(self) -> None:
+        """Sprawdza warunki i uruchamia bazowanie w tle.
+
+        Walidacja musi być synchroniczna — inaczej błąd wpadłby do zadania
+        w tle i endpoint zwróciłby OK mimo nieudanego bazowania.
+        """
         if self.status.state in (MachineState.RUNNING, MachineState.HOMING):
             raise MachineError("maszyna jest w ruchu")
+        self._require_not_released(["x", "y", "z"])
         self._require_enable()
         self.status.state = MachineState.HOMING
+        self._run_task = asyncio.create_task(self._do_home())
+
+    async def _do_home(self) -> None:
         try:
-            # symulacja bazowania: zjazd do czujników krańcowych
-            await self._move_to(0.0, 0.0, 40.0, feed=2000)
+            # symulacja bazowania: odjazd w górę i zjazd do punktu bazowego,
+            # czyli do zera osi — odjazd ograniczony limitem programowym Z
+            z_cfg = self.axes.get("z")
+            lift = 40.0 if z_cfg is None else min(40.0, z_cfg.soft_max)
+            await self._move_to(0.0, 0.0, lift, feed=2000)
             await self._move_to(0.0, 0.0, 0.0, feed=1000)
         except asyncio.CancelledError:
             return
+        finally:
+            self._run_task = None
         self.status.state = MachineState.READY
 
     async def start(self) -> None:
@@ -161,6 +230,7 @@ class SimulatedMachine(Machine):
             )
         if not self._program:
             raise MachineError("nie załadowano programu — wybierz zlecenie w MES")
+        self._require_not_released(["x", "y", "z"])
         self._require_enable()
         self.status.state = MachineState.RUNNING
         self.status.alarm_message = ""
@@ -181,9 +251,20 @@ class SimulatedMachine(Machine):
             self.status.current_op = None
             self.status.state = MachineState.NOT_HOMED
 
+    async def set_released(self, axes: list[str], released: bool) -> None:
+        if self.status.state in (MachineState.RUNNING, MachineState.HOMING):
+            raise MachineError("nie można luzować osi w trakcie ruchu maszyny")
+        if not released:
+            self._require_enable()
+        current = set(self.status.released_axes)
+        self.status.released_axes = sorted(
+            current | set(axes) if released else current - set(axes)
+        )
+
     async def jog(self, axis: str, distance: float, feed: float) -> None:
         if self.status.state not in (MachineState.READY, MachineState.NOT_HOMED):
             raise MachineError("JOG możliwy tylko przy zatrzymanej maszynie")
+        self._require_not_released([axis])
         self._require_enable()
         target = {
             "x": self.status.x,
@@ -193,6 +274,7 @@ class SimulatedMachine(Machine):
         if axis not in target:
             raise MachineError(f"nieznana oś: {axis}")
         target[axis] += distance
+        self._check_soft_limit(axis, target[axis])
         await self._move_to(target["x"], target["y"], target["z"], feed)
 
     async def _run_program(self) -> None:
@@ -224,16 +306,38 @@ class SimulatedMachine(Machine):
             self.status.state = MachineState.RUNNING
             return
 
+        if op.op_type == "WRZECIONO":
+            self.status.spindle_on = op.rpm > 0
+            return
+
+        if op.op_type == "SZYBKI":
+            # przejazd bez skrawania: zawsze na wysokości bezpiecznej
+            feed = op.feed or program.feed_travel
+            await self._move_to(
+                self.status.x, self.status.y, program.z_safe, program.feed_travel
+            )
+            await self._move_to(op.x, op.y, program.z_safe, feed)
+            return
+
+        feed = op.feed or program.feed_work
+        depths = pass_depths(op)
+        path = cut_path(op)
+
         self.status.spindle_on = True
         # dojazd nad punkt na wysokości bezpiecznej
         await self._move_to(self.status.x, self.status.y, program.z_safe, program.feed_travel)
         await self._move_to(op.x, op.y, program.z_safe, program.feed_travel)
-        # zagłębienie posuwem roboczym
-        await self._move_to(op.x, op.y, op.z, program.feed_work)
-        if op.op_type == "LINIA":
-            await self._move_to(op.x2, op.y2, op.z, program.feed_work)
-        # wycofanie
-        await self._move_to(self.status.x, self.status.y, program.z_safe, program.feed_travel)
+
+        for i, depth in enumerate(depths):
+            # zagłębienie posuwem roboczym na głębokość tego przejścia
+            await self._move_to(op.x, op.y, depth, feed)
+            for px, py in path:
+                await self._move_to(px, py, depth, feed)
+            # wycofanie na Z bezpieczne — przy wielu przejściach daje odprowadzenie wióra
+            await self._move_to(self.status.x, self.status.y, program.z_safe, program.feed_travel)
+            if path and i < len(depths) - 1:
+                # powrót na początek toru przed kolejnym przejściem
+                await self._move_to(op.x, op.y, program.z_safe, program.feed_travel)
 
     async def _move_to(self, x: float, y: float, z: float, feed: float) -> None:
         """Ruch liniowy z interpolacją pozycji w czasie (feed w mm/min)."""
@@ -271,11 +375,36 @@ class ClearCoreMachine(Machine):
         self._reader: asyncio.StreamReader | None = None
         self._writer: asyncio.StreamWriter | None = None
         self._run_task: asyncio.Task | None = None
+        # konfiguracja osi żyje w pamięci mostka — po każdym (ponownym)
+        # połączeniu i po każdej zmianie trzeba ją wysłać jeszcze raz
+        self._axes_pending = True
+
+    def apply_axis_config(self, axes: dict[str, AxisConfig]) -> None:
+        super().apply_axis_config(axes)
+        self._axes_pending = True
+
+    async def _push_axis_config(self) -> None:
+        """Wysyła limity i przełożenia osi do mostka (wołane spod zamka)."""
+        # znacznik kasujemy przed wysyłką: przy błędzie łącze i tak zostanie
+        # zamknięte, a ponowne wejście tutaj dałoby pętlę
+        self._axes_pending = False
+        for axis in AXIS_NAMES:
+            cfg = self.axes.get(axis)
+            if cfg is None:
+                continue
+            await self._exchange(
+                f"AXCFG {axis.upper()} MMREV={cfg.mm_per_rev:.6f} "
+                f"SOFTMIN={cfg.soft_min:.4f} SOFTMAX={cfg.soft_max:.4f} "
+                f"LEN={cfg.length:.4f} HOME={cfg.home}"
+            )
 
     async def _command(self, command: str) -> str:
         """Wysyła jedną komendę i zwraca linię odpowiedzi (OK ... / ERR ...)."""
         async with self._lock:
-            if self._writer is None:
+            # is_closing(): po restarcie sterownika gniazdo jest martwe, a samo
+            # write() rzuciłoby wtedy RuntimeError zamiast błędu sieciowego
+            if self._writer is None or self._writer.is_closing():
+                self._reader = self._writer = None
                 try:
                     self._reader, self._writer = await asyncio.wait_for(
                         asyncio.open_connection(self.host, self.port), timeout=3.0
@@ -285,35 +414,70 @@ class ClearCoreMachine(Machine):
                         f"brak połączenia ze sterownikiem ClearCore "
                         f"({self.host}:{self.port})"
                     )
-            try:
-                self._writer.write((command + "\n").encode())
-                await self._writer.drain()
-                line = await asyncio.wait_for(self._reader.readline(), timeout=30.0)
-            except (OSError, asyncio.TimeoutError):
-                self._writer = None
-                self._reader = None
-                raise MachineError("utracono połączenie ze sterownikiem ClearCore")
-            reply = line.decode().strip()
-            if reply.startswith("ERR"):
-                raise MachineError(f"sterownik odrzucił komendę: {reply}")
-            return reply
+                # świeże połączenie może być połączeniem z nowo uruchomionym
+                # mostkiem, który nie zna jeszcze limitów osi
+                self._axes_pending = True
+            if self._axes_pending:
+                await self._push_axis_config()
+            return await self._exchange(command)
+
+    async def _exchange(self, command: str) -> str:
+        """Jedna wymiana po otwartym już łączu — bez zamka i bez łączenia."""
+        if self._writer is None or self._reader is None:
+            raise MachineError("brak połączenia ze sterownikiem ClearCore")
+        try:
+            self._writer.write((command + "\n").encode())
+            await self._writer.drain()
+            line = await asyncio.wait_for(self._reader.readline(), timeout=30.0)
+        except (OSError, asyncio.TimeoutError, RuntimeError):
+            # RuntimeError: transport zamknięty pod spodem (uvloop)
+            self._writer = None
+            self._reader = None
+            raise MachineError("utracono połączenie ze sterownikiem ClearCore")
+        if not line:
+            # koniec strumienia — bez tego pusta odpowiedź uchodziłaby za OK
+            self._writer = None
+            self._reader = None
+            raise MachineError("sterownik zamknął połączenie")
+        reply = line.decode().strip()
+        if reply.startswith("ERR"):
+            raise MachineError(f"sterownik odrzucił komendę: {reply}")
+        return reply
 
     async def poll_status(self) -> None:
         """Cykliczne odpytywanie STATUS — wywoływane z pętli serwera."""
         reply = await self._command("STATUS")
-        # przykład: OK STATE=READY EN=1 X=12.500 Y=-3.000 Z=10.000 SP=0
+        # przykład: OK STATE=READY EN=1 X=12.500 Y=-3.000 Z=10.000 SP=0 REL=- MSG=...
+        # MSG jest ostatnie i zawiera spacje, więc odcinamy je przed rozbiciem
+        msg = ""
+        marker = reply.find(" MSG=")
+        if marker >= 0:
+            msg = reply[marker + 5:].strip()
+            reply = reply[:marker]
+        self.status.alarm_message = msg
         fields = dict(
             part.split("=", 1) for part in reply.split()[1:] if "=" in part
         )
+        # Stany RUNNING i PAUSED wynikają z przebiegu programu, o którym wie
+        # tylko serwer — sterownik między ruchami zgłasza READY. Gdyby STATUS
+        # je nadpisywał, panel pokazywałby READY w trakcie cyklu, a wznowienie
+        # po PAUZA przestałoby działać. ALARM ze sterownika ma pierwszeństwo
+        # zawsze, bo oznacza realny problem na maszynie.
         if "STATE" in fields:
-            self.status.state = MachineState(fields["STATE"])
+            reported = MachineState(fields["STATE"])
+            server_driven = (MachineState.RUNNING, MachineState.PAUSED)
+            if reported == MachineState.ALARM or self.status.state not in server_driven:
+                self.status.state = reported
         self.status.safety_enable = fields.get("EN") == "1"
         self.status.x = float(fields.get("X", self.status.x))
         self.status.y = float(fields.get("Y", self.status.y))
         self.status.z = float(fields.get("Z", self.status.z))
         self.status.spindle_on = fields.get("SP") == "1"
+        rel = fields.get("REL", "-")
+        self.status.released_axes = [] if rel == "-" else sorted(c.lower() for c in rel)
 
     async def home(self) -> None:
+        self._require_not_released(["x", "y", "z"])
         await self._command("HOME")
 
     async def start(self) -> None:
@@ -322,10 +486,13 @@ class ClearCoreMachine(Machine):
             return
         if not self._program:
             raise MachineError("nie załadowano programu — wybierz zlecenie w MES")
+        self._require_not_released(["x", "y", "z"])
         if self.status.state != MachineState.READY:
             raise MachineError(
                 f"start możliwy tylko w stanie READY (obecnie: {self.status.state.value})"
             )
+        self.status.state = MachineState.RUNNING
+        self.status.alarm_message = ""
         self._run_task = asyncio.create_task(self._run_program())
 
     async def stop(self) -> None:
@@ -339,7 +506,22 @@ class ClearCoreMachine(Machine):
         self.status.current_op = None
 
     async def jog(self, axis: str, distance: float, feed: float) -> None:
+        self._require_not_released([axis])
+        # limit sprawdzamy także tutaj: mostek odrzuciłby ruch własnym błędem,
+        # ale operator dostaje czytelniejszy komunikat i licznik pozycji
+        # sterownika nie musi być pytany o zdanie przy każdym kliknięciu
+        self._check_soft_limit(axis, getattr(self.status, axis) + distance)
         await self._command(f"JOG {axis.upper()} {distance:.3f} {feed:.0f}")
+
+    async def set_released(self, axes: list[str], released: bool) -> None:
+        cmd = "RELEASE" if released else "HOLD"
+        if set(axes) == {"x", "y", "z"}:
+            await self._command(f"{cmd} ALL")
+        else:
+            for axis in axes:
+                await self._command(f"{cmd} {axis.upper()}")
+        # natychmiastowe odbicie w statusie — bez czekania na kolejny STATUS
+        await self.poll_status()
 
     async def _run_program(self) -> None:
         """Tłumaczy operacje programu na sekwencję komend MOVE dla ClearCore."""
@@ -355,23 +537,45 @@ class ClearCoreMachine(Machine):
                     self.status.state = MachineState.PAUSED
                     self._resume_event.clear()
                     await self._resume_event.wait()
+                    self.status.state = MachineState.RUNNING
                     await self._command(f"SPINDLE 1 {program.spindle_rpm:.0f}")
                     continue
+                if op.op_type == "WRZECIONO":
+                    if op.rpm > 0:
+                        await self._command(f"SPINDLE 1 {op.rpm:.0f}")
+                    else:
+                        await self._command("SPINDLE 0")
+                    continue
+
+                if op.op_type == "SZYBKI":
+                    feed = op.feed or program.feed_travel
+                    await self._command(f"MOVEZ {zs:.3f} {program.feed_travel:.0f}")
+                    await self._command(f"MOVEXY {op.x:.3f} {op.y:.3f} {feed:.0f}")
+                    continue
+
+                feed = op.feed or program.feed_work
+                depths = pass_depths(op)
+                path = cut_path(op)
                 await self._command(f"MOVEZ {zs:.3f} {program.feed_travel:.0f}")
                 await self._command(
                     f"MOVEXY {op.x:.3f} {op.y:.3f} {program.feed_travel:.0f}"
                 )
-                await self._command(f"MOVEZ {op.z:.3f} {program.feed_work:.0f}")
-                if op.op_type == "LINIA":
-                    await self._command(
-                        f"MOVEXY {op.x2:.3f} {op.y2:.3f} {program.feed_work:.0f}"
-                    )
-                await self._command(f"MOVEZ {zs:.3f} {program.feed_travel:.0f}")
+                for i, depth in enumerate(depths):
+                    await self._command(f"MOVEZ {depth:.3f} {feed:.0f}")
+                    for px, py in path:
+                        await self._command(f"MOVEXY {px:.3f} {py:.3f} {feed:.0f}")
+                    await self._command(f"MOVEZ {zs:.3f} {program.feed_travel:.0f}")
+                    if path and i < len(depths) - 1:
+                        await self._command(
+                            f"MOVEXY {op.x:.3f} {op.y:.3f} {program.feed_travel:.0f}"
+                        )
             await self._command(f"MOVEXY 0 0 {program.feed_travel:.0f}")
             self.status.current_op = None
+            self.status.state = MachineState.READY
         except asyncio.CancelledError:
             raise
         except MachineError as exc:
+            self.status.state = MachineState.ALARM
             self.status.alarm_message = str(exc)
         finally:
             try:

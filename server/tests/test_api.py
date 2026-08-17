@@ -95,3 +95,43 @@ def test_save_and_get_program(client, tmp_path, monkeypatch):
     res = client.get("/api/programs/222222222222")
     assert res.status_code == 200
     assert res.json()["parsed"]["name"] == "Test"
+
+
+# --- luzowanie osi --------------------------------------------------------
+
+
+def test_release_single_axis(client):
+    res = client.post("/api/machine/release", json={"axis": "z", "released": True})
+    assert res.status_code == 200
+    assert res.json()["released_axes"] == ["z"]
+    assert client.get("/api/status").json()["released_axes"] == ["z"]
+
+    res = client.post("/api/machine/release", json={"axis": "z", "released": False})
+    assert res.json()["released_axes"] == []
+
+
+def test_release_all_axes(client):
+    res = client.post("/api/machine/release", json={"axis": "all", "released": True})
+    assert res.json()["released_axes"] == ["x", "y", "z"]
+    client.post("/api/machine/release", json={"axis": "all", "released": False})
+
+
+def test_jog_refused_on_released_axis(client):
+    client.post("/api/machine/release", json={"axis": "x", "released": True})
+    res = client.post("/api/machine/jog", json={"axis": "x", "distance": 1})
+    assert res.status_code == 409
+    assert "zluzowane" in res.json()["detail"]
+    # inna oś nadal działa
+    assert client.post("/api/machine/jog", json={"axis": "y", "distance": 1}).status_code == 200
+    client.post("/api/machine/release", json={"axis": "x", "released": False})
+
+
+def test_home_refused_on_released_axis(client):
+    client.post("/api/machine/release", json={"axis": "y", "released": True})
+    res = client.post("/api/machine/home")
+    assert res.status_code == 409
+    client.post("/api/machine/release", json={"axis": "y", "released": False})
+
+
+def test_release_rejects_unknown_axis(client):
+    assert client.post("/api/machine/release", json={"axis": "q", "released": True}).status_code == 422

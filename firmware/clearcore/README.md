@@ -61,7 +61,16 @@ JOG <X/Y/Z> <dyst> <posuw>-> ruch ręczny
 SPINDLE <0/1> [obr/min]   -> wrzeciono wył/zał
 STOP                      -> zatrzymanie natychmiastowe
 RESET                     -> kasowanie alarmu
+RELEASE <X/Y/Z/ALL>       -> zdjęcie momentu (ruch ręczny osią)
+HOLD <X/Y/Z/ALL>          -> przywrócenie momentu
 ```
+
+Odpowiedź `STATUS` zawiera dodatkowo pole `REL=` z literami zluzowanych osi
+(albo `-`), np. `OK STATE=READY EN=1 X=0.000 Y=0.000 Z=0.000 SP=0 REL=Z`.
+
+W stanie `ALARM` na końcu linii dochodzi `MSG=<powód>`. Pole jest **zawsze
+ostatnie**, bo tekst zawiera spacje — wszystko po `MSG=` jest treścią
+komunikatu dla operatora.
 
 Serwer maszyny sam tłumaczy operacje programu (.prg) na sekwencję tych komend
 — firmware nie zna formatu programów i pozostaje prosty.

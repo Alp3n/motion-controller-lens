@@ -15,7 +15,13 @@ MACHINE_MODE = os.environ.get("MACHINE_MODE", "sim")
 CLEARCORE_HOST = os.environ.get("CLEARCORE_HOST", "192.168.0.50")
 CLEARCORE_PORT = int(os.environ.get("CLEARCORE_PORT", "8500"))
 
-# obszar roboczy maszyny [mm] — do walidacji programów
+# plik konfiguracji osi (długości, limity, przełożenia, punkty bazowania).
+# Zapisywany z ekranu „Konfiguracja osi"; po jego utworzeniu to on, a nie
+# zmienne WORK_*, decyduje o obszarze roboczym.
+AXES_FILE = Path(os.environ.get("AXES_CONFIG", "config/axes.json")).resolve()
+
+# wartości startowe obszaru roboczego [mm] — używane tylko, dopóki nie ma
+# pliku konfiguracji osi
 WORK_AREA = {
     "x_min": float(os.environ.get("WORK_X_MIN", "-100")),
     "x_max": float(os.environ.get("WORK_X_MAX", "100")),

@@ -11,9 +11,11 @@ if not exist .venv (
 
 echo.
 echo   Panel operatora:    http://localhost:8000/
+echo   Konfiguracja osi:   http://localhost:8000/axes
 echo   Edytor technologa:  http://localhost:8000/editor
 echo   Dokumentacja API:   http://localhost:8000/docs
 echo.
 start "" http://localhost:8000/
 set PROGRAMS_DIR=..\programs
+set AXES_CONFIG=..\config\axes.json
 .venv\Scripts\python -m uvicorn app.main:app --host 0.0.0.0 --port 8000

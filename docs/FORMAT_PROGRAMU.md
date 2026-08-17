@@ -1,4 +1,4 @@
-# Format pliku programu (.prg) — wersja 1
+# Format pliku programu (.prg) — wersje 1, 2 i 3
 
 Plik programu opisuje operacje ocinania wlewków dla jednej płytki optyki.
 Założenia:
@@ -43,7 +43,7 @@ Pary `KLUCZ;WARTOSC`, po jednej w linii.
 
 | Klucz           | Wymagany | Opis                                                     |
 |-----------------|----------|----------------------------------------------------------|
-| `FORMAT`        | tak      | wersja formatu, obecnie `1`                              |
+| `FORMAT`        | tak      | wersja formatu: `1` (8 kolumn), `2` (11), `3` (12)       |
 | `PROGRAM`       | tak      | 12-cyfrowy numer programu — musi zgadzać się z nazwą pliku |
 | `NAZWA`         | tak      | czytelna nazwa programu / detalu                         |
 | `MATERIAL`      | nie      | materiał płytki (np. PMMA, PC)                           |
@@ -57,7 +57,13 @@ Pary `KLUCZ;WARTOSC`, po jednej w linii.
 ## Sekcja [OPERACJE]
 
 Pierwsza linia to nagłówek kolumn (stały):
-`LP;OPERACJA;X;Y;Z;X2;Y2;UWAGI`
+- **format 1:** `LP;OPERACJA;X;Y;Z;X2;Y2;UWAGI`
+- **format 2:** `LP;OPERACJA;X;Y;Z;X2;Y2;POSUW;PRZEJSCIA;PRZYROST;UWAGI`
+- **format 3:** `LP;OPERACJA;X;Y;Z;X2;Y2;POSUW;OBROTY;PRZEJSCIA;PRZYROST;UWAGI`
+
+Nagłówek musi odpowiadać wersji podanej w `FORMAT`. Parser czyta wszystkie
+wersje, a edytor zapisuje zawsze w najnowszej — starsze pliki awansują przy
+pierwszym zapisie, bez utraty treści.
 
 Kolejne linie to operacje wykonywane po kolei, od `LP=1`.
 Współrzędne w **mm**, względem punktu bazowego uchwytu płytki.
@@ -70,10 +76,43 @@ zapisany z Excela w polskich ustawieniach też zadziała).
 |----------|------------------|-----------------------------------------------------------------------------------|
 | `PUNKT`  | X, Y, Z          | dojazd nad punkt (X,Y) na `Z_BEZPIECZNE`, zagłębienie do Z posuwem roboczym, wycofanie — ocięcie wlewka w jednym punkcie |
 | `LINIA`  | X, Y, Z, X2, Y2  | dojazd nad (X,Y), zagłębienie do Z, cięcie po linii do (X2,Y2) posuwem roboczym, wycofanie |
+| `PROSTOKAT` | X, Y, Z, X2, Y2 | obrys prostokąta o narożnikach przeciwległych (X,Y) i (X2,Y2); tor zamyka się w punkcie startu |
+| `SZYBKI` | X, Y             | przejazd bez skrawania na wysokości `Z_BEZPIECZNE`, posuwem dojazdu           |
+| `WRZECIONO` | OBROTY        | zmiana obrotów wrzeciona w trakcie programu; `0` wyłącza wrzeciono            |
 | `PAUZA`  | —                | zatrzymanie cyklu; operator wznawia przyciskiem START (np. kontrola wzrokowa)     |
 
 Kolumna `UWAGI` jest dowolnym opisem dla operatora (wyświetlana na panelu).
 Puste kolumny zostawia się puste (same średniki).
+
+### Parametry operacji (format 2)
+
+Kolumny opcjonalne. Puste znaczy „weź wartość z nagłówka programu".
+
+`PRZEJSCIA` i `PRZYROST` przyjmują **tylko operacje skrawające**
+(`PUNKT`, `LINIA`, `PROSTOKAT`). `POSUW` nie dotyczy `PAUZA` ani
+`WRZECIONO`. `OBROTY` dotyczą wyłącznie `WRZECIONO`. Złamanie tych reguł
+jest błędem z numerem linii, a nie cichym zignorowaniem wartości.
+
+| Kolumna     | Opis                                                                 |
+|-------------|----------------------------------------------------------------------|
+| `POSUW`     | posuw roboczy tylko dla tej operacji [mm/min]; puste = `POSUW_ROBOCZY`. Dla `SZYBKI` nadpisuje `POSUW_DOJAZDU` |
+| `OBROTY`    | obroty wrzeciona [obr/min] — **wyłącznie** dla operacji `WRZECIONO`    |
+| `PRZEJSCIA` | liczba przejść na głębokość (liczba całkowita ≥ 1)                    |
+| `PRZYROST`  | przyrost głębokości na przejście [mm]                                 |
+
+`PRZEJSCIA` i `PRZYROST` **wykluczają się** — wypełnij jedno albo żadne.
+Bez nich operacja wykonuje jedno przejście na pełną głębokość.
+
+Głębokość dzielona jest od powierzchni materiału (**Z = 0**) do `Z` z operacji,
+a ostatnie przejście zawsze trafia dokładnie w zadane `Z`. Po każdym przejściu
+narzędzie wycofuje się na `Z_BEZPIECZNE`, co odprowadza wiór — przy plastiku
+ogranicza topienie i wyrwania.
+
+Przykład: `PUNKT` z `Z = -3` i `PRZEJSCIA = 3` zagłębia się kolejno na
+−1, −2 i −3 mm. To samo z `PRZYROST = 0,5` da sześć przejść co 0,5 mm.
+Przy `PRZYROST` niedzielącym głębokości bez reszty przejść jest tyle, ile
+trzeba, a wszystkie są równe (np. `Z = -1,2` i `PRZYROST = 0,5` → trzy
+przejścia po 0,4 mm).
 
 ## Walidacja
 

@@ -1,4 +1,4 @@
-"""Parser i serializator plików programu (.prg) — format 1.
+"""Parser i serializator plików programu (.prg) — formaty 1, 2 i 3.
 
 Format opisany w docs/FORMAT_PROGRAMU.md: sekcja [NAGLOWEK] z parami
 KLUCZ;WARTOSC oraz sekcja [OPERACJE] z tabelą rozdzielaną średnikami.
@@ -8,12 +8,52 @@ technologa/operatora.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 
 NC12_RE = re.compile(r"^\d{12}$")
 
-OPERATIONS_HEADER = ["LP", "OPERACJA", "X", "Y", "Z", "X2", "Y2", "UWAGI"]
+# Format 1: osiem kolumn. Format 2 dokłada parametry operacji.
+# Parser czyta wszystkie wersje, zapis idzie zawsze w najnowszej — starsze
+# pliki awansują przy pierwszym zapisie w edytorze.
+OPERATIONS_HEADER_V1 = ["LP", "OPERACJA", "X", "Y", "Z", "X2", "Y2", "UWAGI"]
+OPERATIONS_HEADER_V2 = [
+    "LP",
+    "OPERACJA",
+    "X",
+    "Y",
+    "Z",
+    "X2",
+    "Y2",
+    "POSUW",
+    "PRZEJSCIA",
+    "PRZYROST",
+    "UWAGI",
+]
+# Format 3 dokłada OBROTY — potrzebne operacji WRZECIONO. Świadomie osobna
+# kolumna zamiast doklejania obrotów do POSUW: przeciążanie znaczenia kolumn
+# mści się przy czytaniu pliku w Excelu.
+OPERATIONS_HEADER_V3 = [
+    "LP",
+    "OPERACJA",
+    "X",
+    "Y",
+    "Z",
+    "X2",
+    "Y2",
+    "POSUW",
+    "OBROTY",
+    "PRZEJSCIA",
+    "PRZYROST",
+    "UWAGI",
+]
+OPERATIONS_HEADER = OPERATIONS_HEADER_V3  # domyślny przy zapisie
+SUPPORTED_FORMATS = {
+    1: OPERATIONS_HEADER_V1,
+    2: OPERATIONS_HEADER_V2,
+    3: OPERATIONS_HEADER_V3,
+}
 
 REQUIRED_HEADER_KEYS = [
     "FORMAT",
@@ -27,12 +67,18 @@ REQUIRED_HEADER_KEYS = [
 
 OPTIONAL_HEADER_KEYS = ["MATERIAL", "AUTOR", "DATA"]
 
-# rodzaj operacji -> kolumny współrzędnych, które muszą być wypełnione
+# rodzaj operacji -> kolumny, które muszą być wypełnione
 OPERATION_TYPES = {
     "PUNKT": ["X", "Y", "Z"],
     "LINIA": ["X", "Y", "Z", "X2", "Y2"],
+    "PROSTOKAT": ["X", "Y", "Z", "X2", "Y2"],  # narożniki przeciwległe
+    "SZYBKI": ["X", "Y"],                      # przejazd na Z bezpiecznym
+    "WRZECIONO": ["OBROTY"],                   # zmiana obrotów w trakcie programu
     "PAUZA": [],
 }
+
+# operacje skrawające — tylko one przyjmują przejścia na głębokość
+CUTTING_TYPES = {"PUNKT", "LINIA", "PROSTOKAT"}
 
 
 class ProgramError(Exception):
@@ -53,6 +99,11 @@ class Operation:
     z: float | None = None
     x2: float | None = None
     y2: float | None = None
+    # parametry formatu 2 — puste znaczy "domyślne z nagłówka programu"
+    feed: float | None = None          # posuw roboczy tylko dla tej operacji
+    rpm: float | None = None           # obroty wrzeciona (operacja WRZECIONO)
+    passes: int | None = None          # liczba przejść na głębokość
+    depth_step: float | None = None    # przyrost głębokości na przejście [mm]
     note: str = ""
 
     def to_dict(self) -> dict:
@@ -64,6 +115,10 @@ class Operation:
             "z": self.z,
             "x2": self.x2,
             "y2": self.y2,
+            "feed": self.feed,
+            "rpm": self.rpm,
+            "passes": self.passes,
+            "depth_step": self.depth_step,
             "note": self.note,
         }
 
@@ -110,6 +165,25 @@ def _parse_optional_number(raw: str, what: str, line: int) -> float | None:
     return _parse_number(raw, what, line)
 
 
+def _parse_positive(raw: str, what: str, line: int) -> float | None:
+    value = _parse_optional_number(raw, what, line)
+    if value is not None and value <= 0:
+        raise ProgramError(f"{what} musi być większe od zera, jest: {_fmt(value)}", line)
+    return value
+
+
+def _parse_positive_int(raw: str, what: str, line: int) -> int | None:
+    if raw.strip() == "":
+        return None
+    value = _parse_number(raw, what, line)
+    if value != int(value) or value < 1:
+        raise ProgramError(
+            f"{what} musi być liczbą całkowitą nie mniejszą niż 1, jest: '{raw.strip()}'",
+            line,
+        )
+    return int(value)
+
+
 def parse_program(text: str, expected_number: str | None = None) -> Program:
     """Parsuje treść pliku .prg; rzuca ProgramError z numerem linii."""
     header: dict[str, str] = {}
@@ -117,6 +191,8 @@ def parse_program(text: str, expected_number: str | None = None) -> Program:
     operations: list[Operation] = []
     section = None
     ops_header_seen = False
+    ops_header = OPERATIONS_HEADER_V1
+    ops_header_line: int | None = None
 
     for line_no, raw_line in enumerate(text.splitlines(), start=1):
         line = raw_line.strip()
@@ -145,25 +221,47 @@ def parse_program(text: str, expected_number: str | None = None) -> Program:
         # sekcja [OPERACJE]
         cells = [c.strip() for c in line.split(";")]
         if not ops_header_seen:
-            if [c.upper() for c in cells] != OPERATIONS_HEADER:
+            upper = [c.upper() for c in cells]
+            match = [h for h in SUPPORTED_FORMATS.values() if upper == h]
+            if match:
+                ops_header = match[0]
+            else:
                 raise ProgramError(
-                    "pierwsza linia sekcji [OPERACJE] musi być nagłówkiem: "
-                    + ";".join(OPERATIONS_HEADER),
+                    "pierwsza linia sekcji [OPERACJE] musi być nagłówkiem jednego "
+                    "z obsługiwanych formatów: "
+                    + " | ".join(
+                        f"format {v}: " + ";".join(h)
+                        for v, h in sorted(SUPPORTED_FORMATS.items())
+                    ),
                     line_no,
                 )
             ops_header_seen = True
+            ops_header_line = line_no
             continue
 
         # dopełnij brakujące puste kolumny na końcu (Excel potrafi je uciąć)
-        while len(cells) < len(OPERATIONS_HEADER):
+        while len(cells) < len(ops_header):
             cells.append("")
-        if len(cells) > len(OPERATIONS_HEADER):
+        if len(cells) > len(ops_header):
             raise ProgramError(
-                f"za dużo kolumn ({len(cells)}), oczekiwano {len(OPERATIONS_HEADER)}",
+                f"za dużo kolumn ({len(cells)}), oczekiwano {len(ops_header)}",
                 line_no,
             )
 
-        lp_raw, op_type_raw, x, y, z, x2, y2, note = cells
+        if ops_header is OPERATIONS_HEADER_V1:
+            lp_raw, op_type_raw, x, y, z, x2, y2, note = cells
+            feed_raw = rpm_raw = passes_raw = step_raw = ""
+        elif ops_header is OPERATIONS_HEADER_V2:
+            (
+                lp_raw, op_type_raw, x, y, z, x2, y2,
+                feed_raw, passes_raw, step_raw, note,
+            ) = cells
+            rpm_raw = ""
+        else:
+            (
+                lp_raw, op_type_raw, x, y, z, x2, y2,
+                feed_raw, rpm_raw, passes_raw, step_raw, note,
+            ) = cells
         try:
             lp = int(lp_raw)
         except ValueError:
@@ -185,11 +283,40 @@ def parse_program(text: str, expected_number: str | None = None) -> Program:
             z=_parse_optional_number(z, "Z", line_no),
             x2=_parse_optional_number(x2, "X2", line_no),
             y2=_parse_optional_number(y2, "Y2", line_no),
+            feed=_parse_positive(feed_raw, "POSUW", line_no),
+            rpm=_parse_optional_number(rpm_raw, "OBROTY", line_no),
+            passes=_parse_positive_int(passes_raw, "PRZEJSCIA", line_no),
+            depth_step=_parse_positive(step_raw, "PRZYROST", line_no),
             note=note,
         )
 
+        if op.rpm is not None and op.rpm < 0:
+            raise ProgramError("OBROTY nie mogą być ujemne (0 = wyłącz wrzeciono)", line_no)
+        if op.passes is not None and op.depth_step is not None:
+            raise ProgramError(
+                "wypełnij PRZEJSCIA albo PRZYROST, nie oba naraz "
+                "(liczba przejść albo przyrost na przejście)",
+                line_no,
+            )
+        if op_type not in CUTTING_TYPES and (
+            op.passes is not None or op.depth_step is not None
+        ):
+            raise ProgramError(
+                f"operacja {op_type} nie przyjmuje PRZEJSCIA ani PRZYROST "
+                "— to parametry operacji skrawających",
+                line_no,
+            )
+        if op_type in ("PAUZA", "WRZECIONO") and op.feed is not None:
+            raise ProgramError(f"operacja {op_type} nie przyjmuje POSUW", line_no)
+        if op_type != "WRZECIONO" and op.rpm is not None:
+            raise ProgramError(
+                "kolumna OBROTY dotyczy wyłącznie operacji WRZECIONO", line_no
+            )
+
         required = OPERATION_TYPES[op_type]
-        values = {"X": op.x, "Y": op.y, "Z": op.z, "X2": op.x2, "Y2": op.y2}
+        values = {
+            "X": op.x, "Y": op.y, "Z": op.z, "X2": op.x2, "Y2": op.y2, "OBROTY": op.rpm,
+        }
         for col in required:
             if values[col] is None:
                 raise ProgramError(
@@ -204,10 +331,25 @@ def parse_program(text: str, expected_number: str | None = None) -> Program:
         if key not in header or header[key] == "":
             raise ProgramError(f"brak wymaganego pola nagłówka: {key}")
 
-    if header["FORMAT"].strip() != "1":
+    format_raw = header["FORMAT"].strip()
+    try:
+        format_version = int(format_raw)
+    except ValueError:
+        format_version = -1
+    if format_version not in SUPPORTED_FORMATS:
         raise ProgramError(
-            f"nieobsługiwana wersja formatu: {header['FORMAT']} (obsługiwana: 1)",
+            f"nieobsługiwana wersja formatu: {format_raw} (obsługiwane: "
+            + ", ".join(str(v) for v in sorted(SUPPORTED_FORMATS))
+            + ")",
             header_lines.get("FORMAT"),
+        )
+    if SUPPORTED_FORMATS[format_version] is not ops_header:
+        expected = len(SUPPORTED_FORMATS[format_version])
+        raise ProgramError(
+            f"nagłówek sekcji [OPERACJE] nie pasuje do FORMAT;{format_version} — "
+            f"ten format ma {expected} kolumn: "
+            + ";".join(SUPPORTED_FORMATS[format_version]),
+            ops_header_line,
         )
 
     number = header["PROGRAM"].strip()
@@ -259,7 +401,7 @@ def serialize_program(program: Program) -> str:
     """Zapisuje program do tekstu w formacie .prg (format 1)."""
     lines = [
         "[NAGLOWEK]",
-        "FORMAT;1",
+        "FORMAT;3",
         f"PROGRAM;{program.number}",
         f"NAZWA;{program.name}",
     ]
@@ -289,11 +431,48 @@ def serialize_program(program: Program) -> str:
                     _fmt(op.z),
                     _fmt(op.x2),
                     _fmt(op.y2),
+                    _fmt(op.feed),
+                    _fmt(op.rpm),
+                    "" if op.passes is None else str(op.passes),
+                    _fmt(op.depth_step),
                     op.note.replace(";", ","),
                 ]
             )
         )
     return "\n".join(lines) + "\n"
+
+
+def pass_depths(op: Operation, surface: float = 0.0) -> list[float]:
+    """Kolejne głębokości Z dla operacji — ostatnia zawsze równa zadanej.
+
+    Głębokość dzielona jest od powierzchni materiału (domyślnie Z=0) do Z
+    z operacji. Technolog podaje albo liczbę przejść (PRZEJSCIA), albo
+    przyrost na przejście (PRZYROST); bez żadnego z nich jest jedno przejście.
+    """
+    if op.z is None:
+        return []
+    total = op.z - surface
+    if op.passes:
+        count = op.passes
+    elif op.depth_step:
+        count = max(1, math.ceil(abs(total) / op.depth_step - 1e-9))
+    else:
+        count = 1
+    return [surface + total * (k + 1) / count for k in range(count)]
+
+
+def cut_path(op: Operation) -> list[tuple[float, float]]:
+    """Punkty XY, przez które przechodzi narzędzie na danej głębokości.
+
+    Zaczyna się zawsze w (X, Y), więc lista zawiera tylko kolejne punkty.
+    PUNKT nie ma żadnych — to samo zagłębienie w miejscu.
+    """
+    if op.op_type == "LINIA":
+        return [(op.x2, op.y2)]
+    if op.op_type == "PROSTOKAT":
+        # obrys po narożnikach przeciwległych, z powrotem do punktu startu
+        return [(op.x2, op.y), (op.x2, op.y2), (op.x, op.y2), (op.x, op.y)]
+    return []
 
 
 def validate_work_area(
@@ -317,6 +496,9 @@ def validate_work_area(
             points.append((op.x, op.y))
         if op.x2 is not None and op.y2 is not None:
             points.append((op.x2, op.y2))
+        # narożniki prostokąta, których nie ma wprost w kolumnach
+        if op.op_type == "PROSTOKAT":
+            points += [(op.x2, op.y), (op.x, op.y2)]
         for px, py in points:
             if not (x_min <= px <= x_max) or not (y_min <= py <= y_max):
                 raise ProgramError(

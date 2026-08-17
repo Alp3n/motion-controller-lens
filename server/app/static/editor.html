@@ -10,6 +10,7 @@
   <header>
     <h1>Edytor technologa — programy (.prg)</h1>
     <a href="/">← Panel operatora</a>
+    <a href="/axes">Konfiguracja osi →</a>
   </header>
 
   <main>
@@ -40,18 +41,38 @@
         </div>
 
         <h2 style="margin-top:16px">Operacje</h2>
+        <div class="table-scroll">
         <table>
           <thead>
-            <tr><th>LP</th><th>Operacja</th><th>X</th><th>Y</th><th>Z</th><th>X2</th><th>Y2</th><th>Uwagi</th><th></th></tr>
+            <tr>
+              <th>LP</th><th>Operacja</th>
+              <th>X</th><th>Y</th><th>Z</th><th>X2</th><th>Y2</th>
+              <th title="posuw tylko dla tej operacji; puste = posuw roboczy z nagłówka">Posuw</th>
+              <th title="obroty wrzeciona — tylko operacja WRZECIONO; 0 wyłącza">Obroty</th>
+              <th title="liczba przejść na głębokość">Przejścia</th>
+              <th title="przyrost głębokości na przejście [mm]">Przyrost</th>
+              <th>Uwagi</th><th></th>
+            </tr>
           </thead>
           <tbody id="op-rows"></tbody>
         </table>
+        </div>
+        <p id="validate-info" class="msg"></p>
         <div class="btn-row" style="margin-top:12px; max-width:420px">
           <button class="small" id="btn-add-op">+ Dodaj operację</button>
           <button class="small" id="btn-save">💾 Zapisz program</button>
           <button class="small" id="btn-download">⬇ Pobierz plik</button>
         </div>
         <p id="editor-msg" class="msg"></p>
+
+        <h2 style="margin-top:20px">Podgląd toru</h2>
+        <div class="view-wrap"><canvas id="edit-view"></canvas></div>
+        <p class="muted view-legend">
+          <span class="key key-tool"></span> operacje w kolejności LP
+          <span class="key key-op"></span> przejazdy między operacjami
+          <span class="key key-op"></span> kreskowany obrys — granica obszaru roboczego
+          <span style="margin-left:10px">Rysunek pokazuje zawartość tabeli — także przed zapisem.</span>
+        </p>
         <p class="muted">
           Plik zapisywany jest jako <code>NUMER.prg</code> w katalogu programów maszyny —
           format opisany w dokumentacji (sekcje [NAGLOWEK] i [OPERACJE], separator „;”,
