@@ -38,5 +38,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   `/axes`, plik konfiguracji osi, limity w serwerze i w mostku.
 - [zmiany/uruchamianie-i-pdf.md](zmiany/uruchamianie-i-pdf.md) — skrót na
   pulpicie uruchamiający całe środowisko oraz generator PDF-ów dokumentacji.
+- [zmiany/srodowisko-testowe-vscode.md](zmiany/srodowisko-testowe-vscode.md) —
+  konfiguracja VS Code (interpreter, debugger, testy) zweryfikowana na
+  Ubuntu 24.04.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.
