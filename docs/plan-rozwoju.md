@@ -51,22 +51,24 @@ nie w głównych plikach.
 
 To jest temat, od którego zależy większość reszty (C–F) — beze modelu danych
 nie ma gdzie podłączyć dodatkowych osi, profili siły ani trybów pracy.
-Ustalony jako **następny krok** w `DECYZJE_2026-08-25.md`, jeszcze nie
-zaprojektowany.
+Ustalony jako **następny krok** w `DECYZJE_2026-08-25.md`.
 
-- [ ] Zaprojektować model danych: `Axis`, `ParameterProfile`, `CycleStep`,
-      `PartProgram` (12NC — już częściowo istnieje jako `.prg`/`program.py`),
-      `Operation`. Uwzględnić konfigurowalne wyjście cyfrowe (drugie wolne
-      wyjście `BRAKE_0`/`BRAKE_1` — patrz temat J) jako element `CycleStep`,
-      nie `Operation` — decyzja: poziom cyklu maszyny, nie program technologa.
-- [ ] Warstwa „cyklu maszyny" (poziom admina): podawanie → bazowanie/docisk →
-      wywołanie programu detalu → przywrócenie parametrów → wyrzut → powtórz.
-- [ ] Mechanizm snapshot/restore parametrów osi wokół programu 12NC — **także
-      przy błędzie/przerwaniu, nie tylko przy sukcesie** (analogicznie do
-      try/finally) — te same osie fizyczne, różne parametry w cyklu i w
-      programie detalu.
-- [ ] Ekran definiowania ruchów cyklu maszyny — analogiczny do edytora
-      technologa, plus operacja „skok do wybranego podprogramu technologa".
+- [x] Zaprojektować model danych (propozycja gotowa do przeglądu):
+      [`model-cyklu-maszyny.md`](model-cyklu-maszyny.md) — `Axis`,
+      `ParameterProfile`, `CycleStep`, `PartProgram` (12NC — już istnieje
+      jako `.prg`/`program.py`, bez zmian). Wyjście cyfrowe jako pole
+      `CycleStep`, nie `Operation` — zgodnie z wcześniejszą decyzją.
+      **Podzielone na 4 etapy wdrożenia** — patrz dokument.
+- [ ] **Etap 1:** uogólnić `AXIS_NAMES` w `server/app/axes.py` z sztywnej
+      krotki `("x","y","z")` na konfigurowalną listę — fundament pod
+      podajnik/docisk, niezależny od reszty.
+- [ ] **Etap 2:** `ParameterProfile` (dataclass + JSON, wzorem `AxisConfig`)
+      i podłączenie `TrqGlobal` do warstwy `Machine`.
+- [ ] **Etap 3:** `CycleStep` + snapshot/restore parametrów (na symulatorze,
+      `try/finally` wokół wywołania programu detalu — **także przy
+      błędzie/przerwaniu**, zgodnie z `DECYZJE_2026-08-25.md` §3).
+- [ ] **Etap 4:** ekran definiowania cyklu maszyny (temat G) — dopiero po
+      1–3.
 
 Źródło: `zbyszek/DECYZJE_2026-08-25.md` §2, §3, §5, §7;
 `zbyszek/NOTATKI_FUNKCJONALNE.md` §3.

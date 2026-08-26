@@ -31,6 +31,9 @@ Ustalenia i analizy:
   wykorzystujemy z serw (mamy wersję Advanced): limit momentu z API, bazowanie
   do oporu, grupy wyzwalania, zdarzenia; ryzyko: system może przypadkowo
   załączyć wyjście BRAKE.
+- [model-cyklu-maszyny.md](model-cyklu-maszyny.md) — propozycja modelu
+  danych dla tematu B: `Axis`/`ParameterProfile`/`CycleStep`/`PartProgram`,
+  snapshot/restore parametrów, podział na etapy.
 
 Zmiany w kodzie opisujemy w [`zmiany/`](zmiany/) — jeden plik na zmianę,
 nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).

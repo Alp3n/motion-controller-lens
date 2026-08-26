@@ -17,11 +17,11 @@ mam to założyć.
       (świadomie odłożone — osobny krok później)
 
 ### B. Model cyklu maszyny i programu detalu
-- [ ] Zaprojektować `Axis`, `ParameterProfile`, `CycleStep`, `PartProgram`, `Operation`
-      (drugie wyjście `BRAKE_0`/`BRAKE_1` jako pole `CycleStep`, nie `Operation`)
-- [ ] Warstwa cyklu maszyny (podawanie → bazowanie/docisk → program detalu → przywrócenie → wyrzut)
-- [ ] Mechanizm snapshot/restore parametrów osi (z obsługą błędu/przerwania)
-- [ ] Ekran definiowania ruchów cyklu + operacja „skok do podprogramu technologa"
+- [x] Zaprojektować model — propozycja w `model-cyklu-maszyny.md`, do przeglądu
+- [ ] Etap 1: uogólnić `AXIS_NAMES` w `axes.py` (krotka → konfigurowalna lista)
+- [ ] Etap 2: `ParameterProfile` + podłączenie `TrqGlobal` do `Machine`
+- [ ] Etap 3: `CycleStep` + snapshot/restore (na symulatorze, z obsługą błędu/przerwania)
+- [ ] Etap 4: ekran definiowania cyklu + „skok do podprogramu technologa"
 
 ### C. Osie i konfiguracja ruchu
 - [ ] Dodatkowe osie w `/axes` (podajnik, docisk z kontrolą momentu)
