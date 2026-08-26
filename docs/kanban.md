@@ -25,11 +25,16 @@ mam to założyć.
 
 ### C. Osie i konfiguracja ruchu
 - [ ] Dodatkowe osie w `/axes` (podajnik, docisk z kontrolą momentu)
-- [ ] Bazowanie bez krańcówek + przycisk „HOME wszystkich osi" + ekran bazowania
-- [ ] Siła trzypoziomowa (globalna / cykl / program technologa)
+- [ ] Bazowanie HardStop + Offset Move + przycisk „HOME wszystkich osi"
+      + ekran bazowania
+- [ ] Siła trzypoziomowa (globalna / cykl / program technologa) —
+      `ILimits.TrqGlobal`
 - [ ] Prędkości max i robocze (roboczy / bazowanie / JOG) per oś
-- [ ] Siła/prędkość konfigurowalne per krok programu
+- [x] Siła/prędkość zależne od pozycji — sprawdzone: *Conditional Torque
+      Limiting* w serwie (ClearView) + `TrqGlobal` z API
 - [ ] Siła per operacja w programie technologa
+- [ ] Soft limits w silniku jako warstwa dodatkowa (wymagają bazowania)
+- [ ] Ruchy head-tail dla zagłębiania w Z; ruchy asymetryczne
 
 ### D. Wrzeciono
 - [ ] Włączenie przy starcie maszyny (przełącznik)
@@ -56,17 +61,29 @@ mam to założyć.
 - [ ] „Zapisz jako" dla programów technologicznych
 
 ### H. Uruchomienie sprzętowe
-- [ ] Auto-Tune osi pod obciążeniem (Windows/ClearView)
-- [ ] Homing w ClearView
-- [ ] Weryfikacja pomiarowa toru `LINIA`
+Jedna sesja w ClearView (Windows) domyka pierwsze pięć pozycji:
+- [ ] Auto-Tune osi pod obciążeniem
+- [ ] Homing HardStop + Offset Move
+- [ ] Soft limits w silnikach
+- [ ] Warunkowe limitowanie momentu (Move Done, Absolute Position)
+- [ ] Wejścia A/B węzłów („Input Actions")
+- [ ] Sprawdzić dostępność g-Stop (tłumienie drgań)
+
+Pomiary i testy:
+- [ ] Weryfikacja pomiarowa toru `LINIA` + próba grup wyzwalania
+- [ ] Zmierzyć domyślny watchdog sieciowy (czy w ogóle działa)
 - [ ] Test: utrata zezwolenia w ruchu
 - [ ] Test: komunikacja przy E-stopie
+- [ ] Test: czy USB re-enumeracja załącza `BRAKE_x` (bez wrzeciona!)
 - [ ] Reguła udev — instalacja i weryfikacja
-- [ ] Obciążalność wyjść `BRAKE_0`/`BRAKE_1`
+- [x] Obciążalność wyjść `BRAKE_0`/`BRAKE_1` — 500 mA / 24 VDC
 
 ### J. Skąd I/O — decyzja podjęta, drobiazgi zostają
-- [ ] Obciążalność `BRAKE_0`/`BRAKE_1` pod wejście enable zewnętrznego
-      regulatora PWM
+- [x] Obciążalność `BRAKE_0`/`BRAKE_1` — **500 mA / 24 VDC**; użyć przekaźnika
+      pośredniczącego, nie stycznika bezpośrednio
+- [ ] **Bezpieczeństwo:** `BRAKE_x` → regulator wrzeciona **szeregowo przez
+      obwód osłon** (system może przypadkowo załączyć wyjście)
+- [ ] Osobne zasilanie 24 V do płytki SC4-HUB (warunek działania wyjść)
 - [ ] Wybór konkretnego modelu zewnętrznego regulatora PWM do wrzeciona
 - [x] Przeznaczenie drugiego wyjścia: definiowane w konfiguracji maszyny
       (temat B, `CycleStep`) — podajnik/wyrzutnik/lampka/błąd, konkretny

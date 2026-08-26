@@ -27,6 +27,10 @@ Ustalenia i analizy:
 - [inspiracje-mic488.md](inspiracje-mic488.md) — co warto przenieść z kontrolera
   WObit MIC488 (tablica pozycji, przerwania, tryby bazowania) i znalezione
   ryzyko: SC4-Hub nie ma I/O wymaganego przez plany (PWM wrzeciona).
+- [mozliwosci-clearpath-sc.md](mozliwosci-clearpath-sc.md) — czego nie
+  wykorzystujemy z serw (mamy wersję Advanced): limit momentu z API, bazowanie
+  do oporu, grupy wyzwalania, zdarzenia; ryzyko: system może przypadkowo
+  załączyć wyjście BRAKE.
 
 Zmiany w kodzie opisujemy w [`zmiany/`](zmiany/) — jeden plik na zmianę,
 nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).

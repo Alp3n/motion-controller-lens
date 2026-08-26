@@ -76,21 +76,33 @@ zaprojektowany.
 - [ ] Rozszerzyć model `/axes` o dodatkowe osie (podajnik automatyczny, oś
       bazowania/docisku z kontrolą momentu) — dziś model zna tylko X/Y/Z
       (`docs/konfiguracja-osi.md`).
-- [ ] Bazowanie bez wyłączników krańcowych: użyć wbudowanej funkcji bazowania
-      serwa; przycisk „dojazd do HOME wszystkich osi"; oddzielny ekran
-      konfiguracji bazowania (osobno od ekranu prędkości/siły).
+- [ ] Bazowanie bez wyłączników krańcowych: tryb **HardStop** z parametrem
+      *Homing Torque Limit*, plus *Offset Move* odwzorowujący nasz „punkt
+      bazowania"; przycisk „dojazd do HOME wszystkich osi"; oddzielny ekran
+      konfiguracji bazowania. **Uwaga:** parametrów bazowania nie da się
+      ustawić z kodu — wyłącznie w ClearView (temat H).
 - [ ] Konfiguracja siły — **trzy poziomy**: globalna (domyślnie 20%), ruch
       podczas cyklu maszyny (per zdefiniowany ruch, domyślnie 15%), ruch
       podczas programu technologa (domyślnie 10%).
+      Mechanizm: `ILimits.TrqGlobal` + `TrqUnit(PCT_MAX)` — ustawialny
+      z API w czasie pracy.
 - [ ] Prędkości maksymalne (per oś) i robocze osobno dla: ruchu roboczego,
       bazowania, trybu JOG.
-- [ ] Siła/prędkość konfigurowalne **na każdym kroku programu**, zależnie od
-      pozycji — sprawdzić w bibliotece Teknic (sFoundation/SysAPI), jakie
-      funkcje są dostępne pod to zastosowanie.
+- [x] Siła/prędkość zależne od pozycji — **sprawdzone**: serwa mają
+      *Conditional Torque Limiting* z warunkiem „Absolute Position"
+      (konfiguracja w ClearView, działa w silniku). Wersję „per operacja"
+      realizuje `TrqGlobal` z API. Szczegóły:
+      [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
 - [ ] W programie technologa: możliwość ustawienia siły per operacja (jeśli
       nieustawiona — wartość domyślna z ekranu parametrów maszyny).
+- [ ] Rozważyć włączenie **soft limits w samym silniku** jako warstwy
+      dodatkowej (dziś nieaktywne — wymagają prawdziwego bazowania).
+- [ ] Rozważyć ruchy **head-tail** dla zagłębiania w Z (szybki zjazd +
+      delikatne wejście w materiał w jednej komendzie) i **asymetryczne**
+      (inne przyspieszenie niż hamowanie).
 
-Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §1, §2; `notatki.txt`.
+Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §1, §2; `notatki.txt`;
+[`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
 
 ## D. Wrzeciono
 
@@ -115,13 +127,17 @@ niżej; rozstrzygnąć **przed** rozpoczęciem tego tematu.
 
 - [ ] Dodatkowy port wejściowy dla sygnału drzwi (PWM ~100Hz albo 0/1),
       aktywny tylko w pracy automatycznej, z niezależnym włącz/wyłącz
-      w konfiguracji.
+      w konfiguracji. **Miejsce podłączenia jest** — każdy węzeł ma dwa
+      wejścia ogólnego przeznaczenia (6 przy trzech serwach), konfigurowalne
+      w ClearView także jako krańcówki kierunkowe i wyzwalacze limitu
+      momentu: [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
 
   **Ryzyko, nie do zmiękczenia:** sygnał drzwi czytany programowo **nie jest
   certyfikowaną funkcją bezpieczeństwa**. Ma tylko uzupełniać sprzętowy
   Global Stop na SC4-Hub (kurtyna/wyłącznik drzwiowy → Global Stop fizycznie
   odcina zezwolenie), nie go zastępować. Odczyt PWM w softcie służy do
-  diagnostyki i logiki trybu automatycznego.
+  diagnostyki i logiki trybu automatycznego. Ten sam obwód osłon musi
+  **rozłączać szeregowo wyjście `BRAKE_x` sterujące wrzecionem** (temat J).
 
 - [ ] Warstwa ról i logowania: admin / technolog / operator, z dostępem do
       `/axes`, `/editor`, panelu operatora odpowiednio.
@@ -171,20 +187,44 @@ Te zadania nie są kodem — wymagają fizycznej obecności przy maszynie i (w
 części) komputera z Windows. Zostawiam je na liście, bo blokują przejście
 z symulatora na produkcję.
 
+Sesja w ClearView (Windows) domyka naraz kilka rzeczy — warto zaplanować ją
+jako **jedno wejście**, nie kilka osobnych:
+
 - [ ] Auto-Tune każdej osi pod obciążeniem — wymaga Windows z ClearView;
       zapisać `.mtr` i wczytywać z Linuksa (`LoadingConfigFile`).
-- [ ] Skonfigurować homing w ClearView — dziś bazowanie to tylko zerowanie
-      programowe, na maszynie z mechaniką nie wystarczy.
+- [ ] Skonfigurować homing (tryb **HardStop**, *Homing Torque Limit*,
+      *Offset Move*) — dziś bazowanie to tylko zerowanie programowe.
+- [ ] Włączyć **soft limits** w silnikach (działają dopiero po bazowaniu).
+- [ ] Skonfigurować **warunkowe limitowanie momentu** (Move Done, Absolute
+      Position) — pod temat C.
+- [ ] Skonfigurować **wejścia A/B węzłów** („Input Actions") — krańcówki
+      kierunkowe, sygnał drzwi, limit momentu od wejścia.
+- [ ] Sprawdzić dostępność i ustawienia **g-Stop** (tłumienie drgań) — wpływa
+      na jakość powierzchni przy frezowaniu plastiku.
+
+Pomiary i testy:
+
 - [ ] Zweryfikować pomiarowo tor operacji `LINIA` (interpolacja przybliżona;
       zmierzone odchylenie czasu przejazdu, ale nie geometrii toru).
+      Przy okazji spróbować **grup wyzwalania** (`TriggerGroup` +
+      `TriggerMovesInGroup`) — usuwają niejednoczesny start osi.
+- [ ] Sprawdzić **domyślny czas watchdoga sieciowego** i czy jest włączony —
+      od tego zależy, czy można się oprzeć na samoczynnym zatrzymaniu przy
+      zawieszeniu mostka. **Nie zakładać, że działa — zmierzyć.**
 - [ ] Test: utrata zezwolenia (Global Stop) w trakcie ruchu.
 - [ ] Test: zachowanie komunikacji przy wciśniętym E-stopie (czy odcina
       magistralę DC, czy mostek to odróżnia od awarii łącza).
+- [ ] Test: czy wyjście `BRAKE_x` faktycznie da się przypadkowo załączyć przy
+      ponownej enumeracji USB (ryzyko A w
+      [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md)) —
+      **z odłączonym wrzecionem.**
 - [ ] Instalacja i weryfikacja reguły udev (`tools/99-teknic-sc4hub.rules`)
       przez przewtyknięcie huba.
-- [ ] Obciążalność wyjść `BRAKE_0`/`BRAKE_1` pod stycznik wrzeciona.
+- [x] ~~Obciążalność wyjść `BRAKE_0`/`BRAKE_1`~~ — **500 mA / 24 VDC**
+      (instrukcja rev. 1.45, str. 47).
 
-Źródło: `docs/sterownik-sc4-hub.md` „Do zrobienia".
+Źródło: `docs/sterownik-sc4-hub.md` „Do zrobienia";
+[`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
 
 ## I. Odłożone / niski priorytet
 
@@ -224,8 +264,20 @@ Zaplanowane funkcje, które nie mają dziś gdzie się podłączyć:
       `none`). SC4-Hub daje tylko włącz/wyłącz; PWM generuje już zewnętrzny
       regulator. Nic więcej po stronie mostka nie trzeba zmieniać poza
       przełączeniem tej jednej zmiennej.
-- [ ] Sprawdzić obciążalność `BRAKE_0`/`BRAKE_1` pod wejście enable
-      zewnętrznego regulatora (jest już w temacie H).
+- [x] **Obciążalność sprawdzona: 500 mA / 24 VDC** (instrukcja ClearPath-SC
+      rev. 1.45, str. 47). Wystarcza na cewkę małego przekaźnika
+      pośredniczącego; **nie** podłączać stycznika bezpośrednio. API ma bity
+      wykrycia przeciążenia (`GPO_OVERLOAD_BIT`).
+- [ ] **Warunek konieczny (bezpieczeństwo):** sygnał `BRAKE_x` → regulator
+      wrzeciona musi iść **szeregowo przez styk obwodu osłon/kurtyn**.
+      Powód: producent ostrzega, że system operacyjny może **przypadkowo
+      załączyć wyjście**, gdy nasza aplikacja nie trzyma portu — a u nas ten
+      scenariusz realnie występuje (`cdc_acm` przejmuje hub przy każdej
+      ponownej enumeracji). Bez tego wrzeciono może ruszyć bez udziału
+      programu. Szczegóły i cytat:
+      [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md), ryzyko A.
+- [ ] Uwaga montażowa: wyjścia SC4-HUB wymagają **osobnego zasilania 24 V**
+      podłączonego do płytki huba.
 - [ ] Wybrać konkretny model zewnętrznego regulatora PWM do wrzeciona.
 - [x] **Decyzja (Twoja):** drugie wyjście (to, które zostanie wolne po
       wrzecionie) definiuje się w **konfiguracji maszyny** (admin, cykl —
