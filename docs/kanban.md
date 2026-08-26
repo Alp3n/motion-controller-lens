@@ -13,10 +13,8 @@ mam to założyć.
 ## Do zrobienia
 
 ### A. Nazewnictwo (ClearCore → SC4-Hub)
-- [ ] Scalić `zbyszek/README.md` → `README.md`
-- [ ] Scalić `zbyszek/ARCHITEKTURA.md` → `docs/ARCHITEKTURA.md`
-- [ ] Zdecydować o losie `firmware/clearcore/`
 - [ ] Przejrzeć kod pod kątem `ClearCoreMachine`/`MACHINE_MODE=clearcore`
+      (świadomie odłożone — osobny krok później)
 
 ### B. Model cyklu maszyny i programu detalu
 - [ ] Zaprojektować `Axis`, `ParameterProfile`, `CycleStep`, `PartProgram`, `Operation`
@@ -87,3 +85,5 @@ Skrót — pełne opisy w [`README.md`](README.md) i [`zmiany/`](zmiany/):
 - [x] Narzędzia USB SC4-Hub (przypięcie do sterownika Exar)
 - [x] Skrót na pulpicie + generator PDF dokumentacji
 - [x] Środowisko testowe VS Code (Windows/Linux)
+- [x] Scalenie dokumentacji SC4-Hub (`README.md`, `docs/ARCHITEKTURA.md`) i
+      usunięcie `firmware/clearcore/`

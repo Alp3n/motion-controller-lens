@@ -20,22 +20,28 @@ ustalimy coś nowego, zamiast zakładać kolejny plik.
 
 **Dlaczego to ważne teraz:** to jest źródło pomyłek przy dalszej pracy — kod
 i główne dokumenty nadal mówią „ClearCore", a sprzęt i przyjęta architektura
-to SC4-Hub/bridge/SysAPI od dwóch tygodni. `zbyszek/README.md` i
-`zbyszek/ARCHITEKTURA.md` mają już poprawione wersje, ale leżą osobno,
+to SC4-Hub/bridge od dwóch tygodni. `zbyszek/README.md` i
+`zbyszek/ARCHITEKTURA.md` miały już poprawione wersje, ale leżały osobno,
 nie w głównych plikach.
 
-- [ ] Scalić `zbyszek/README.md` → `README.md` i `zbyszek/ARCHITEKTURA.md` →
-      `docs/ARCHITEKTURA.md` (albo świadomie zostawić różnice, jeśli któreś
-      się nie zgadzają ze stanem faktycznym).
-- [ ] Zdecydować o losie `firmware/clearcore/` — usunąć, czy zostawić jako
-      specyfikację protokołu (mostek `bridge/` go implementuje). Notatka
-      z `sterownik-sc4-hub.md`: **do zdecydowania**, nie rozstrzygnięte.
+- [x] Scalone `zbyszek/README.md` → `README.md` i `zbyszek/ARCHITEKTURA.md` →
+      `docs/ARCHITEKTURA.md` — **z korektą**: `zbyszek/` używał nazwy
+      „Teknic SysAPI" i opisywał `bridge/` hipotetycznie (Python/C++,
+      IPC przez socket/gRPC); faktycznie zbudowany i przetestowany na
+      sprzęcie mostek (sesja 2026-08-14) używa biblioteki **sFoundation**
+      i protokołu TCP na porcie 8500 — to zostało poprawione przy scalaniu,
+      zamiast przepisać nieaktualną wersję. Pliki źródłowe w `zbyszek/` nie
+      zostały usunięte (to Twój folder) — powiedz, jeśli mam je skasować
+      teraz, gdy treść jest już w głównych plikach.
+- [x] `firmware/clearcore/` **usunięty** (decyzja: kod martwy, nic do
+      wgrania). Protokół, który opisywał, przeniesiony do
+      `docs/ARCHITEKTURA.md` (sekcja „Protokół mostka"), zaktualizowany o
+      `AXCFG` i realny stan implementacji w `bridge/`.
 - [ ] Przejrzeć `server/app/machine.py` i inne pliki pod kątem nazw
       `ClearCoreMachine`, `MACHINE_MODE=clearcore`, `CLEARCORE_HOST` —
-      zdecydować, czy przechodzimy na neutralne nazwy (np. `BridgeMachine`,
-      `MACHINE_MODE=sysapi`) czy zostawiamy nazwę protokołu jako historyczną.
-      **To jest zmiana nazw w wielu miejscach — rozważyć, czy robić teraz, czy
-      po ustabilizowaniu reszty planu**, żeby nie mnożyć konfliktów w kodzie.
+      **odłożone świadomie** (decyzja): zostają jako nazwa historyczna, do
+      zmiany osobnym krokiem później, żeby nie mieszać z porządkami
+      w dokumentacji.
 
 Źródło: `zbyszek/DECYZJE_2026-08-25.md` §1, §6; `docs/sterownik-sc4-hub.md`
 „Do zrobienia".

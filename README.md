@@ -2,7 +2,8 @@
 
 Maszyna do **ocinania wlewków z plastikowych płytek optyki** (frezowanie
 wystających, niepotrzebnych elementów po wtrysku), budowana od zera na serwach
-**Teknic ClearPath** ze sterownikiem **Teknic ClearCore**, z aplikacją webową
+**Teknic ClearPath-SC**, sterowanych bezpośrednio z PC przez bibliotekę
+**Teknic sFoundation** (mostek do **SC4-Hub** po USB), z aplikacją webową
 do obsługi i sterowania oraz API dla systemu **MES**.
 
 ## Jak to działa
@@ -13,9 +14,12 @@ do obsługi i sterowania oraz API dla systemu **MES**.
 2. **Operator** wybiera zlecenie w MES; MES wywołuje API maszyny i podaje
    numer programu — maszyna sama ładuje konfigurację.
 3. **Serwer maszyny** (aplikacja webowa) pokazuje zlecenie i operacje,
-   operator naciska START, a serwer wysyła ruchy do sterownika ClearCore.
-4. **Bezpieczeństwo** realizuje niezależny, gotowy układ bezpieczeństwa —
-   ClearCore czyta tylko jeden sygnał zezwolenia na dedykowanym wejściu.
+   operator naciska START, a serwer wysyła ruchy przez **mostek `bridge/`**
+   do serw ClearPath-SC podłączonych przez SC4-Hub.
+4. **Bezpieczeństwo** realizuje niezależny, gotowy układ bezpieczeństwa
+   (przekaźnik bezpieczeństwa, E-stop, kurtyny) podłączony do wbudowanego
+   wejścia **Global Stop** na SC4-Hub — hub zatrzymuje wszystkie osie
+   sprzętowo, niezależnie od oprogramowania.
 
 Szczegóły: [docs/ARCHITEKTURA.md](docs/ARCHITEKTURA.md),
 format programów: [docs/FORMAT_PROGRAMU.md](docs/FORMAT_PROGRAMU.md).
@@ -28,14 +32,14 @@ programs/              pliki programów .prg (przykłady; docelowo zasób siecio
 server/                serwer maszyny: API REST + WebSocket + panel WWW (Python/FastAPI)
   app/main.py          endpointy API (MES, programy, sterowanie)
   app/program.py       parser/walidator plików .prg
-  app/machine.py       warstwa maszyny: symulator + łącze TCP do ClearCore
+  app/machine.py       warstwa maszyny: symulator + łącze TCP do mostka bridge/
   app/axes.py          konfiguracja osi: długości, limity, przełożenia
   app/static/          panel operatora (/), konfiguracja osi (/axes),
                        edytor technologa (/editor)
 config/axes.json       konfiguracja osi maszyny (tworzona przy pierwszym zapisie)
+bridge/                mostek do SC4-Hub (C++, Teknic sFoundation), wystawia
+                       serwerowi TCP na porcie 8500 — docs/zmiany/mostek-sc4hub.md
 tools/                 skrypty pomocnicze: start z pulpitu, PDF-y dokumentacji
-firmware/clearcore/    firmware C++ sterownika ClearCore (osie, wrzeciono,
-                       sygnał zezwolenia, protokół TCP)
 ```
 
 ## Uruchomienie serwera (tryb symulacji — bez sprzętu)
@@ -79,14 +83,22 @@ tools/docs-pdf.py              # docs/**.md -> docs/pdf/*.pdf
 W panelu można zasymulować wybór zlecenia w MES (numer zlecenia + 12-cyfrowy
 numer programu, np. `583912004711`), wykonać bazowanie i uruchomić cykl —
 symulator odtwarza ruchy w czasie rzeczywistym, łącznie z utratą sygnału
-zezwolenia.
+Global Stop.
 
-### Tryb sprzętowy (ClearCore)
+### Tryb sprzętowy (SC4-Hub, przez mostek `bridge/`)
 
 ```bash
-MACHINE_MODE=clearcore CLEARCORE_HOST=192.168.0.50 \
+MACHINE_MODE=clearcore CLEARCORE_HOST=127.0.0.1 \
 PROGRAMS_DIR=/mnt/programy uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+
+Wymaga uruchomionego mostka `bridge/sc4hub_bridge` widzącego SC4-Hub po USB —
+budowanie i konfiguracja: [docs/zmiany/mostek-sc4hub.md](docs/zmiany/mostek-sc4hub.md).
+Nazwy `MACHINE_MODE=clearcore`/`CLEARCORE_HOST` to dziedzictwo pierwotnej
+architektury (miał być sterownik ClearCore — odrzucony, patrz
+[docs/sterownik-sc4-hub.md](docs/sterownik-sc4-hub.md)); zmiana na neutralną
+nazwę jest zaplanowana, ale jeszcze nie zrobiona —
+[docs/plan-rozwoju.md](docs/plan-rozwoju.md).
 
 ## API dla MES
 
