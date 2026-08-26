@@ -211,15 +211,37 @@ Zaplanowane funkcje, które nie mają dziś gdzie się podłączyć:
 - sygnał drzwi/osłony (temat E),
 - podajnik, wyrzutnik, lampka sygnalizacyjna, sygnał błędu.
 
-- [ ] Zdecydować, skąd biorą się dodatkowe I/O. Warianty do rozważenia:
-      **falownik (VFD) po Modbus RTU** (najbliżej wzorca z MIC488, na PC
-      proste — biblioteka `pymodbus`); moduł I/O po USB/Ethernet; osobny
-      sterownik wrzeciona z wejściem analogowym.
-- [ ] Sprawdzić obciążalność `BRAKE_0`/`BRAKE_1` (jest już w temacie H, ale
-      to od niej zależy, czy w ogóle mamy czym załączyć wrzeciono).
+- [x] Sprawdzone (2026-08-26): Teknic **nie ma** modułu I/O z PWM pasującego
+      do naszej architektury. `CCIO-8` (rozszerzenie I/O Teknica) ma PWM, ale
+      wymaga hosta ClearCore — u nas nieużywalny. `POWER4-HUB` to tylko
+      rozdzielacz zasilania, bez I/O. Same `BRAKE_0`/`BRAKE_1` na SC4-Hub to
+      zwykłe wyjścia 24VDC włącz/wyłącz, bez PWM.
+- [x] **Decyzja (Twoja):** zewnętrzny regulator PWM do wrzeciona, załączany
+      zwykłym sygnałem on/off z jednego z wyjść `BRAKE_0`/`BRAKE_1`
+      (`SPINDLE_OUTPUT=brake0` albo `brake1` w `bridge/machine.env` — dziś
+      `none`). SC4-Hub daje tylko włącz/wyłącz; PWM generuje już zewnętrzny
+      regulator. Nic więcej po stronie mostka nie trzeba zmieniać poza
+      przełączeniem tej jednej zmiennej.
+- [ ] Sprawdzić obciążalność `BRAKE_0`/`BRAKE_1` pod wejście enable
+      zewnętrznego regulatora (jest już w temacie H).
+- [ ] Wybrać konkretny model zewnętrznego regulatora PWM do wrzeciona.
+- [ ] Drugie wyjście (`BRAKE_0` albo `BRAKE_1`, to które zostanie wolne) wciąż
+      potrzebne na coś z: podajnik, wyrzutnik, lampka, sygnał błędu — do
+      rozstrzygnięcia przy temacie C/G.
+
+**Zastrzeżenie co do źródła:** `teknic.com` i lustro instrukcji na
+`manualslib.com` są zablokowane siecowo w tej sesji (polityka egress) — ustalenia
+powyżej pochodzą z cytatów wyszukiwarki wskazujących na oficjalną instrukcję
+ClearPath-SC (sekcja „Sc4-Hub Specifications", str. 104) i stronę produktową
+SC4-Hub, **nie z bezpośredniego odczytu tych stron**. Zgodnie z zasadą
+weryfikacji faktów u źródła — potwierdź to sam otwierając
+`https://teknic.com/sc4-hub/` i instrukcję ClearPath-SC, zanim to się stanie
+podstawą zakupu sprzętu.
 
 Źródło: [`inspiracje-mic488.md`](inspiracje-mic488.md);
-[`sterownik-sc4-hub.md`](sterownik-sc4-hub.md).
+[`sterownik-sc4-hub.md`](sterownik-sc4-hub.md); wyszukiwanie web 2026-08-26
+(cytujące teknic.com/sc4-hub/ i ClearPath-SC User Manual str. 104 —
+niezweryfikowane bezpośrednio, patrz zastrzeżenie wyżej).
 
 ## Proponowana kolejność — do potwierdzenia
 
@@ -230,13 +252,12 @@ To jest **propozycja**, nie decyzja — ustalmy razem, czy się zgadzasz:
    architektoniczne, więc warto to rozstrzygnąć najpierw. Wzorce warte
    podpatrzenia (tablica pozycji, podprogramy, przerwania) opisane
    w [`inspiracje-mic488.md`](inspiracje-mic488.md).
-3. **J** (skąd I/O) — decyzja sprzętowa, **blokuje D i E**; nie wymaga kodu,
-   więc może iść równolegle z B.
-4. **C, F** (osie, tryby pracy) — budują się na B.
-5. **D** (wrzeciono) — dopiero po rozstrzygnięciu J.
-6. **E** (drzwi, uprawnienia) — wymaga decyzji od Ciebie (PIN-y vs konta)
-   i częściowo J.
-7. **G** (ekrany) — najlepiej równolegle z C–F, w miarę jak funkcje powstają.
-8. **H** — osobny tor, fizyczny, nie blokuje pracy nad softwarem, ale blokuje
+3. **J** (skąd I/O) — ✅ rozstrzygnięte (zewnętrzny regulator PWM przez
+   `BRAKE_0`/`BRAKE_1`), nie blokuje już D. Zostają drobiazgi: obciążalność
+   wyjścia, wybór modelu regulatora, przeznaczenie drugiego wyjścia.
+4. **C, D, F** (osie, wrzeciono, tryby pracy) — budują się na B.
+5. **E** (drzwi, uprawnienia) — wymaga decyzji od Ciebie (PIN-y vs konta).
+6. **G** (ekrany) — najlepiej równolegle z C–F, w miarę jak funkcje powstają.
+7. **H** — osobny tor, fizyczny, nie blokuje pracy nad softwarem, ale blokuje
    produkcję.
-9. **I** — dopiero jeśli się okaże potrzebne.
+8. **I** — dopiero jeśli się okaże potrzebne.

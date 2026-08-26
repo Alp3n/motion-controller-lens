@@ -33,9 +33,9 @@ mam to założyć.
 ### D. Wrzeciono
 - [ ] Włączenie przy starcie maszyny (przełącznik)
 - [ ] Włączenie przy starcie programu (dwie opcje konfigurowalne)
-- [ ] Sterowanie prędkością przez PWM
-- [ ] Włącz/wyłącz na osobnym porcie I/O
-- [ ] Konfiguracja rozpędzania/hamowania PWM
+- [ ] Sterowanie prędkością przez zewnętrzny regulator PWM, załączany
+      wyjściem `BRAKE_0`/`BRAKE_1` (decyzja: patrz temat J)
+- [ ] Konfiguracja rozpędzania/hamowania na regulatorze PWM
 
 ### E. Drzwi/osłona i uprawnienia
 - [ ] Wejście sygnału drzwi (PWM/binarny), aktywne tylko w trybie auto
@@ -63,10 +63,12 @@ mam to założyć.
 - [ ] Reguła udev — instalacja i weryfikacja
 - [ ] Obciążalność wyjść `BRAKE_0`/`BRAKE_1`
 
-### J. Skąd I/O (blokuje D i E)
-- [ ] Decyzja: VFD po Modbus / moduł I/O USB-Ethernet / osobny sterownik
-      wrzeciona (SC4-Hub nie ma PWM ani wyjścia analogowego)
-- [ ] Obciążalność `BRAKE_0`/`BRAKE_1` pod stycznik wrzeciona
+### J. Skąd I/O — decyzja podjęta, drobiazgi zostają
+- [ ] Obciążalność `BRAKE_0`/`BRAKE_1` pod wejście enable zewnętrznego
+      regulatora PWM
+- [ ] Wybór konkretnego modelu zewnętrznego regulatora PWM do wrzeciona
+- [ ] Przeznaczenie drugiego wyjścia (`BRAKE_0`/`BRAKE_1`) — podajnik,
+      wyrzutnik, lampka czy sygnał błędu
 
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`
