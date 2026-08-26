@@ -22,10 +22,16 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
-AXIS_NAMES = ("x", "y", "z")
+# Osie wymagane zawsze — geometria cięcia (.prg) jest zdefiniowana w X/Y/Z
+# i bez nich maszyna nie działa. Konfiguracja może zawierać dodatkowe osie
+# ponad te trzy (np. podajnik, docisk) — patrz docs/model-cyklu-maszyny.md.
+REQUIRED_AXES = ("x", "y", "z")
+
+_AXIS_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 HOME_MINUS = "minus"
 HOME_PLUS = "plus"
@@ -152,7 +158,7 @@ def default_axes(work_area: dict) -> dict[str, AxisConfig]:
     i długość dobrana do dalszego z krańców.
     """
     axes: dict[str, AxisConfig] = {}
-    for axis in AXIS_NAMES:
+    for axis in REQUIRED_AXES:
         lo = float(work_area[f"{axis}_min"])
         hi = float(work_area[f"{axis}_max"])
         if abs(lo) < EPS:
@@ -176,15 +182,25 @@ def default_axes(work_area: dict) -> dict[str, AxisConfig]:
 
 
 def parse_axes(data: dict) -> dict[str, AxisConfig]:
-    """Słownik {oś: parametry} -> konfiguracja; rzuca AxisConfigError."""
+    """Słownik {oś: parametry} -> konfiguracja; rzuca AxisConfigError.
+
+    Wymaga co najmniej osi z `REQUIRED_AXES` (X, Y, Z) — reszta kluczy w
+    `data` to osie dodatkowe (np. podajnik, docisk) i zostaje zachowana.
+    """
     if not isinstance(data, dict):
         raise AxisConfigError("oczekiwano obiektu z osiami X, Y, Z")
-    missing = [a for a in AXIS_NAMES if a not in data]
+    missing = [a for a in REQUIRED_AXES if a not in data]
     if missing:
         raise AxisConfigError(
             "brak konfiguracji osi: " + ", ".join(a.upper() for a in missing)
         )
-    return {axis: AxisConfig.from_dict(axis, data[axis]) for axis in AXIS_NAMES}
+    for axis in data:
+        if not _AXIS_NAME_RE.match(axis):
+            raise AxisConfigError(
+                f"nieprawidłowa nazwa osi '{axis}' — małe litery, cyfry, "
+                "podkreślenie, zaczynając od litery"
+            )
+    return {axis: AxisConfig.from_dict(axis, data[axis]) for axis in data}
 
 
 def load(path: Path, fallback_work_area: dict) -> dict[str, AxisConfig]:
@@ -205,7 +221,7 @@ def load(path: Path, fallback_work_area: dict) -> dict[str, AxisConfig]:
 
 def save(path: Path, axes: dict[str, AxisConfig]) -> None:
     """Zapis atomowy — przerwany zapis nie zostawia obciętego pliku limitów."""
-    payload = {"axes": {axis: axes[axis].to_dict() for axis in AXIS_NAMES}}
+    payload = {"axes": {name: cfg.to_dict() for name, cfg in axes.items()}}
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -213,13 +229,17 @@ def save(path: Path, axes: dict[str, AxisConfig]) -> None:
 
 
 def work_area(axes: dict[str, AxisConfig]) -> dict:
-    """Obszar roboczy do walidacji programów — z limitów programowych."""
+    """Obszar roboczy do walidacji programów — z limitów programowych.
+
+    Tylko X/Y/Z: to jest zakres cięcia dla plików `.prg`, nie dotyczy osi
+    dodatkowych (podajnik, docisk).
+    """
     area = {}
-    for axis in AXIS_NAMES:
+    for axis in REQUIRED_AXES:
         area[f"{axis}_min"] = axes[axis].soft_min
         area[f"{axis}_max"] = axes[axis].soft_max
     return area
 
 
 def to_dict(axes: dict[str, AxisConfig]) -> dict:
-    return {axis: axes[axis].to_dict() for axis in AXIS_NAMES}
+    return {name: cfg.to_dict() for name, cfg in axes.items()}

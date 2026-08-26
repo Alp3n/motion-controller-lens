@@ -59,5 +59,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/srodowisko-testowe-vscode.md](zmiany/srodowisko-testowe-vscode.md) —
   konfiguracja VS Code (interpreter, debugger, testy) zweryfikowana na
   Ubuntu 24.04.
+- [zmiany/osie-dodatkowe-etap1.md](zmiany/osie-dodatkowe-etap1.md) —
+  konfiguracja osi przyjmuje dowolne osie ponad wymagane X/Y/Z (etap 1
+  tematu B).
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

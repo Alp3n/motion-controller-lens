@@ -117,6 +117,52 @@ def test_broken_file_is_an_error_not_a_silent_default(tmp_path):
         axes.load(path, {})
 
 
+# --- osie dodatkowe (ponad wymagane X/Y/Z) ---------------------------------
+
+
+def _axis_payload(**overrides):
+    payload = dict(length=300, home="srodek", soft_min=-100, soft_max=100, mm_per_rev=5)
+    payload.update(overrides)
+    return payload
+
+
+def test_parse_axes_keeps_extra_axis_beyond_required(tmp_path):
+    data = {axis: _axis_payload() for axis in ("x", "y", "z")}
+    data["podajnik"] = _axis_payload(home="plus", soft_min=-100, soft_max=0)
+    parsed = axes.parse_axes(data)
+    assert set(parsed) == {"x", "y", "z", "podajnik"}
+    assert parsed["podajnik"].home == "plus"
+
+
+def test_save_and_to_dict_keep_extra_axis(tmp_path):
+    data = {axis: _axis_payload() for axis in ("x", "y", "z")}
+    data["docisk"] = _axis_payload()
+    parsed = axes.parse_axes(data)
+
+    assert set(axes.to_dict(parsed)) == {"x", "y", "z", "docisk"}
+
+    path = tmp_path / "axes.json"
+    axes.save(path, parsed)
+    loaded = axes.load(path, {})
+    assert set(loaded) == {"x", "y", "z", "docisk"}
+
+
+def test_parse_axes_rejects_invalid_axis_name():
+    data = {axis: _axis_payload() for axis in ("x", "y", "z")}
+    data["Nieprawidlowa Nazwa"] = _axis_payload()
+    with pytest.raises(axes.AxisConfigError) as exc:
+        axes.parse_axes(data)
+    assert "nieprawidłowa nazwa osi" in str(exc.value)
+
+
+def test_work_area_ignores_extra_axes(tmp_path):
+    data = {axis: _axis_payload() for axis in ("x", "y", "z")}
+    data["podajnik"] = _axis_payload(soft_min=0, soft_max=500, length=500, home="minus")
+    parsed = axes.parse_axes(data)
+    area = axes.work_area(parsed)
+    assert set(area) == {"x_min", "x_max", "y_min", "y_max", "z_min", "z_max"}
+
+
 # --- API ------------------------------------------------------------------
 
 

@@ -12,7 +12,7 @@ import math
 from dataclasses import dataclass, field
 from enum import Enum
 
-from .axes import AXIS_NAMES, AxisConfig
+from .axes import REQUIRED_AXES, AxisConfig
 from .program import Operation, Program, cut_path, pass_depths
 
 
@@ -384,11 +384,16 @@ class ClearCoreMachine(Machine):
         self._axes_pending = True
 
     async def _push_axis_config(self) -> None:
-        """Wysyła limity i przełożenia osi do mostka (wołane spod zamka)."""
+        """Wysyła limity i przełożenia osi do mostka (wołane spod zamka).
+
+        Tylko REQUIRED_AXES (X/Y/Z) — protokół mostka dziś nie zna innych
+        liter osi. Ewentualne osie dodatkowe (podajnik, docisk) w
+        `self.axes` czekają na rozszerzenie protokołu (temat C).
+        """
         # znacznik kasujemy przed wysyłką: przy błędzie łącze i tak zostanie
         # zamknięte, a ponowne wejście tutaj dałoby pętlę
         self._axes_pending = False
-        for axis in AXIS_NAMES:
+        for axis in REQUIRED_AXES:
             cfg = self.axes.get(axis)
             if cfg is None:
                 continue

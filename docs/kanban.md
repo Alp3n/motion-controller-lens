@@ -18,7 +18,8 @@ mam to założyć.
 
 ### B. Model cyklu maszyny i programu detalu
 - [x] Zaprojektować model — propozycja w `model-cyklu-maszyny.md`, do przeglądu
-- [ ] Etap 1: uogólnić `AXIS_NAMES` w `axes.py` (krotka → konfigurowalna lista)
+- [x] Etap 1: `AXIS_NAMES` → `REQUIRED_AXES` w `axes.py`, dowolne osie ponad
+      X/Y/Z zachowane; mostek dalej dostaje `AXCFG` tylko dla X/Y/Z
 - [ ] Etap 2: `ParameterProfile` + podłączenie `TrqGlobal` do `Machine`
 - [ ] Etap 3: `CycleStep` + snapshot/restore (na symulatorze, z obsługą błędu/przerwania)
 - [ ] Etap 4: ekran definiowania cyklu + „skok do podprogramu technologa"

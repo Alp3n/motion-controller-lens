@@ -59,9 +59,16 @@ Ustalony jako **następny krok** w `DECYZJE_2026-08-25.md`.
       jako `.prg`/`program.py`, bez zmian). Wyjście cyfrowe jako pole
       `CycleStep`, nie `Operation` — zgodnie z wcześniejszą decyzją.
       **Podzielone na 4 etapy wdrożenia** — patrz dokument.
-- [ ] **Etap 1:** uogólnić `AXIS_NAMES` w `server/app/axes.py` z sztywnej
-      krotki `("x","y","z")` na konfigurowalną listę — fundament pod
-      podajnik/docisk, niezależny od reszty.
+- [x] **Etap 1:** `AXIS_NAMES` → `REQUIRED_AXES` (X/Y/Z, wymagane zawsze) +
+      `parse_axes`/`save`/`to_dict` w `server/app/axes.py` zachowują dowolne
+      osie ponad te trzy (walidacja nazwy: małe litery/cyfry/podkreślenie).
+      `work_area()` świadomie zostaje ograniczone do X/Y/Z (zakres cięcia
+      `.prg`, nie dotyczy podajnika/docisku). `ClearCoreMachine._push_axis_config`
+      w `machine.py` **celowo dalej wysyła `AXCFG` tylko dla X/Y/Z** — protokół
+      mostka nie zna innych liter osi; osie dodatkowe czekają na rozszerzenie
+      protokołu (temat C). Sprawdzone end-to-end przez `/api/axes` (PUT z
+      dodatkową osią „podajnik” zapisuje i zwraca ją poprawnie) i 4 nowe
+      testy w `test_axes.py`. 63/63 testów przechodzi.
 - [ ] **Etap 2:** `ParameterProfile` (dataclass + JSON, wzorem `AxisConfig`)
       i podłączenie `TrqGlobal` do warstwy `Machine`.
 - [ ] **Etap 3:** `CycleStep` + snapshot/restore parametrów (na symulatorze,
