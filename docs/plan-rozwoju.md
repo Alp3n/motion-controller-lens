@@ -56,7 +56,9 @@ zaprojektowany.
 
 - [ ] Zaprojektować model danych: `Axis`, `ParameterProfile`, `CycleStep`,
       `PartProgram` (12NC — już częściowo istnieje jako `.prg`/`program.py`),
-      `Operation`.
+      `Operation`. Uwzględnić konfigurowalne wyjście cyfrowe (drugie wolne
+      wyjście `BRAKE_0`/`BRAKE_1` — patrz temat J) jako element `CycleStep`,
+      nie `Operation` — decyzja: poziom cyklu maszyny, nie program technologa.
 - [ ] Warstwa „cyklu maszyny" (poziom admina): podawanie → bazowanie/docisk →
       wywołanie programu detalu → przywrócenie parametrów → wyrzut → powtórz.
 - [ ] Mechanizm snapshot/restore parametrów osi wokół programu 12NC — **także
@@ -100,12 +102,14 @@ zaprojektowany.
 - [ ] Włącz/wyłącz wrzeciona jako osobny port cyfrowy I/O.
 - [ ] Konfiguracja rozpędzania i hamowania wrzeciona dla sterowania PWM.
 
-Uwaga: dziś mostek ma tylko `SPINDLE_OUTPUT=none/brake0/brake1` (włącz/wyłącz
-na wyjściu huba) — sterowanie prędkością przez PWM to nowa funkcja sprzętowa,
-zależna od tego, czy hub/serwo w ogóle mają taki wyjście (do sprawdzenia,
-podobnie jak obciążalność `BRAKE_0`/`BRAKE_1` w sekcji H).
+**Blokada, nie „do sprawdzenia":** dziś mostek ma tylko
+`SPINDLE_OUTPUT=none/brake0/brake1` (włącz/wyłącz na wyjściu huba).
+**SC4-Hub nie ma wyjścia PWM ani analogowego** — sterowania prędkością
+wrzeciona nie da się na nim zrobić bez dodatkowego sprzętu. Patrz temat **J**
+niżej; rozstrzygnąć **przed** rozpoczęciem tego tematu.
 
-Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §4; `notatki.txt`.
+Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §4; `notatki.txt`;
+[`inspiracje-mic488.md`](inspiracje-mic488.md).
 
 ## E. Bezpieczeństwo: drzwi/osłona i uprawnienia — ryzyka wprost
 
@@ -192,18 +196,72 @@ z symulatora na produkcję.
 
 Źródło: `docs/nowe-operacje-programu.md`; `zbyszek/DECYZJE_2026-08-25.md` §5.5.
 
+## J. Skąd wziąć wejścia i wyjścia — decyzja blokująca D i E
+
+Wyszło z porównania z kontrolerem MIC488
+([`inspiracje-mic488.md`](inspiracje-mic488.md)). SC4-Hub jest hubem
+komunikacyjnym do silników, nie sterownikiem maszyny: ma **2 wyjścia**
+(`BRAKE_0`, `BRAKE_1`), **1 wejście Global Stop** i **2 wejścia ogólnego
+przeznaczenia na węzeł** (6 przy trzech serwach). Dla porównania MIC488 ma
+20 wejść, 8 wyjść i 2 wejścia analogowe.
+
+Zaplanowane funkcje, które nie mają dziś gdzie się podłączyć:
+
+- sterowanie prędkością wrzeciona (temat D) — **brak wyjścia PWM
+  i analogowego**,
+- włącz/wyłącz wrzeciona — zajmie jedno z dwóch wyjść,
+- sygnał drzwi/osłony (temat E),
+- podajnik, wyrzutnik, lampka sygnalizacyjna, sygnał błędu.
+
+- [x] Sprawdzone (2026-08-26): Teknic **nie ma** modułu I/O z PWM pasującego
+      do naszej architektury. `CCIO-8` (rozszerzenie I/O Teknica) ma PWM, ale
+      wymaga hosta ClearCore — u nas nieużywalny. `POWER4-HUB` to tylko
+      rozdzielacz zasilania, bez I/O. Same `BRAKE_0`/`BRAKE_1` na SC4-Hub to
+      zwykłe wyjścia 24VDC włącz/wyłącz, bez PWM.
+- [x] **Decyzja (Twoja):** zewnętrzny regulator PWM do wrzeciona, załączany
+      zwykłym sygnałem on/off z jednego z wyjść `BRAKE_0`/`BRAKE_1`
+      (`SPINDLE_OUTPUT=brake0` albo `brake1` w `bridge/machine.env` — dziś
+      `none`). SC4-Hub daje tylko włącz/wyłącz; PWM generuje już zewnętrzny
+      regulator. Nic więcej po stronie mostka nie trzeba zmieniać poza
+      przełączeniem tej jednej zmiennej.
+- [ ] Sprawdzić obciążalność `BRAKE_0`/`BRAKE_1` pod wejście enable
+      zewnętrznego regulatora (jest już w temacie H).
+- [ ] Wybrać konkretny model zewnętrznego regulatora PWM do wrzeciona.
+- [x] **Decyzja (Twoja):** drugie wyjście (to, które zostanie wolne po
+      wrzecionie) definiuje się w **konfiguracji maszyny** (admin, cykl —
+      temat B) jako dowolne przeznaczenie: podajnik, wyrzutnik, lampka,
+      sygnał błędu. **Program technologa (`.prg`) z tego wyjścia nie
+      korzysta** — to wyłącznie poziom cyklu maszyny.
+
+**Zastrzeżenie co do źródła:** `teknic.com` i lustro instrukcji na
+`manualslib.com` są zablokowane siecowo w tej sesji (polityka egress) — ustalenia
+powyżej pochodzą z cytatów wyszukiwarki wskazujących na oficjalną instrukcję
+ClearPath-SC (sekcja „Sc4-Hub Specifications", str. 104) i stronę produktową
+SC4-Hub, **nie z bezpośredniego odczytu tych stron**. Zgodnie z zasadą
+weryfikacji faktów u źródła — potwierdź to sam otwierając
+`https://teknic.com/sc4-hub/` i instrukcję ClearPath-SC, zanim to się stanie
+podstawą zakupu sprzętu.
+
+Źródło: [`inspiracje-mic488.md`](inspiracje-mic488.md);
+[`sterownik-sc4-hub.md`](sterownik-sc4-hub.md); wyszukiwanie web 2026-08-26
+(cytujące teknic.com/sc4-hub/ i ClearPath-SC User Manual str. 104 —
+niezweryfikowane bezpośrednio, patrz zastrzeżenie wyżej).
+
 ## Proponowana kolejność — do potwierdzenia
 
 To jest **propozycja**, nie decyzja — ustalmy razem, czy się zgadzasz:
 
-1. **A** (nazewnictwo) — szybkie, niskie ryzyko, usuwa źródło pomyłek zanim
-   dołoży się więcej kodu.
+1. **A** (nazewnictwo) — ✅ zrobione poza zmianą nazw w kodzie.
 2. **B** (model danych cyklu/programu) — fundament pod C–G, największe ryzyko
-   architektoniczne, więc warto to rozstrzygnąć najpierw.
-3. **C, D, F** (osie, wrzeciono, tryby pracy) — budują się na B.
-4. **E** (drzwi, uprawnienia) — częściowo niezależne od B, ale wymaga decyzji
-   od Ciebie (PIN-y vs konta) zanim zacznę kodować.
-5. **G** (ekrany) — najlepiej równolegle z C–F, w miarę jak funkcje powstają.
-6. **H** — osobny tor, fizyczny, nie blokuje pracy nad softwarem, ale blokuje
+   architektoniczne, więc warto to rozstrzygnąć najpierw. Wzorce warte
+   podpatrzenia (tablica pozycji, podprogramy, przerwania) opisane
+   w [`inspiracje-mic488.md`](inspiracje-mic488.md).
+3. **J** (skąd I/O) — ✅ rozstrzygnięte (zewnętrzny regulator PWM przez
+   `BRAKE_0`/`BRAKE_1`), nie blokuje już D. Zostają drobiazgi: obciążalność
+   wyjścia, wybór modelu regulatora, przeznaczenie drugiego wyjścia.
+4. **C, D, F** (osie, wrzeciono, tryby pracy) — budują się na B.
+5. **E** (drzwi, uprawnienia) — wymaga decyzji od Ciebie (PIN-y vs konta).
+6. **G** (ekrany) — najlepiej równolegle z C–F, w miarę jak funkcje powstają.
+7. **H** — osobny tor, fizyczny, nie blokuje pracy nad softwarem, ale blokuje
    produkcję.
-7. **I** — dopiero jeśli się okaże potrzebne.
+8. **I** — dopiero jeśli się okaże potrzebne.

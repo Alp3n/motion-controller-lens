@@ -18,6 +18,7 @@ mam to założyć.
 
 ### B. Model cyklu maszyny i programu detalu
 - [ ] Zaprojektować `Axis`, `ParameterProfile`, `CycleStep`, `PartProgram`, `Operation`
+      (drugie wyjście `BRAKE_0`/`BRAKE_1` jako pole `CycleStep`, nie `Operation`)
 - [ ] Warstwa cyklu maszyny (podawanie → bazowanie/docisk → program detalu → przywrócenie → wyrzut)
 - [ ] Mechanizm snapshot/restore parametrów osi (z obsługą błędu/przerwania)
 - [ ] Ekran definiowania ruchów cyklu + operacja „skok do podprogramu technologa"
@@ -33,9 +34,9 @@ mam to założyć.
 ### D. Wrzeciono
 - [ ] Włączenie przy starcie maszyny (przełącznik)
 - [ ] Włączenie przy starcie programu (dwie opcje konfigurowalne)
-- [ ] Sterowanie prędkością przez PWM
-- [ ] Włącz/wyłącz na osobnym porcie I/O
-- [ ] Konfiguracja rozpędzania/hamowania PWM
+- [ ] Sterowanie prędkością przez zewnętrzny regulator PWM, załączany
+      wyjściem `BRAKE_0`/`BRAKE_1` (decyzja: patrz temat J)
+- [ ] Konfiguracja rozpędzania/hamowania na regulatorze PWM
 
 ### E. Drzwi/osłona i uprawnienia
 - [ ] Wejście sygnału drzwi (PWM/binarny), aktywne tylko w trybie auto
@@ -62,6 +63,14 @@ mam to założyć.
 - [ ] Test: komunikacja przy E-stopie
 - [ ] Reguła udev — instalacja i weryfikacja
 - [ ] Obciążalność wyjść `BRAKE_0`/`BRAKE_1`
+
+### J. Skąd I/O — decyzja podjęta, drobiazgi zostają
+- [ ] Obciążalność `BRAKE_0`/`BRAKE_1` pod wejście enable zewnętrznego
+      regulatora PWM
+- [ ] Wybór konkretnego modelu zewnętrznego regulatora PWM do wrzeciona
+- [x] Przeznaczenie drugiego wyjścia: definiowane w konfiguracji maszyny
+      (temat B, `CycleStep`) — podajnik/wyrzutnik/lampka/błąd, konkretny
+      wybór przy budowie tego ekranu; program technologa go nie używa
 
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`
