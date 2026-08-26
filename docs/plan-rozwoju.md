@@ -56,7 +56,9 @@ zaprojektowany.
 
 - [ ] Zaprojektować model danych: `Axis`, `ParameterProfile`, `CycleStep`,
       `PartProgram` (12NC — już częściowo istnieje jako `.prg`/`program.py`),
-      `Operation`.
+      `Operation`. Uwzględnić konfigurowalne wyjście cyfrowe (drugie wolne
+      wyjście `BRAKE_0`/`BRAKE_1` — patrz temat J) jako element `CycleStep`,
+      nie `Operation` — decyzja: poziom cyklu maszyny, nie program technologa.
 - [ ] Warstwa „cyklu maszyny" (poziom admina): podawanie → bazowanie/docisk →
       wywołanie programu detalu → przywrócenie parametrów → wyrzut → powtórz.
 - [ ] Mechanizm snapshot/restore parametrów osi wokół programu 12NC — **także
@@ -225,9 +227,11 @@ Zaplanowane funkcje, które nie mają dziś gdzie się podłączyć:
 - [ ] Sprawdzić obciążalność `BRAKE_0`/`BRAKE_1` pod wejście enable
       zewnętrznego regulatora (jest już w temacie H).
 - [ ] Wybrać konkretny model zewnętrznego regulatora PWM do wrzeciona.
-- [ ] Drugie wyjście (`BRAKE_0` albo `BRAKE_1`, to które zostanie wolne) wciąż
-      potrzebne na coś z: podajnik, wyrzutnik, lampka, sygnał błędu — do
-      rozstrzygnięcia przy temacie C/G.
+- [x] **Decyzja (Twoja):** drugie wyjście (to, które zostanie wolne po
+      wrzecionie) definiuje się w **konfiguracji maszyny** (admin, cykl —
+      temat B) jako dowolne przeznaczenie: podajnik, wyrzutnik, lampka,
+      sygnał błędu. **Program technologa (`.prg`) z tego wyjścia nie
+      korzysta** — to wyłącznie poziom cyklu maszyny.
 
 **Zastrzeżenie co do źródła:** `teknic.com` i lustro instrukcji na
 `manualslib.com` są zablokowane siecowo w tej sesji (polityka egress) — ustalenia

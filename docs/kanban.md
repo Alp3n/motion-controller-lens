@@ -18,6 +18,7 @@ mam to założyć.
 
 ### B. Model cyklu maszyny i programu detalu
 - [ ] Zaprojektować `Axis`, `ParameterProfile`, `CycleStep`, `PartProgram`, `Operation`
+      (drugie wyjście `BRAKE_0`/`BRAKE_1` jako pole `CycleStep`, nie `Operation`)
 - [ ] Warstwa cyklu maszyny (podawanie → bazowanie/docisk → program detalu → przywrócenie → wyrzut)
 - [ ] Mechanizm snapshot/restore parametrów osi (z obsługą błędu/przerwania)
 - [ ] Ekran definiowania ruchów cyklu + operacja „skok do podprogramu technologa"
@@ -67,8 +68,9 @@ mam to założyć.
 - [ ] Obciążalność `BRAKE_0`/`BRAKE_1` pod wejście enable zewnętrznego
       regulatora PWM
 - [ ] Wybór konkretnego modelu zewnętrznego regulatora PWM do wrzeciona
-- [ ] Przeznaczenie drugiego wyjścia (`BRAKE_0`/`BRAKE_1`) — podajnik,
-      wyrzutnik, lampka czy sygnał błędu
+- [x] Przeznaczenie drugiego wyjścia: definiowane w konfiguracji maszyny
+      (temat B, `CycleStep`) — podajnik/wyrzutnik/lampka/błąd, konkretny
+      wybór przy budowie tego ekranu; program technologa go nie używa
 
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`
