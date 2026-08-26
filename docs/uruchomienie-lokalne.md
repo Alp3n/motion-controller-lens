@@ -67,15 +67,8 @@ zadziałają. Do normalnej pracy nad kodem:
 sudo apt install -y git
 ```
 
-## Nietestowane (stan na 2026-08-14)
+## Nietestowane
 
 - Tryb sprzętowy `MACHINE_MODE=clearcore` — brak ClearCore. Sprzęt na maszynie
   to SC4-Hub, patrz [`sterownik-sc4-hub.md`](sterownik-sc4-hub.md).
-
-> **Korekta.** Tryb sprzętowy przetestowano później na SC4-Hub przez mostek
-> `bridge/` — pełny cykl programu na trzech serwach, patrz
-> [`zmiany/mostek-sc4hub.md`](zmiany/mostek-sc4hub.md). `firmware/clearcore/`
-> (wtedy jeszcze nietestowane, dziś usunięte — było martwym kodem pod
-> sterownik, którego nie ma na maszynie) opisywało tylko protokół; ten sam
-> protokół, jak faktycznie zaimplementowany w mostku, jest teraz w
-> [`ARCHITEKTURA.md`](ARCHITEKTURA.md#protokół-mostka-tcp-port-8500).
+- Firmware z `firmware/clearcore/`.

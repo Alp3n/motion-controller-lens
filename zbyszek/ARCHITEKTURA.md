@@ -19,19 +19,23 @@ wybraniu zlecenia w systemie MES.
 ┌────────────┐                         │  • parser plików .prg        │
 │ Pliki .prg │ ◄─────────────────────► │  • API REST + WebSocket      │
 │ (12 cyfr)  │      odczyt/zapis       └──────────────┬───────────────┘
-└────────────┘                                        │ Ethernet (TCP,
-                                                      │ protokół tekstowy)
+└────────────┘                                        │ lokalny IPC
+                                                      │ (np. socket/gRPC)
                                        ┌──────────────▼───────────────┐
-┌────────────────────┐  1 sygnał       │  Sterownik Teknic ClearCore  │
-│ Niezależny system  │  zezwolenia     │  (firmware C++)              │
-│ bezpieczeństwa     │ ──────────────► │  • interpolacja ruchów       │
-│ (gotowy przekaźnik │  (wejście DI)   │  • obsługa serw ClearPath    │
-│  bezpieczeństwa,   │                 │  • odczyt sygnału zezwolenia │
-│  E-stop, kurtyny)  │                 └──────────────┬───────────────┘
-└────────────────────┘                                │ złącza silnikowe
+┌────────────────────┐  Global Stop    │  bridge — proces SysAPI      │
+│ Niezależny system  │  (wejście na    │  (Teknic SysAPI, Python/C++) │
+│ bezpieczeństwa     │  SC4-HUB)       │  • ruch osi, odczyt statusu   │
+│ (gotowy przekaźnik │ ──────────────► │  • komunikacja z SC4-HUB      │
+│  bezpieczeństwa,   │                 └──────────────┬───────────────┘
+│  E-stop, kurtyny)  │                                │ USB
+└────────────────────┘                 ┌──────────────▼───────────────┐
+                                       │  SC4-HUB                     │
+                                       │  (do 4 osi / hub, USB do PC) │
+                                       └──────────────┬───────────────┘
+                                                       │ złącza silnikowe
                                        ┌──────────────▼───────────────┐
-                                       │ Serwa Teknic ClearPath (MC)  │
-                                       │ osie X / Y / Z + wrzeciono   │
+                                       │ Serwa Teknic ClearPath-SCSK  │
+                                       │ osie X / Y / Z (+ kolejne)   │
                                        └──────────────────────────────┘
 ```
 
@@ -40,10 +44,10 @@ wybraniu zlecenia w systemie MES.
 ### 1. Serwer maszyny (`server/`)
 
 Aplikacja webowa w Pythonie (FastAPI) uruchamiana na komputerze przemysłowym
-przy maszynie. Zapewnia:
+(mini PC, Linux) przy maszynie. Zapewnia:
 
 - **Panel operatora** (`/`) — wybór/podgląd zlecenia, START/STOP, bazowanie,
-  status osi, sygnał zezwolenia, postęp operacji, panel JOG (ruch ręczny).
+  status osi, sygnał Global Stop, postęp operacji, panel JOG (ruch ręczny).
 - **Edytor technologa** (`/editor`) — tworzenie i edycja programów w formie
   tabeli, bez programowania; zapis do pliku w formacie opisanym w
   [FORMAT_PROGRAMU.md](FORMAT_PROGRAMU.md).
@@ -57,38 +61,36 @@ przy maszynie. Zapewnia:
 - **WebSocket** (`/ws/status`) — status maszyny na żywo dla panelu.
 - **Warstwa maszyny** — dwa tryby (zmienna środowiskowa `MACHINE_MODE`):
   - `sim` — pełny symulator (rozwój i testy bez sprzętu),
-  - `clearcore` — połączenie TCP ze sterownikiem ClearCore.
+  - `sysapi` — połączenie z procesem `bridge` (SysAPI, SC4-HUB).
 
-### 2. Firmware ClearCore (`firmware/clearcore/`)
+### 2. Bridge — proces SysAPI (`bridge/`)
 
-Program w C++ na sterownik Teknic ClearCore (biblioteka ClearCore w C++).
-Odpowiada za:
+Proces (Python lub C++, w zależności od dojrzałości bindingów Teknic SysAPI
+pod Linuksem) łączący się z SC4-HUB po USB i wystawiający serwerowi maszyny
+lokalny interfejs ruchu (IPC — np. lokalny socket albo gRPC, żeby web stack
+nigdy nie stał na drodze do bezpiecznego zatrzymania osi). Odpowiada za:
 
-- wykonywanie ruchów osi X/Y/Z na serwach ClearPath,
-- załączanie wrzeciona/frezu,
-- prosty tekstowy protokół TCP (port 8500) — komendy `HOME`, `MOVE`,
-  `SPINDLE`, `STOP`, `STATUS`,
-- **odczyt jednego sygnału zezwolenia** z niezależnego systemu
-  bezpieczeństwa na dedykowanym wejściu cyfrowym — bez zezwolenia żaden
-  ruch nie zostanie wykonany, a trwający ruch jest natychmiast przerywany.
-
-> Uwaga o serwach: ClearPath serii **MC** ma kontroler ruchu w silniku i jest
-> sterowany sygnałami cyfrowymi (np. tryb Pulse Burst Positioning). Firmware
-> używa API `MotorDriver` biblioteki ClearCore — tryb pracy silnika
-> skonfigurowany w programie ClearPath MSP musi odpowiadać trybowi ustawionemu
-> w firmware (patrz `firmware/clearcore/README.md`).
+- inicjalizację i sterowanie osiami ClearPath-SCSK przez SysAPI,
+  (pozycja, prędkość, limity momentu per oś),
+- odczyt statusu i pozycji osi dla panelu operatora,
+- odczyt stanu Global Stop z SC4-HUB (informacyjnie dla UI — zatrzymanie
+  fizyczne realizuje sam hub, patrz niżej),
+- ewentualną obsługę wrzeciona/frezu, jeśli sterowane jako oddzielna oś
+  albo przekaźnik.
 
 ### 3. System bezpieczeństwa (sprzętowy, niezależny)
 
 Bezpieczeństwo realizuje **gotowy, niezależny, certyfikowany układ**
-(przekaźnik bezpieczeństwa + E-stop + osłony/kurtyny). Nie jest częścią
-oprogramowania. Oprogramowanie (ClearCore) **tylko czyta** jeden sygnał
-zezwolenia na dedykowanym wejściu:
+(przekaźnik bezpieczeństwa + E-stop + osłony/kurtyny), podłączony do
+**wbudowanego wejścia Global Stop na SC4-HUB**. Nie jest częścią
+oprogramowania:
 
 - zezwolenie = 1 → ruchy dozwolone,
-- zezwolenie = 0 → natychmiastowe zatrzymanie i blokada startu; odcięcie
-  zasilania mocy silników realizuje układ bezpieczeństwa niezależnie od
-  oprogramowania.
+- Global Stop aktywny → SC4-HUB **sprzętowo** zatrzymuje wszystkie osie
+  podłączone w łańcuchu, niezależnie od stanu aplikacji czy procesu bridge.
+
+Oprogramowanie (`bridge`) tylko **czyta i pokazuje** stan tego sygnału —
+nie jest odpowiedzialne za samo zatrzymanie.
 
 ### 4. Pliki programów (`programs/`)
 
@@ -106,8 +108,8 @@ edytowalny także w Excelu — patrz [FORMAT_PROGRAMU.md](FORMAT_PROGRAMU.md).
 4. Serwer ładuje i waliduje plik programu, pokazuje operatorowi zlecenie
    i listę operacji.
 5. Operator zakłada płytkę, potwierdza i naciska START.
-6. Serwer wysyła kolejne ruchy do ClearCore; ClearCore wykonuje je tylko przy
-   aktywnym sygnale zezwolenia.
+6. Serwer wysyła kolejne ruchy przez `bridge` do serw ClearPath-SCSK;
+   ruch jest możliwy tylko przy nieaktywnym Global Stop.
 7. Po zakończeniu cyklu maszyna wraca do pozycji bezpiecznej i czeka na
    kolejną sztukę / kolejne zlecenie.
 
@@ -116,6 +118,6 @@ edytowalny także w Excelu — patrz [FORMAT_PROGRAMU.md](FORMAT_PROGRAMU.md).
 ```
 INIT ──► NOT_HOMED ──(bazowanie)──► READY ──(START)──► RUNNING ──► READY
                                       ▲                   │
-                                      │      (STOP / brak zezwolenia / błąd)
+                                      │      (STOP / Global Stop / błąd)
                                       └──(RESET)── ALARM ◄┘
 ```
