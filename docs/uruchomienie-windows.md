@@ -118,8 +118,15 @@ Ten krok robisz **raz** (chyba że skasujesz folder `.venv` albo zmieni się
 Trzy sposoby, wybierz dowolny:
 
 **A) Dwuklik na `start.bat`** w Eksploratorze plików Windows, w głównym
-folderze projektu. Otworzy się czarne okno konsoli i automatycznie otworzy
-się przeglądarka.
+folderze projektu (`motion-controller-lens`, ten z `README.md`, `server/`,
+`start.bat` obok siebie — **nie** wewnątrz folderu `server`). Otworzy się
+czarne okno konsoli i automatycznie otworzy się przeglądarka.
+
+> Jeśli uruchamiasz `start.bat` z terminala, a nie dwuklikiem — komenda
+> `.\start.bat` też musi być wpisana będąc w folderze głównym, nie w
+> `server`. Skrypt sam robi `cd server` w środku; uruchomiony już z
+> wnętrza `server` próbuje wejść do nieistniejącego `server\server` i nic
+> sensownego się nie dzieje.
 
 **B) Z VS Code, przyciskiem F5** (debugger — pozwala też np. zatrzymywać
 program w wybranym miejscu kodu, gdy będziesz się uczyć): ikona „Run and
@@ -198,3 +205,8 @@ Dobry pierwszy krok do nauki: uruchom serwer (krok 6), otwórz
   środowiska.
 - **Terminal nie widzi `.venv`** — upewnij się, że jesteś w folderze
   `server` (`cd server`), a nie w głównym folderze projektu.
+- **`start.bat` nic nie robi / okno mignie i znika** — najczęściej dlatego,
+  że został uruchomiony z wnętrza folderu `server` zamiast z folderu
+  głównego projektu. Sprawdź: otwórz terminal, wpisz `.\start.bat` i patrz,
+  co się wypisze (dwuklik zamyka okno po błędzie, zanim zdążysz przeczytać —
+  terminal zostawia komunikat widoczny).
