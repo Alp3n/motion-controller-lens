@@ -1,5 +1,11 @@
 # Dokumentacja
 
+Plan pracy:
+
+- [plan-rozwoju.md](plan-rozwoju.md) — tematy do zaimplementowania,
+  wyciągnięte z całej dokumentacji, z uzasadnieniem i proponowaną kolejnością.
+- [kanban.md](kanban.md) — te same tematy jako karty do śledzenia postępu.
+
 Specyfikacje:
 
 - [ARCHITEKTURA.md](ARCHITEKTURA.md) — architektura systemu: serwer maszyny,
