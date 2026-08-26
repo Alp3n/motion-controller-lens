@@ -30,9 +30,10 @@ nie w głównych plikach.
       IPC przez socket/gRPC); faktycznie zbudowany i przetestowany na
       sprzęcie mostek (sesja 2026-08-14) używa biblioteki **sFoundation**
       i protokołu TCP na porcie 8500 — to zostało poprawione przy scalaniu,
-      zamiast przepisać nieaktualną wersję. Pliki źródłowe w `zbyszek/` nie
-      zostały usunięte (to Twój folder) — powiedz, jeśli mam je skasować
-      teraz, gdy treść jest już w głównych plikach.
+      zamiast przepisać nieaktualną wersję. `zbyszek/README.md` i
+      `zbyszek/ARCHITEKTURA.md` usunięte jako zbędne po scaleniu;
+      `zbyszek/DECYZJE_2026-08-25.md` i `zbyszek/NOTATKI_FUNKCJONALNE.md`
+      zostają — to wciąż niezrealizowane źródło dla tematów B–G.
 - [x] `firmware/clearcore/` **usunięty** (decyzja: kod martwy, nic do
       wgrania). Protokół, który opisywał, przeniesiony do
       `docs/ARCHITEKTURA.md` (sekcja „Protokół mostka"), zaktualizowany o
