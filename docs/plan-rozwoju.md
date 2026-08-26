@@ -100,12 +100,14 @@ zaprojektowany.
 - [ ] Włącz/wyłącz wrzeciona jako osobny port cyfrowy I/O.
 - [ ] Konfiguracja rozpędzania i hamowania wrzeciona dla sterowania PWM.
 
-Uwaga: dziś mostek ma tylko `SPINDLE_OUTPUT=none/brake0/brake1` (włącz/wyłącz
-na wyjściu huba) — sterowanie prędkością przez PWM to nowa funkcja sprzętowa,
-zależna od tego, czy hub/serwo w ogóle mają taki wyjście (do sprawdzenia,
-podobnie jak obciążalność `BRAKE_0`/`BRAKE_1` w sekcji H).
+**Blokada, nie „do sprawdzenia":** dziś mostek ma tylko
+`SPINDLE_OUTPUT=none/brake0/brake1` (włącz/wyłącz na wyjściu huba).
+**SC4-Hub nie ma wyjścia PWM ani analogowego** — sterowania prędkością
+wrzeciona nie da się na nim zrobić bez dodatkowego sprzętu. Patrz temat **J**
+niżej; rozstrzygnąć **przed** rozpoczęciem tego tematu.
 
-Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §4; `notatki.txt`.
+Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §4; `notatki.txt`;
+[`inspiracje-mic488.md`](inspiracje-mic488.md).
 
 ## E. Bezpieczeństwo: drzwi/osłona i uprawnienia — ryzyka wprost
 
@@ -192,18 +194,49 @@ z symulatora na produkcję.
 
 Źródło: `docs/nowe-operacje-programu.md`; `zbyszek/DECYZJE_2026-08-25.md` §5.5.
 
+## J. Skąd wziąć wejścia i wyjścia — decyzja blokująca D i E
+
+Wyszło z porównania z kontrolerem MIC488
+([`inspiracje-mic488.md`](inspiracje-mic488.md)). SC4-Hub jest hubem
+komunikacyjnym do silników, nie sterownikiem maszyny: ma **2 wyjścia**
+(`BRAKE_0`, `BRAKE_1`), **1 wejście Global Stop** i **2 wejścia ogólnego
+przeznaczenia na węzeł** (6 przy trzech serwach). Dla porównania MIC488 ma
+20 wejść, 8 wyjść i 2 wejścia analogowe.
+
+Zaplanowane funkcje, które nie mają dziś gdzie się podłączyć:
+
+- sterowanie prędkością wrzeciona (temat D) — **brak wyjścia PWM
+  i analogowego**,
+- włącz/wyłącz wrzeciona — zajmie jedno z dwóch wyjść,
+- sygnał drzwi/osłony (temat E),
+- podajnik, wyrzutnik, lampka sygnalizacyjna, sygnał błędu.
+
+- [ ] Zdecydować, skąd biorą się dodatkowe I/O. Warianty do rozważenia:
+      **falownik (VFD) po Modbus RTU** (najbliżej wzorca z MIC488, na PC
+      proste — biblioteka `pymodbus`); moduł I/O po USB/Ethernet; osobny
+      sterownik wrzeciona z wejściem analogowym.
+- [ ] Sprawdzić obciążalność `BRAKE_0`/`BRAKE_1` (jest już w temacie H, ale
+      to od niej zależy, czy w ogóle mamy czym załączyć wrzeciono).
+
+Źródło: [`inspiracje-mic488.md`](inspiracje-mic488.md);
+[`sterownik-sc4-hub.md`](sterownik-sc4-hub.md).
+
 ## Proponowana kolejność — do potwierdzenia
 
 To jest **propozycja**, nie decyzja — ustalmy razem, czy się zgadzasz:
 
-1. **A** (nazewnictwo) — szybkie, niskie ryzyko, usuwa źródło pomyłek zanim
-   dołoży się więcej kodu.
+1. **A** (nazewnictwo) — ✅ zrobione poza zmianą nazw w kodzie.
 2. **B** (model danych cyklu/programu) — fundament pod C–G, największe ryzyko
-   architektoniczne, więc warto to rozstrzygnąć najpierw.
-3. **C, D, F** (osie, wrzeciono, tryby pracy) — budują się na B.
-4. **E** (drzwi, uprawnienia) — częściowo niezależne od B, ale wymaga decyzji
-   od Ciebie (PIN-y vs konta) zanim zacznę kodować.
-5. **G** (ekrany) — najlepiej równolegle z C–F, w miarę jak funkcje powstają.
-6. **H** — osobny tor, fizyczny, nie blokuje pracy nad softwarem, ale blokuje
+   architektoniczne, więc warto to rozstrzygnąć najpierw. Wzorce warte
+   podpatrzenia (tablica pozycji, podprogramy, przerwania) opisane
+   w [`inspiracje-mic488.md`](inspiracje-mic488.md).
+3. **J** (skąd I/O) — decyzja sprzętowa, **blokuje D i E**; nie wymaga kodu,
+   więc może iść równolegle z B.
+4. **C, F** (osie, tryby pracy) — budują się na B.
+5. **D** (wrzeciono) — dopiero po rozstrzygnięciu J.
+6. **E** (drzwi, uprawnienia) — wymaga decyzji od Ciebie (PIN-y vs konta)
+   i częściowo J.
+7. **G** (ekrany) — najlepiej równolegle z C–F, w miarę jak funkcje powstają.
+8. **H** — osobny tor, fizyczny, nie blokuje pracy nad softwarem, ale blokuje
    produkcję.
-7. **I** — dopiero jeśli się okaże potrzebne.
+9. **I** — dopiero jeśli się okaże potrzebne.

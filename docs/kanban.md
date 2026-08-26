@@ -63,6 +63,11 @@ mam to założyć.
 - [ ] Reguła udev — instalacja i weryfikacja
 - [ ] Obciążalność wyjść `BRAKE_0`/`BRAKE_1`
 
+### J. Skąd I/O (blokuje D i E)
+- [ ] Decyzja: VFD po Modbus / moduł I/O USB-Ethernet / osobny sterownik
+      wrzeciona (SC4-Hub nie ma PWM ani wyjścia analogowego)
+- [ ] Obciążalność `BRAKE_0`/`BRAKE_1` pod stycznik wrzeciona
+
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`
 - [ ] GRBL/G-code jako alternatywa

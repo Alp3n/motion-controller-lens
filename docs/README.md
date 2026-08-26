@@ -24,6 +24,9 @@ Ustalenia i analizy:
   zbioru operacji `.prg`, format 2, przebudowa edytora technologa.
 - [konfiguracja-osi.md](konfiguracja-osi.md) — model osi: długość, punkt
   bazowania, limity programowe, przełożenie posuwu; komenda `AXCFG`.
+- [inspiracje-mic488.md](inspiracje-mic488.md) — co warto przenieść z kontrolera
+  WObit MIC488 (tablica pozycji, przerwania, tryby bazowania) i znalezione
+  ryzyko: SC4-Hub nie ma I/O wymaganego przez plany (PWM wrzeciona).
 
 Zmiany w kodzie opisujemy w [`zmiany/`](zmiany/) — jeden plik na zmianę,
 nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
