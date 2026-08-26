@@ -12,6 +12,8 @@ Ustalenia i analizy:
   ClearCore: konsekwencje, proponowany mostek sFoundation, otwarte ryzyka.
 - [uruchomienie-lokalne.md](uruchomienie-lokalne.md) — odstępstwa od README przy
   uruchamianiu symulatora i wynik weryfikacji.
+- [uruchomienie-windows.md](uruchomienie-windows.md) — postawienie środowiska
+  testowego i uruchamianie w VS Code na Windows 11.
 - [nowe-operacje-programu.md](nowe-operacje-programu.md) — propozycja rozszerzenia
   zbioru operacji `.prg`, format 2, przebudowa edytora technologa.
 - [konfiguracja-osi.md](konfiguracja-osi.md) — model osi: długość, punkt
