@@ -1,5 +1,11 @@
 # Dokumentacja
 
+Plan pracy:
+
+- [plan-rozwoju.md](plan-rozwoju.md) — tematy do zaimplementowania,
+  wyciągnięte z całej dokumentacji, z uzasadnieniem i proponowaną kolejnością.
+- [kanban.md](kanban.md) — te same tematy jako karty do śledzenia postępu.
+
 Specyfikacje:
 
 - [ARCHITEKTURA.md](ARCHITEKTURA.md) — architektura systemu: serwer maszyny,
@@ -12,6 +18,8 @@ Ustalenia i analizy:
   ClearCore: konsekwencje, proponowany mostek sFoundation, otwarte ryzyka.
 - [uruchomienie-lokalne.md](uruchomienie-lokalne.md) — odstępstwa od README przy
   uruchamianiu symulatora i wynik weryfikacji.
+- [uruchomienie-windows.md](uruchomienie-windows.md) — postawienie środowiska
+  testowego i uruchamianie w VS Code na Windows 11.
 - [nowe-operacje-programu.md](nowe-operacje-programu.md) — propozycja rozszerzenia
   zbioru operacji `.prg`, format 2, przebudowa edytora technologa.
 - [konfiguracja-osi.md](konfiguracja-osi.md) — model osi: długość, punkt
@@ -38,5 +46,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   `/axes`, plik konfiguracji osi, limity w serwerze i w mostku.
 - [zmiany/uruchamianie-i-pdf.md](zmiany/uruchamianie-i-pdf.md) — skrót na
   pulpicie uruchamiający całe środowisko oraz generator PDF-ów dokumentacji.
+- [zmiany/srodowisko-testowe-vscode.md](zmiany/srodowisko-testowe-vscode.md) —
+  konfiguracja VS Code (interpreter, debugger, testy) zweryfikowana na
+  Ubuntu 24.04.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

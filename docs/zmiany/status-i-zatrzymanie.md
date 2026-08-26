@@ -11,7 +11,8 @@ Wszystkie dotyczą niezawodności łącza serwer–sterownik.
   komunikat alarmu ze sterownika.
 - `bridge/sc4hub_bridge.cpp` — odpowiedź na STOP przerywający ruch, pole
   `MSG=` w `STATUS`.
-- `firmware/clearcore/README.md` — opis pola `MSG=`.
+- `docs/ARCHITEKTURA.md` — opis pola `MSG=` (pierwotnie w usuniętym
+  `firmware/clearcore/README.md`, przeniesiony przy porządkach nazewnictwa).
 
 ## Poprawione błędy
 
