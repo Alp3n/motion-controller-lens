@@ -82,9 +82,18 @@ Ustalony jako **następny krok** w `DECYZJE_2026-08-25.md`.
       w protokole mostka + `ILimits.TrqGlobal` w `bridge/sc4hub_bridge.cpp`.
       **Wymaga sprzętu i SDK Teknica** (`vendor/`, poza repo) — nie da się
       tego skompilować ani przetestować w środowisku sesji.
-- [ ] **Etap 3:** `CycleStep` + snapshot/restore parametrów (na symulatorze,
-      `try/finally` wokół wywołania programu detalu — **także przy
-      błędzie/przerwaniu**, zgodnie z `DECYZJE_2026-08-25.md` §3).
+- [x] **Etap 3:** `CycleStep`/`Cycle` w `server/app/cycle.py` (kroki `RUCH`,
+      `PROGRAM`, `WYJSCIE`, `PAUZA`), plik `config/cycle.json`, endpointy
+      `GET/PUT /api/cycle` i `POST /api/machine/cycle/start`.
+      **Snapshot/restore profilu w `try/finally`** — wraca przy zakończeniu,
+      błędzie i przerwaniu (STOP); dwa testy pilnują tego wprost i padają po
+      usunięciu `finally`. Sprawdzone end-to-end: cykl podanie → docisk →
+      program detalu → wyrzut przełącza profile `cykl`/`program` i wraca na
+      `globalny`. 26 nowych testów, 110/110 przechodzi. Szczegóły:
+      [`zmiany/cykl-maszyny-etap3.md`](zmiany/cykl-maszyny-etap3.md).
+      Świadomie poza zakresem: pętla cyklu (tryb automatyczny — temat F),
+      krok „czekaj na wejście" (brak czytelnych wejść), `WYJSCIE` na sprzęcie
+      (brak komendy w protokole — etap 2b).
 - [ ] **Etap 4:** ekran definiowania cyklu maszyny (temat G) — dopiero po
       1–3.
 

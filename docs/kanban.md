@@ -24,7 +24,8 @@ mam to założyć.
       moment na razie tylko po stronie serwera (ostrzeżenie w trybie sprzętowym)
 - [ ] Etap 2b: moment i rampy do sprzętu — komenda w protokole mostka (C++,
       wymaga SDK i sprzętu)
-- [ ] Etap 3: `CycleStep` + snapshot/restore (na symulatorze, z obsługą błędu/przerwania)
+- [x] Etap 3: `CycleStep` + `/api/cycle` + snapshot/restore profilu w `try/finally`
+      (wraca przy błędzie i przy STOP; `WYJSCIE` na razie tylko w symulatorze)
 - [ ] Etap 4: ekran definiowania cyklu + „skok do podprogramu technologa"
 
 ### C. Osie i konfiguracja ruchu

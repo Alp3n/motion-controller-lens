@@ -65,5 +65,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/profile-parametrow-etap2.md](zmiany/profile-parametrow-etap2.md) —
   profile parametrów ruchu (prędkość, rampy, limit momentu) i `/api/profiles`
   (etap 2 tematu B).
+- [zmiany/cykl-maszyny-etap3.md](zmiany/cykl-maszyny-etap3.md) — kroki cyklu
+  maszyny, `/api/cycle` i snapshot/restore profilu wokół programu detalu
+  (etap 3 tematu B).
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

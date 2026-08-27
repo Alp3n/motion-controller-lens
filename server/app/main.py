@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import axes, config, profiles
+from . import axes, config, cycle, profiles
 from .machine import (
     ClearCoreMachine,
     MachineError,
@@ -63,6 +63,11 @@ machine.apply_axis_config(axes_cfg)
 # błędna konfiguracja osi — powód w app/profiles.py.
 profiles_cfg, active_profile = profiles.load(config.PROFILES_FILE, axes_cfg.keys())
 machine.apply_profiles(profiles_cfg, active_profile)
+
+# Cykl maszyny — kroki poziomu admina wokół programu detalu. Pusty, dopóki
+# nie zostanie zdefiniowany; błędny plik przerywa start (powód w app/cycle.py).
+cycle_cfg = cycle.load(config.CYCLE_FILE)
+machine.apply_cycle(cycle_cfg)
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -135,6 +140,17 @@ class ProfilesRequest(BaseModel):
 
 class ActiveProfileRequest(BaseModel):
     active: str = Field(..., description="nazwa profilu do uaktywnienia")
+
+
+class CycleRequest(BaseModel):
+    """Definicja cyklu maszyny z ekranu admina.
+
+    Jak przy osiach i profilach — walidacją zajmuje się app/cycle.py, żeby
+    operator zobaczył komunikat po polsku z numerem kroku.
+    """
+
+    name: str = Field("", description="nazwa cyklu")
+    steps: list[dict] = Field(..., description="kroki cyklu, LP ciągłe od 1")
 
 
 # --- pomocnicze -----------------------------------------------------------
@@ -390,6 +406,52 @@ async def set_active_profile(req: ActiveProfileRequest):
     except OSError as exc:
         raise HTTPException(500, f"nie udało się zapisać {config.PROFILES_FILE}: {exc}")
     return {"ok": True, "active": machine.active_profile}
+
+
+# --- cykl maszyny ---------------------------------------------------------
+
+
+@app.get("/api/cycle")
+async def get_cycle():
+    """Definicja cyklu maszyny."""
+    return {
+        "cycle": cycle_cfg.to_dict(),
+        "step_kinds": list(cycle.STEP_KINDS),
+        "outputs": list(cycle.OUTPUT_NAMES),
+        "file": str(config.CYCLE_FILE),
+        "warnings": cycle.warnings(cycle_cfg, profiles_cfg.keys(), axes_cfg.keys()),
+    }
+
+
+@app.put("/api/cycle")
+async def put_cycle(req: CycleRequest):
+    """Zapis definicji cyklu: walidacja, plik, przekazanie do maszyny."""
+    global cycle_cfg
+    if machine.status.state in (MachineState.RUNNING, MachineState.HOMING):
+        raise HTTPException(409, "nie można zmieniać cyklu w trakcie ruchu maszyny")
+    try:
+        new_cycle = cycle.parse_cycle({"name": req.name, "steps": req.steps})
+    except cycle.CycleError as exc:
+        raise HTTPException(422, str(exc))
+
+    result = cycle.warnings(new_cycle, profiles_cfg.keys(), axes_cfg.keys())
+    try:
+        cycle.save(config.CYCLE_FILE, new_cycle)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.CYCLE_FILE}: {exc}")
+    cycle_cfg = new_cycle
+    machine.apply_cycle(new_cycle)
+    return {"ok": True, "cycle": new_cycle.to_dict(), "warnings": result}
+
+
+@app.post("/api/machine/cycle/start")
+async def start_cycle():
+    """Uruchamia jeden przebieg cyklu maszyny (albo wznawia po PAUZA)."""
+    try:
+        await machine.start_cycle()
+    except MachineError as exc:
+        raise HTTPException(409, str(exc))
+    return {"ok": True}
 
 
 @app.get("/api/status")

@@ -26,6 +26,9 @@ PROFILES_FILE = Path(
     os.environ.get("PROFILES_CONFIG", "config/profiles.json")
 ).resolve()
 
+# plik definicji cyklu maszyny (kroki poziomu admina wokół programu detalu)
+CYCLE_FILE = Path(os.environ.get("CYCLE_CONFIG", "config/cycle.json")).resolve()
+
 # wartości startowe obszaru roboczego [mm] — używane tylko, dopóki nie ma
 # pliku konfiguracji osi
 WORK_AREA = {

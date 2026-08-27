@@ -12,3 +12,4 @@ _tmp = tempfile.mkdtemp(prefix="cfg-test-")
 
 os.environ.setdefault("AXES_CONFIG", os.path.join(_tmp, "axes.json"))
 os.environ.setdefault("PROFILES_CONFIG", os.path.join(_tmp, "profiles.json"))
+os.environ.setdefault("CYCLE_CONFIG", os.path.join(_tmp, "cycle.json"))
