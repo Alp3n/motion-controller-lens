@@ -68,5 +68,7 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/cykl-maszyny-etap3.md](zmiany/cykl-maszyny-etap3.md) — kroki cyklu
   maszyny, `/api/cycle` i snapshot/restore profilu wokół programu detalu
   (etap 3 tematu B).
+- [zmiany/ekran-cyklu-etap4.md](zmiany/ekran-cyklu-etap4.md) — ekran
+  `/cycle` do definiowania i uruchamiania cyklu (etap 4 tematu B).
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

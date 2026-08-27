@@ -252,3 +252,32 @@ input.bad, select.bad { border-color: var(--err); background: #3a1f1c; }
   width: 2px;
   background: var(--warn);
 }
+
+/* --- cykl maszyny --- */
+
+/* Tabela kroków cyklu — te same zasady co w tabeli operacji edytora:
+   czytelne wartości zamiast strzałek spinnera i nieprzewijająca się strona. */
+#step-rows td, #step-rows th { padding: 5px 4px; }
+#step-rows input[type="number"] {
+  width: 76px;
+  padding: 6px 6px;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+#step-rows input[type="number"]::-webkit-inner-spin-button,
+#step-rows input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+#step-rows select { width: 104px; padding: 6px 4px; }
+#step-rows input[data-field="note"] { min-width: 150px; }
+#step-rows td:nth-last-child(2) { width: 100%; }
+#step-rows .row-actions { white-space: nowrap; }
+#step-rows button.icon { padding: 2px 7px; margin-right: 2px; line-height: 1.2; }
+
+/* Pole, którego dany rodzaj kroku nie używa — wygaszone, nie ukryte, żeby
+   kolumny nie skakały przy zmianie rodzaju kroku. */
+#step-rows .unused { opacity: 0.25; }
+
+/* Krok wykonywany w tej chwili — podświetlenie z pollingu statusu. */
+#step-rows tr.running > td { background: #1d3a2a; }

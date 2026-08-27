@@ -562,4 +562,9 @@ async def axes_page():
     return FileResponse(STATIC_DIR / "axes.html")
 
 
+@app.get("/cycle", include_in_schema=False)
+async def cycle_page():
+    return FileResponse(STATIC_DIR / "cycle.html")
+
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

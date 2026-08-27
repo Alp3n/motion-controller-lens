@@ -26,7 +26,8 @@ mam to założyć.
       wymaga SDK i sprzętu)
 - [x] Etap 3: `CycleStep` + `/api/cycle` + snapshot/restore profilu w `try/finally`
       (wraca przy błędzie i przy STOP; `WYJSCIE` na razie tylko w symulatorze)
-- [ ] Etap 4: ekran definiowania cyklu + „skok do podprogramu technologa"
+- [x] Etap 4: ekran `/cycle` — tabela kroków, walidacja, uruchomienie
+      i podgląd na żywo; krok PROGRAM = skok do podprogramu technologa
 
 ### C. Osie i konfiguracja ruchu
 - [ ] Dodatkowe osie w `/axes` (podajnik, docisk z kontrolą momentu)

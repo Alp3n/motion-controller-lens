@@ -94,8 +94,17 @@ Ustalony jako **następny krok** w `DECYZJE_2026-08-25.md`.
       Świadomie poza zakresem: pętla cyklu (tryb automatyczny — temat F),
       krok „czekaj na wejście" (brak czytelnych wejść), `WYJSCIE` na sprzęcie
       (brak komendy w protokole — etap 2b).
-- [ ] **Etap 4:** ekran definiowania cyklu maszyny (temat G) — dopiero po
-      1–3.
+- [x] **Etap 4:** ekran `/cycle` — tabela kroków z walidacją na bieżąco
+      (lustro `CycleStep.validate()`), przestawianie wierszy, zapis,
+      uruchomienie cyklu i podgląd na żywo (który krok, jaki profil, stan
+      wyjść). Krok `PROGRAM` realizuje „skok do podprogramu technologa"
+      z `NOTATKI_FUNKCJONALNE.md` §3. Sprawdzone w przeglądarce
+      (Playwright/Chromium), bez błędów JS. Szczegóły:
+      [`zmiany/ekran-cyklu-etap4.md`](zmiany/ekran-cyklu-etap4.md).
+
+**Temat B zamknięty** w zakresie, jaki da się zrobić bez sprzętu. Co z niego
+zostaje na później: `WYJSCIE` i limit momentu na maszynie (etap 2b), pętla
+cyklu (temat F), ruch osi innych niż X/Y/Z (temat C).
 
 Źródło: `zbyszek/DECYZJE_2026-08-25.md` §2, §3, §5, §7;
 `zbyszek/NOTATKI_FUNKCJONALNE.md` §3.

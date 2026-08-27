@@ -307,3 +307,10 @@ def test_start_cycle_needs_program_when_it_calls_one():
     with pytest.raises(MachineError) as exc:
         asyncio.run(m.start_cycle())
     assert "program detalu" in str(exc.value)
+
+
+def test_cycle_page_is_served(client):
+    res = client.get("/cycle")
+    assert res.status_code == 200
+    assert "Cykl maszyny" in res.text
+    assert "/static/cycle.js" in res.text
