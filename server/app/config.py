@@ -20,6 +20,12 @@ CLEARCORE_PORT = int(os.environ.get("CLEARCORE_PORT", "8500"))
 # zmienne WORK_*, decyduje o obszarze roboczym.
 AXES_FILE = Path(os.environ.get("AXES_CONFIG", "config/axes.json")).resolve()
 
+# plik profili parametrów ruchu (prędkości, rampy, limit momentu) — zestawy
+# nazwane, przełączane zależnie od kontekstu: cykl maszyny vs program technologa
+PROFILES_FILE = Path(
+    os.environ.get("PROFILES_CONFIG", "config/profiles.json")
+).resolve()
+
 # wartości startowe obszaru roboczego [mm] — używane tylko, dopóki nie ma
 # pliku konfiguracji osi
 WORK_AREA = {

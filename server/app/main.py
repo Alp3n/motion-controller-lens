@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import axes, config
+from . import axes, config, profiles
 from .machine import (
     ClearCoreMachine,
     MachineError,
@@ -57,6 +57,12 @@ machine = create_machine(
 # przerywa start serwera; powód w app/axes.py.
 axes_cfg = axes.load(config.AXES_FILE, config.WORK_AREA)
 machine.apply_axis_config(axes_cfg)
+
+# Profile parametrów ruchu (prędkości, rampy, limit momentu). Zakładane
+# domyślnie dla osi z konfiguracji; błędny plik przerywa start tak samo jak
+# błędna konfiguracja osi — powód w app/profiles.py.
+profiles_cfg, active_profile = profiles.load(config.PROFILES_FILE, axes_cfg.keys())
+machine.apply_profiles(profiles_cfg, active_profile)
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -116,6 +122,21 @@ class AxesRequest(BaseModel):
     axes: dict[str, dict] = Field(..., description="osie x, y, z")
 
 
+class ProfilesRequest(BaseModel):
+    """Profile parametrów ruchu z ekranu konfiguracji.
+
+    Jak przy osiach — walidacją zajmuje się app/profiles.py, żeby operator
+    zobaczył komunikat po polsku zamiast błędu schematu.
+    """
+
+    profiles: dict[str, dict] = Field(..., description="nazwa profilu -> osie")
+    active: str = Field(..., description="nazwa profilu aktywnego")
+
+
+class ActiveProfileRequest(BaseModel):
+    active: str = Field(..., description="nazwa profilu do uaktywnienia")
+
+
 # --- pomocnicze -----------------------------------------------------------
 
 
@@ -137,6 +158,27 @@ def _axis_warnings(current: dict) -> list[str]:
                 f"załadowany program {program.number} nie mieści się w tych "
                 f"limitach: {exc}"
             )
+    return warnings
+
+
+def _profile_warnings(current: dict) -> list[str]:
+    """Ostrzeżenia o profilach, które są poprawne, ale nie robią tego, co się wydaje."""
+    warnings = []
+    for name, absent in sorted(profiles.missing_axes(current, axes_cfg.keys()).items()):
+        warnings.append(
+            f"profil '{name}' nie opisuje osi "
+            + ", ".join(a.upper() for a in absent)
+            + " — te osie nie będą przez niego ograniczone"
+        )
+    # Limit momentu jest dziś parametrem wyłącznie po stronie serwera. Na
+    # sprzęcie nie zadziała, dopóki protokół mostka nie dostanie komendy
+    # momentu — a operator, który ustawia 10% „żeby było delikatnie", musi
+    # wiedzieć, że na maszynie to nic nie zmienia.
+    if config.MACHINE_MODE != "sim":
+        warnings.append(
+            "limit momentu nie jest wysyłany do sprzętu — protokół mostka nie ma "
+            "jeszcze komendy momentu; wartość działa tylko w symulatorze"
+        )
     return warnings
 
 
@@ -290,6 +332,64 @@ async def put_axes(req: AxesRequest):
     axes_cfg = new_axes
     machine.apply_axis_config(new_axes)
     return {"ok": True, "axes": axes.to_dict(new_axes), "warnings": warnings}
+
+
+# --- profile parametrów ruchu --------------------------------------------
+
+
+@app.get("/api/profiles")
+async def get_profiles():
+    """Profile parametrów ruchu + który jest aktywny."""
+    return {
+        "profiles": profiles.to_dict(profiles_cfg),
+        "active": machine.active_profile,
+        "file": str(config.PROFILES_FILE),
+        "warnings": _profile_warnings(profiles_cfg),
+    }
+
+
+@app.put("/api/profiles")
+async def put_profiles(req: ProfilesRequest):
+    """Zapis profili: walidacja, plik, przekazanie do maszyny."""
+    global profiles_cfg
+    if machine.status.state in (MachineState.RUNNING, MachineState.HOMING):
+        raise HTTPException(
+            409, "nie można zmieniać profili w trakcie ruchu maszyny"
+        )
+    try:
+        new_profiles, active = profiles.parse_profiles(
+            {"profiles": req.profiles, "active": req.active}
+        )
+    except profiles.ProfileError as exc:
+        raise HTTPException(422, str(exc))
+
+    warnings = _profile_warnings(new_profiles)
+    try:
+        profiles.save(config.PROFILES_FILE, new_profiles, active)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.PROFILES_FILE}: {exc}")
+    profiles_cfg = new_profiles
+    machine.apply_profiles(new_profiles, active)
+    return {
+        "ok": True,
+        "profiles": profiles.to_dict(new_profiles),
+        "active": active,
+        "warnings": warnings,
+    }
+
+
+@app.post("/api/profiles/active")
+async def set_active_profile(req: ActiveProfileRequest):
+    """Przełącza aktywny profil bez zmiany samych profili."""
+    try:
+        machine.set_active_profile(req.active)
+    except MachineError as exc:
+        raise HTTPException(409, str(exc))
+    try:
+        profiles.save(config.PROFILES_FILE, profiles_cfg, req.active)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.PROFILES_FILE}: {exc}")
+    return {"ok": True, "active": machine.active_profile}
 
 
 @app.get("/api/status")

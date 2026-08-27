@@ -69,8 +69,19 @@ Ustalony jako **następny krok** w `DECYZJE_2026-08-25.md`.
       protokołu (temat C). Sprawdzone end-to-end przez `/api/axes` (PUT z
       dodatkową osią „podajnik” zapisuje i zwraca ją poprawnie) i 4 nowe
       testy w `test_axes.py`. 63/63 testów przechodzi.
-- [ ] **Etap 2:** `ParameterProfile` (dataclass + JSON, wzorem `AxisConfig`)
-      i podłączenie `TrqGlobal` do warstwy `Machine`.
+- [x] **Etap 2:** `ParameterProfile` + `AxisParams` w `server/app/profiles.py`
+      (prędkość maks., rampy, limit momentu), plik `config/profiles.json`,
+      endpointy `GET/PUT /api/profiles` i `POST /api/profiles/active`.
+      Trzy profile domyślne z wartościami z notatek §2 (20/15/10%).
+      Prędkość maksymalna **działa w symulatorze** (test mierzy czas ruchu).
+      **Limit momentu nie trafia jeszcze do sprzętu** — protokół mostka nie
+      ma komendy momentu; w trybie sprzętowym API zwraca o tym ostrzeżenie.
+      21 nowych testów, 84/84 przechodzi. Szczegóły:
+      [`zmiany/profile-parametrow-etap2.md`](zmiany/profile-parametrow-etap2.md).
+- [ ] **Etap 2b:** doprowadzić limit momentu (i rampy) do sprzętu — komenda
+      w protokole mostka + `ILimits.TrqGlobal` w `bridge/sc4hub_bridge.cpp`.
+      **Wymaga sprzętu i SDK Teknica** (`vendor/`, poza repo) — nie da się
+      tego skompilować ani przetestować w środowisku sesji.
 - [ ] **Etap 3:** `CycleStep` + snapshot/restore parametrów (na symulatorze,
       `try/finally` wokół wywołania programu detalu — **także przy
       błędzie/przerwaniu**, zgodnie z `DECYZJE_2026-08-25.md` §3).

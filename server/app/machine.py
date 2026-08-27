@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from .axes import REQUIRED_AXES, AxisConfig
+from .profiles import PROFILE_GLOBAL, AxisParams, ParameterProfile
 from .program import Operation, Program, cut_path, pass_depths
 
 
@@ -73,12 +74,55 @@ class Machine:
         # konfiguracja osi z ekranu „Konfiguracja osi" — limity programowe
         # i przełożenia; pusta oznacza brak ograniczeń po stronie serwera
         self.axes: dict[str, AxisConfig] = {}
+        # profile parametrów ruchu; pusty słownik = brak ograniczeń z profilu
+        self.profiles: dict[str, ParameterProfile] = {}
+        self.active_profile: str = PROFILE_GLOBAL
 
     # --- konfiguracja osi (wspólna) ---------------------------------------
 
     def apply_axis_config(self, axes: dict[str, AxisConfig]) -> None:
         """Podmienia konfigurację osi; podklasy dosyłają ją do sprzętu."""
         self.axes = dict(axes)
+
+    # --- profile parametrów ruchu (wspólne) -------------------------------
+
+    def apply_profiles(
+        self, profiles: dict[str, ParameterProfile], active: str
+    ) -> None:
+        """Podmienia zestaw profili i wskazuje aktywny."""
+        self.profiles = dict(profiles)
+        self.active_profile = active
+
+    def set_active_profile(self, name: str) -> None:
+        """Przełącza aktywny profil — odrzucane w ruchu, jak zmiana limitów osi."""
+        if self.status.state in (MachineState.RUNNING, MachineState.HOMING):
+            raise MachineError("nie można zmienić profilu w trakcie ruchu maszyny")
+        if name not in self.profiles:
+            raise MachineError(
+                f"nieznany profil '{name}' — dostępne: "
+                + ", ".join(sorted(self.profiles))
+            )
+        self.active_profile = name
+
+    def axis_params(self, axis: str) -> AxisParams | None:
+        """Parametry osi z aktywnego profilu; None = profil jej nie opisuje."""
+        profile = self.profiles.get(self.active_profile)
+        if profile is None:
+            return None
+        return profile.axes.get(axis)
+
+    def _capped_feed(self, feed: float, axes: list[str]) -> float:
+        """Posuw ograniczony prędkością maksymalną z aktywnego profilu.
+
+        Ruch obejmuje kilka osi naraz, więc obowiązuje najniższy limit
+        spośród nich — oś o najwolniejszym limicie wyznacza tempo całości.
+        """
+        limits = [
+            p.vel_max for p in (self.axis_params(a) for a in axes) if p is not None
+        ]
+        if not limits:
+            return feed
+        return min(feed, min(limits))
 
     def _check_soft_limit(self, axis: str, target: float) -> None:
         """Odrzuca ruch poza limit programowy osi (JOG i ruchy pojedynczej osi).
@@ -340,12 +384,23 @@ class SimulatedMachine(Machine):
                 await self._move_to(op.x, op.y, program.z_safe, program.feed_travel)
 
     async def _move_to(self, x: float, y: float, z: float, feed: float) -> None:
-        """Ruch liniowy z interpolacją pozycji w czasie (feed w mm/min)."""
+        """Ruch liniowy z interpolacją pozycji w czasie (feed w mm/min).
+
+        Wszystkie ruchy symulatora przechodzą tędy, więc tu stosujemy limit
+        prędkości z aktywnego profilu — jedno miejsce zamiast powtarzania
+        przy każdym wywołaniu.
+        """
         self._require_enable()
         sx, sy, sz = self.status.x, self.status.y, self.status.z
         dist = math.dist((sx, sy, sz), (x, y, z))
         if dist < 1e-9:
             return
+        moving = [
+            axis
+            for axis, delta in (("x", x - sx), ("y", y - sy), ("z", z - sz))
+            if abs(delta) > 1e-9
+        ]
+        feed = self._capped_feed(feed, moving)
         duration = dist / (feed / 60.0)
         steps = max(1, int(duration / 0.05))
         for i in range(1, steps + 1):

@@ -20,7 +20,10 @@ mam to założyć.
 - [x] Zaprojektować model — propozycja w `model-cyklu-maszyny.md`, do przeglądu
 - [x] Etap 1: `AXIS_NAMES` → `REQUIRED_AXES` w `axes.py`, dowolne osie ponad
       X/Y/Z zachowane; mostek dalej dostaje `AXCFG` tylko dla X/Y/Z
-- [ ] Etap 2: `ParameterProfile` + podłączenie `TrqGlobal` do `Machine`
+- [x] Etap 2: `ParameterProfile` + `/api/profiles`; prędkość działa w symulatorze,
+      moment na razie tylko po stronie serwera (ostrzeżenie w trybie sprzętowym)
+- [ ] Etap 2b: moment i rampy do sprzętu — komenda w protokole mostka (C++,
+      wymaga SDK i sprzętu)
 - [ ] Etap 3: `CycleStep` + snapshot/restore (na symulatorze, z obsługą błędu/przerwania)
 - [ ] Etap 4: ekran definiowania cyklu + „skok do podprogramu technologa"
 

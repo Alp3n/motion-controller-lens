@@ -62,5 +62,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/osie-dodatkowe-etap1.md](zmiany/osie-dodatkowe-etap1.md) —
   konfiguracja osi przyjmuje dowolne osie ponad wymagane X/Y/Z (etap 1
   tematu B).
+- [zmiany/profile-parametrow-etap2.md](zmiany/profile-parametrow-etap2.md) —
+  profile parametrów ruchu (prędkość, rampy, limit momentu) i `/api/profiles`
+  (etap 2 tematu B).
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.
