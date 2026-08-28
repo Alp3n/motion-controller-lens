@@ -154,6 +154,12 @@ class CycleRequest(BaseModel):
     steps: list[dict] = Field(..., description="kroki cyklu, LP ciągłe od 1")
 
 
+class CycleStartRequest(BaseModel):
+    """Uruchomienie cyklu — jeden przebieg (domyślnie) albo pętla (temat F)."""
+
+    loop: bool = Field(False, description="tryb automatyczny — powtarzaj cykl bez zatrzymania")
+
+
 # --- pomocnicze -----------------------------------------------------------
 
 
@@ -446,10 +452,14 @@ async def put_cycle(req: CycleRequest):
 
 
 @app.post("/api/machine/cycle/start")
-async def start_cycle():
-    """Uruchamia jeden przebieg cyklu maszyny (albo wznawia po PAUZA)."""
+async def start_cycle(req: CycleStartRequest | None = None):
+    """Uruchamia cykl maszyny — jeden przebieg albo pętlę (tryb automatyczny),
+    albo wznawia po PAUZA. Body opcjonalne — brak znaczy jeden przebieg,
+    tak jak przed dodaniem trybu automatycznego (temat F).
+    """
+    loop = req.loop if req is not None else False
     try:
-        await machine.start_cycle()
+        await machine.start_cycle(loop=loop)
     except MachineError as exc:
         raise HTTPException(409, str(exc))
     return {"ok": True}

@@ -66,11 +66,16 @@
     <section class="panel">
       <h2>Uruchomienie</h2>
       <p class="muted" style="margin-top:-6px">
-        Jeden przebieg cyklu. Wymaga zbazowanej maszyny (stan READY), a jeśli
-        cykl zawiera krok PROGRAM — także wybranego zlecenia w MES.
+        Wymaga zbazowanej maszyny (stan READY), a jeśli cykl zawiera krok
+        PROGRAM — także wybranego zlecenia w MES.
+        <b>Półautomatyczny</b> — jeden przebieg cyklu, zatrzymuje się po
+        ostatnim kroku. <b>Automatyczny</b> — cykl powtarza się bez
+        zatrzymania, dopóki nie przerwie go STOP, błąd w kroku albo utrata
+        sygnału zezwolenia.
       </p>
-      <div class="btn-row" style="max-width:420px">
-        <button id="btn-start">▶ Uruchom cykl</button>
+      <div class="btn-row" style="max-width:520px">
+        <button id="btn-start">▶ Jeden cykl (półautomatyczny)</button>
+        <button id="btn-start-loop">⟳ Automatyczny (pętla)</button>
         <button class="small" id="btn-stop">■ STOP</button>
       </div>
       <p id="run-state" class="muted" style="margin-top:10px"></p>
@@ -92,11 +97,14 @@
           przyciskiem START.</li>
       </ul>
       <p class="muted" style="margin-top:12px">
-        <b>Czego jeszcze nie ma:</b> pętli cyklu (praca ciągła to osobny tryb),
-        kroku „czekaj na wejście" (maszyna nie ma dziś czytelnych wejść poza
-        Global Stop), oraz ruchu osi innych niż X/Y/Z. Sterowanie wyjściami
-        działa na razie wyłącznie w symulatorze — protokół mostka nie ma
-        jeszcze komendy ustawiania wyjścia.
+        <b>Czego jeszcze nie ma:</b> kroku „czekaj na wejście" (maszyna nie ma
+        dziś czytelnych wejść poza Global Stop) oraz ruchu osi innych niż
+        X/Y/Z. Sterowanie wyjściami działa na razie wyłącznie w symulatorze —
+        protokół mostka nie ma jeszcze komendy ustawiania wyjścia.
+        <b>Uwaga:</b> uruchomienie cyklu (jeden przebieg i tryb automatyczny)
+        działa dziś wyłącznie w symulatorze — na sprzęcie mostek nie ma
+        jeszcze obsługi cyklu (patrz <code>docs/plan-rozwoju.md</code>,
+        temat B).
       </p>
     </section>
   </main>

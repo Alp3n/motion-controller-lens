@@ -134,6 +134,9 @@ input:invalid { border-color: var(--err); }
 
 .muted { color: var(--muted); font-size: 13px; }
 .jog-grid { display: grid; grid-template-columns: repeat(3, 60px); gap: 8px; justify-content: start; }
+/* Widoczna informacja zwrotna podczas przytrzymania — „martwy człowiek"
+   (temat F): operator musi widzieć, że ruch faktycznie trwa. */
+button.jog:active { background: var(--accent); color: #06203a; border-color: var(--accent); }
 
 /* Luzowanie osi: wyraźnie widoczny stan "zluzowana" — operator musi wiedzieć,
    że oś nie trzyma momentu, zanim o nią oprze rękę. */

@@ -257,6 +257,98 @@ def test_move_step_respects_soft_limits():
     assert "limitem programowym" in m.status.alarm_message
 
 
+# --- tryb automatyczny (temat F) -------------------------------------------
+
+
+def test_start_cycle_loop_repeats_until_stopped():
+    """`loop=True` musi realnie powtarzać cykl, nie tylko ustawiać flagę.
+
+    Krok celowo wraca za każdym razem do tego samego punktu (x=1) — od
+    drugiego przebiegu to ruch o zerowym dystansie. `asyncio.wait_for`
+    to twardy limit czasu: bez punktu zawieszenia na taki krok (patrz test
+    `test_start_cycle_loop_yields_even_without_real_movement` niżej) ten test
+    zawiesiłby cały przebieg testów zamiast po prostu nie przejść.
+    """
+    m = _machine_with_cycle([_move(1, x=1)])
+    m.cycle.steps[0].feed = 6000  # szybko — kilka przebiegów w rozsądnym czasie
+
+    calls = []
+    original_move = m._move_to
+
+    async def spy(x, y, z, feed):
+        calls.append(1)
+        await original_move(x, y, z, feed)
+
+    m._move_to = spy
+
+    async def drive_loop():
+        await m.start_cycle(loop=True)
+        assert m.status.cycle_loop is True
+        for _ in range(500):
+            if len(calls) >= 3:
+                break
+            await asyncio.sleep(0.01)
+        assert len(calls) >= 3, "cykl nie powtórzył się mimo loop=True"
+        await m.stop()
+        count_after_stop = len(calls)
+        await asyncio.sleep(0.05)
+        assert len(calls) == count_after_stop, "STOP nie przerwał pętli"
+
+    asyncio.run(asyncio.wait_for(drive_loop(), timeout=5))
+    assert m.status.state == MachineState.ALARM
+    assert m.status.cycle_loop is False
+
+
+def test_start_cycle_loop_yields_even_without_real_movement():
+    """Krok bez żadnego realnego ruchu (WYJSCIE) nie może zawiesić event
+    loopa — bez punktu zawieszenia w pętli automatycznej taki krok mrozi
+    cały serwer (żadne inne żądanie HTTP ani WebSocket nie dostają
+    sterowania), bo Python nigdy nie oddaje kontroli dobrowolnie.
+    Znalezione i naprawione przy pisaniu tego etapu (`asyncio.sleep(0)` po
+    każdym kroku w `_run_cycle`).
+    """
+    m = _machine_with_cycle(
+        [{"lp": 1, "kind": "WYJSCIE", "output": "wyjscie_0", "output_on": True}]
+    )
+    calls = []
+    original = m._execute_cycle_step
+
+    async def spy(step):
+        calls.append(1)
+        await original(step)
+
+    m._execute_cycle_step = spy
+
+    async def drive_loop():
+        await m.start_cycle(loop=True)
+        for _ in range(500):
+            if len(calls) >= 3:
+                break
+            await asyncio.sleep(0.01)
+        assert len(calls) >= 3, "pętla nie wykonała kilku przebiegów"
+        await m.stop()
+
+    asyncio.run(asyncio.wait_for(drive_loop(), timeout=5))
+    assert m.status.state == MachineState.ALARM
+
+
+def test_start_cycle_without_loop_runs_once():
+    """Domyślne zachowanie (bez `loop`) nie mogło się zmienić."""
+    m = _machine_with_cycle([_move(1, x=1)])
+    calls = []
+    original_move = m._move_to
+
+    async def spy(x, y, z, feed):
+        calls.append(1)
+        await original_move(x, y, z, feed)
+
+    m._move_to = spy
+    asyncio.run(_drive(m))
+    assert len(calls) == 1
+    assert m.status.state == MachineState.READY
+    assert m.status.cycle_loop is False
+
+
 # --- API ------------------------------------------------------------------
 
 
@@ -307,6 +399,20 @@ def test_start_cycle_needs_program_when_it_calls_one():
     with pytest.raises(MachineError) as exc:
         asyncio.run(m.start_cycle())
     assert "program detalu" in str(exc.value)
+
+
+def test_start_cycle_endpoint_accepts_loop_flag(client, restore_cycle):
+    steps = [{"lp": 1, "kind": "RUCH", "targets": {"x": 1}, "feed": 6000}]
+    assert client.put("/api/cycle", json={"name": "", "steps": steps}).status_code == 200
+    _home(client)
+
+    res = client.post("/api/machine/cycle/start", json={"loop": True})
+    assert res.status_code == 200, res.text
+    time.sleep(0.05)
+    assert client.get("/api/status").json()["cycle_loop"] is True
+
+    assert client.post("/api/machine/stop").status_code == 200
+    assert client.get("/api/status").json()["cycle_loop"] is False
 
 
 def test_cycle_page_is_served(client):

@@ -206,13 +206,27 @@ niżej; rozstrzygnąć **przed** rozpoczęciem tego tematu.
 
 Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §5, §9 i sekcja „Sugestie i pytania".
 
-## F. Tryby pracy
+## F. Tryby pracy — zrobione
 
-- [ ] Manualny — przytrzymanie przycisku wybranej osi = ruch, puszczenie =
-      zatrzymanie (funkcja „martwego człowieka").
-- [ ] Półautomatyczny — jeden pełny cykl.
-- [ ] Automatyczny — pętla nieskończona cyklu maszyny do odczytu E-Stop lub
-      otwarcia drzwi, plus przyciski start/stop na ekranie.
+- [x] Manualny — przytrzymanie przycisku wybranej osi = ruch, puszczenie =
+      zatrzymanie (funkcja „martwego człowieka"). Mostek nie ma komendy
+      ciągłego ruchu, więc przytrzymanie realizują powtarzane krótkie
+      przejazdy JOG — to wygoda operatora, nie certyfikowana funkcja
+      bezpieczeństwa (tę rolę pełni sprzętowy E-stop/Global Stop).
+- [x] Półautomatyczny — jeden pełny cykl. Istniał od etapu 3/4 tematu B,
+      ekran `/cycle` teraz nazywa go wprost.
+- [x] Automatyczny — pętla cyklu maszyny do STOP, błędu w kroku albo utraty
+      sygnału zezwolenia (odczyt drzwi z tematu E jeszcze nie istnieje —
+      pętla zatrzyma się na tym, co już jest). Przy pisaniu znaleziony
+      i naprawiony błąd: krok bez realnego ruchu (WYJSCIE, RUCH do już
+      zajętej pozycji) nigdy się nie zawieszał, więc pętla bez punktu
+      zawieszenia mroziła **cały serwer**, nie tylko cykl.
+      Szczegóły: [`zmiany/tryby-pracy.md`](zmiany/tryby-pracy.md).
+
+**Nowo znalezione, nie wcześniej zgłoszone:** cykl (jeden przebieg i pętla)
+działa dziś tylko w symulatorze — `ClearCoreMachine` nie ma `start_cycle`.
+`/cycle` nie działał na sprzęcie już od etapu 4 tematu B; nikt tego wcześniej
+nie sprawdził i nie zapisał. Wymaga C++ i fizycznego sprzętu (temat B/H).
 
 Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §6.
 

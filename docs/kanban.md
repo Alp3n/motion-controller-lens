@@ -28,6 +28,10 @@ mam to założyć.
       (wraca przy błędzie i przy STOP; `WYJSCIE` na razie tylko w symulatorze)
 - [x] Etap 4: ekran `/cycle` — tabela kroków, walidacja, uruchomienie
       i podgląd na żywo; krok PROGRAM = skok do podprogramu technologa
+- [ ] **Znalezione przy temacie F, nie wcześniej zgłoszone:** `ClearCoreMachine`
+      nie ma `start_cycle` — `/cycle` (jeden przebieg i tryb automatyczny)
+      działa dziś wyłącznie w symulatorze; na sprzęcie zwróciłby
+      niezłapany błąd. Wymaga C++ i sprzętu — patrz `zmiany/tryby-pracy.md`
 
 ### C. Osie i konfiguracja ruchu
 - [x] Dodatkowe osie w `/axes` (dodawanie/usuwanie, odznaka „tylko konfiguracja”)
@@ -60,10 +64,12 @@ mam to założyć.
 - [ ] **Decyzja z Tobą:** PIN-y czy osobne konta
 - [ ] Przegląd obwodu bezpieczeństwa z osobą uprawnioną (CE) przed produkcją
 
-### F. Tryby pracy
-- [ ] Manualny (martwy człowiek)
-- [ ] Półautomatyczny (jeden cykl)
-- [ ] Automatyczny (pętla do E-stop/drzwi) + start/stop
+### F. Tryby pracy — zrobione (ekran `/cycle` + panel operatora)
+- [x] Manualny (martwy człowiek) — JOG na panelu reaguje na przytrzymanie
+- [x] Półautomatyczny (jeden cykl) — istniał od etapu 3/4 tematu B
+- [x] Automatyczny (pętla do STOP/błędu/utraty zezwolenia) + start/stop —
+      drzwi jeszcze nie istnieją jako sygnał (temat E), zatrzyma się na tym,
+      co już jest: STOP, błąd w kroku, utrata sygnału zezwolenia
 
 ### G. Ekrany i programy
 - [ ] Ekran główny (nazwa maszyny, logo WALKNER)

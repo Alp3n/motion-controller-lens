@@ -330,10 +330,10 @@ async function loadCycle() {
 
 // --- uruchamianie ---------------------------------------------------------
 
-async function startCycle() {
+async function startCycle(loop) {
   try {
-    await api("POST", "/api/machine/cycle/start");
-    showMsg($("run-msg"), "Cykl uruchomiony.", true);
+    await api("POST", "/api/machine/cycle/start", { loop: !!loop });
+    showMsg($("run-msg"), loop ? "Cykl uruchomiony (tryb automatyczny)." : "Cykl uruchomiony.", true);
   } catch (e) {
     showMsg($("run-msg"), e.message);
   }
@@ -363,8 +363,9 @@ async function pollState() {
     const outs = Object.entries(st.outputs || {})
       .map(([k, v]) => `${k}=${v ? "ON" : "off"}`)
       .join("  ");
+    const mode = st.cycle_loop ? "AUTOMATYCZNY (pętla)" : "—";
     $("run-state").textContent =
-      `Stan: ${st.state}   krok cyklu: ${step}   profil: ${st.active_profile || "—"}   ${outs}`;
+      `Stan: ${st.state}   krok cyklu: ${step}   tryb: ${mode}   profil: ${st.active_profile || "—"}   ${outs}`;
 
     // podświetlenie wykonywanego kroku
     document.querySelectorAll("#step-rows tr").forEach((tr, i) => {
@@ -381,7 +382,8 @@ $("btn-add").onclick = () => addStepRow();
 $("btn-save").onclick = save;
 $("btn-reload").onclick = () =>
   loadCycle().catch((e) => showMsg($("cycle-msg"), e.message));
-$("btn-start").onclick = startCycle;
+$("btn-start").onclick = () => startCycle(false);
+$("btn-start-loop").onclick = () => startCycle(true);
 $("btn-stop").onclick = stopMachine;
 
 Promise.all([

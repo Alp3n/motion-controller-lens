@@ -83,5 +83,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/ekran-profili.md](zmiany/ekran-profili.md) — ekran `/profiles`:
   siła trzypoziomowa (globalny/cykl/program) i prędkość, edycja i
   przełączanie aktywnego profilu.
+- [zmiany/tryby-pracy.md](zmiany/tryby-pracy.md) — tryb automatyczny (cykl
+  w pętli) i manualny JOG „martwy człowiek"; opisuje też znaleziony błąd
+  zawieszający cały serwer przy kroku cyklu bez realnego ruchu.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

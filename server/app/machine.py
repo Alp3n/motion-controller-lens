@@ -56,6 +56,9 @@ class MachineStatus:
     # cykl maszyny: LP wykonywanego kroku i ich łączna liczba
     cycle_step: int | None = None
     total_cycle_steps: int = 0
+    # tryb automatyczny (temat F): cykl powtarza się bez zatrzymania, dopóki
+    # nie przerwie go STOP, błąd albo utrata sygnału zezwolenia
+    cycle_loop: bool = False
     # wyjścia cyfrowe sterowane z cyklu (podajnik, wyrzutnik, lampka)
     outputs: dict[str, bool] = field(
         default_factory=lambda: {name: False for name in OUTPUT_NAMES}
@@ -78,6 +81,7 @@ class MachineStatus:
             "released_axes": sorted(self.released_axes),
             "cycle_step": self.cycle_step,
             "total_cycle_steps": self.total_cycle_steps,
+            "cycle_loop": self.cycle_loop,
             "outputs": dict(self.outputs),
             "active_profile": self.active_profile,
         }
@@ -146,7 +150,7 @@ class Machine:
         self.cycle = cycle
         self.status.total_cycle_steps = len(cycle.steps)
 
-    async def start_cycle(self) -> None:
+    async def start_cycle(self, loop: bool = False) -> None:
         raise NotImplementedError
 
     def axis_params(self, axis: str) -> AxisParams | None:
@@ -412,11 +416,12 @@ class SimulatedMachine(Machine):
 
     # --- cykl maszyny -----------------------------------------------------
 
-    async def start_cycle(self) -> None:
-        """Uruchamia jeden przebieg cyklu maszyny.
-
-        Jeden przebieg, nie pętla — praca ciągła to tryb automatyczny
-        (temat F w docs/plan-rozwoju.md), osobna sprawa.
+    async def start_cycle(self, loop: bool = False) -> None:
+        """Uruchamia cykl maszyny: jeden przebieg (półautomatyczny, temat F)
+        albo pętlę bez zatrzymania (automatyczny), dopóki nie przerwie jej
+        STOP, błąd w kroku, albo utrata sygnału zezwolenia — to ostatnie
+        obsługuje już `set_safety_enable()`, przerywając `_run_task` tak samo
+        jak przy pojedynczym przebiegu.
         """
         if self.status.state == MachineState.PAUSED:
             self.resume()
@@ -437,15 +442,25 @@ class SimulatedMachine(Machine):
         self._require_enable()
         self.status.state = MachineState.RUNNING
         self.status.alarm_message = ""
-        self._run_task = asyncio.create_task(self._run_cycle())
+        self.status.cycle_loop = loop
+        self._run_task = asyncio.create_task(self._run_cycle(loop))
 
-    async def _run_cycle(self) -> None:
+    async def _run_cycle(self, loop: bool) -> None:
         try:
-            for step in self.cycle.steps:
-                self.status.cycle_step = step.lp
-                await self._execute_cycle_step(step)
-            self.status.cycle_step = None
-            self.status.current_op = None
+            while True:
+                for step in self.cycle.steps:
+                    self.status.cycle_step = step.lp
+                    await self._execute_cycle_step(step)
+                    # Krok bez realnego ruchu (WYJSCIE, albo RUCH do pozycji,
+                    # w której oś już jest) nie zawiesza się na niczym — bez
+                    # tego punktu zawieszenia pętla automatyczna nigdy nie
+                    # oddałaby sterowania do event loopa i zamroziłaby cały
+                    # serwer (znalezione i sprawdzone przy pisaniu testu).
+                    await asyncio.sleep(0)
+                self.status.cycle_step = None
+                self.status.current_op = None
+                if not loop:
+                    break
             self.status.state = MachineState.READY
         except asyncio.CancelledError:
             raise
@@ -453,6 +468,7 @@ class SimulatedMachine(Machine):
             self._abort(str(exc))
         finally:
             self.status.spindle_on = False
+            self.status.cycle_loop = False
             self._run_task = None
 
     async def _execute_cycle_step(self, step: CycleStep) -> None:
