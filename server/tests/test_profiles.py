@@ -133,6 +133,13 @@ def test_broken_file_is_an_error_not_a_silent_default(tmp_path):
 # --- API ------------------------------------------------------------------
 
 
+def test_profiles_page_is_served(client):
+    res = client.get("/profiles")
+    assert res.status_code == 200
+    assert "Profile parametrów ruchu" in res.text
+    assert "/static/profiles.js" in res.text
+
+
 def test_get_profiles(client):
     data = client.get("/api/profiles").json()
     assert set(data["profiles"]) == {"globalny", "cykl", "program"}

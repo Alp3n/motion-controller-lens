@@ -300,3 +300,12 @@ input.bad, select.bad { border-color: var(--err); background: #3a1f1c; }
 
 /* Krok wykonywany w tej chwili — podświetlenie z pollingu statusu. */
 #step-rows tr.running > td { background: #1d3a2a; }
+
+/* --- profile parametrów ruchu --- */
+
+/* Karty profili jedna pod drugą — w siatce obok siebie tabela z pięcioma
+   kolumnami (oś + 4 parametry) nie mieściła się bez przewijania. */
+#profiles-grid { display: grid; gap: 16px; }
+#profiles-grid > .panel { margin: 0; }
+.profile-table th, .profile-table td { padding: 5px 4px; font-size: 13px; }
+.profile-table input { width: 90px; padding: 6px 4px; }

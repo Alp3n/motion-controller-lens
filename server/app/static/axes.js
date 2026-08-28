@@ -17,6 +17,11 @@ const HOME_LABELS = {
   plus: "plus — zero na końcu +",
   srodek: "środek osi",
 };
+// te same liczby co DEFAULT_VEL_JOG/DEFAULT_VEL_HOME w app/axes.py — awaryjny
+// fallback, gdyby odpowiedź serwera nie miała tych pól (np. stary proces
+// serwera sprzed tego pola, nieprzeładowany po git pull)
+const FALLBACK_VEL_JOG = 500;
+const FALLBACK_VEL_HOME = 1000;
 
 let saved = null; // ostatnia konfiguracja potwierdzona przez serwer
 let machineBusy = false; // RUNNING/HOMING — zapis odrzucany przez serwer
@@ -79,8 +84,8 @@ function writeAxis(axis, cfg) {
   $(`f-${axis}-min`).value = cfg.soft_min;
   $(`f-${axis}-max`).value = cfg.soft_max;
   $(`f-${axis}-mmrev`).value = cfg.mm_per_rev;
-  $(`f-${axis}-veljog`).value = cfg.vel_jog;
-  $(`f-${axis}-velhome`).value = cfg.vel_home;
+  $(`f-${axis}-veljog`).value = cfg.vel_jog ?? FALLBACK_VEL_JOG;
+  $(`f-${axis}-velhome`).value = cfg.vel_home ?? FALLBACK_VEL_HOME;
 }
 
 // --- budowa tabeli --------------------------------------------------------
@@ -157,8 +162,8 @@ function addNewAxis() {
     soft_min: -50,
     soft_max: 50,
     mm_per_rev: 5,
-    vel_jog: 500,
-    vel_home: 1000,
+    vel_jog: FALLBACK_VEL_JOG,
+    vel_home: FALLBACK_VEL_HOME,
   });
   input.value = "";
   msg.className = "msg";

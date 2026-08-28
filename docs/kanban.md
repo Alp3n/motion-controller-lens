@@ -34,8 +34,10 @@ mam to założyć.
 - [ ] Rozszerzyć protokół mostka, żeby dodana oś faktycznie jeździła (C++, sprzęt)
 - [ ] Bazowanie HardStop + Offset Move + przycisk „HOME wszystkich osi"
       + ekran bazowania
-- [ ] Siła trzypoziomowa (globalna / cykl / program technologa) —
-      `ILimits.TrqGlobal`
+- [x] Siła trzypoziomowa (globalna / cykl / program technologa) — mechanizm
+      i API gotowe od etapu 2 tematu B, teraz ekran `/profiles`. Limit
+      momentu dalej tylko w symulatorze (protokół mostka bez komendy
+      momentu — C++, wymaga sprzętu)
 - [x] Prędkości JOG i bazowania per oś (max i robocza już były gotowe —
       profile parametrów, `POSUW_ROBOCZY`/`POSUW_DOJAZDU`); bazowanie tylko
       w symulatorze, JOG też na sprzęcie

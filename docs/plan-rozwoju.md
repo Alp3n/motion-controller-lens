@@ -124,11 +124,14 @@ cyklu (temat F), ruch osi innych niż X/Y/Z (temat C).
       bazowania"; przycisk „dojazd do HOME wszystkich osi"; oddzielny ekran
       konfiguracji bazowania. **Uwaga:** parametrów bazowania nie da się
       ustawić z kodu — wyłącznie w ClearView (temat H).
-- [ ] Konfiguracja siły — **trzy poziomy**: globalna (domyślnie 20%), ruch
+- [x] Konfiguracja siły — **trzy poziomy**: globalna (domyślnie 20%), ruch
       podczas cyklu maszyny (per zdefiniowany ruch, domyślnie 15%), ruch
-      podczas programu technologa (domyślnie 10%).
-      Mechanizm: `ILimits.TrqGlobal` + `TrqUnit(PCT_MAX)` — ustawialny
-      z API w czasie pracy.
+      podczas programu technologa (domyślnie 10%). Mechanizm (`ILimits.TrqGlobal`
+      + `TrqUnit(PCT_MAX)`, `/api/profiles`) gotowy od etapu 2 tematu B; teraz
+      dochodzi ekran `/profiles` do edycji i przełączania. Limit momentu
+      nadal działa tylko w symulatorze — do sprzętu wymaga rozszerzenia
+      protokołu mostka (C++, sprzęt). Szczegóły:
+      [`zmiany/ekran-profili.md`](zmiany/ekran-profili.md).
 - [x] Prędkości JOG i bazowania per oś — ekran `/axes`; JOG działa też na
       sprzęcie (trafia do mostka komendą `JOG`), bazowanie tylko w
       symulatorze (na sprzęcie steruje nim ClearView, nie nasz serwer).

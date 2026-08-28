@@ -570,4 +570,9 @@ async def cycle_page():
     return FileResponse(STATIC_DIR / "cycle.html")
 
 
+@app.get("/profiles", include_in_schema=False)
+async def profiles_page():
+    return FileResponse(STATIC_DIR / "profiles.html")
+
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

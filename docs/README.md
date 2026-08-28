@@ -78,6 +78,10 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   konfiguracja” (bez wsparcia mostka).
 - [zmiany/predkosci-jog-bazowanie.md](zmiany/predkosci-jog-bazowanie.md) —
   prędkość JOG i bazowania konfigurowalne per oś na ekranie `/axes`;
-  bazowanie działa tylko w symulatorze.
+  bazowanie działa tylko w symulatorze. Zawiera też poprawkę: zapis zerował
+  pola, gdy serwer nie został zrestartowany po `git pull`.
+- [zmiany/ekran-profili.md](zmiany/ekran-profili.md) — ekran `/profiles`:
+  siła trzypoziomowa (globalny/cykl/program) i prędkość, edycja i
+  przełączanie aktywnego profilu.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

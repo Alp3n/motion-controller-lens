@@ -36,3 +36,21 @@ były ruszane.
   `POSUW_DOJAZDU` w programie technologa) zostały świadomie pominięte —
   już istnieją i już są egzekwowane; ten krok dokładał tylko brakujące dwie
   kategorie z punktu planu.
+
+### Poprawka: zapis zerował pola przy nieodświeżonym serwerze
+
+Zgłoszenie: po wpisaniu nowej prędkości JOG/bazowania i kliknięciu „Zapisz”
+wszystkie pola na ekranie pustoszały, a komunikat mówił, że prędkość musi
+być większa od zera. Przyczyna: przeglądarka miała już nowy `axes.js`
+(wysyła `vel_jog`/`vel_home`), ale proces serwera nie został zrestartowany
+po `git pull` i odpowiadał starym kodem bez tych pól. `writeAxis()` wpisywał
+wtedy `undefined` do pola liczbowego — przeglądarka czyści taką wartość do
+pustego napisu, co walidacja odczytuje jako zero.
+
+Poprawka w `axes.js`: `writeAxis()` ma teraz awaryjny fallback
+(`FALLBACK_VEL_JOG`/`FALLBACK_VEL_HOME` = 500/1000, te same liczby co
+`DEFAULT_VEL_JOG`/`DEFAULT_VEL_HOME` w `app/axes.py`) na wypadek odpowiedzi
+serwera bez tych pól — dotyczy każdej niedopasowanej wersji frontend/backend,
+nie tylko tego jednego przypadku. **To nie zastępuje właściwego rozwiązania:
+po każdym `git pull` trzeba zrestartować proces serwera** (sam refresh
+przeglądarki nie wystarczy — restartu wymaga kod Pythona, nie tylko JS).
