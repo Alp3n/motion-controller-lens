@@ -22,10 +22,16 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
-AXIS_NAMES = ("x", "y", "z")
+# Osie wymagane zawsze — geometria cięcia (.prg) jest zdefiniowana w X/Y/Z
+# i bez nich maszyna nie działa. Konfiguracja może zawierać dodatkowe osie
+# ponad te trzy (np. podajnik, docisk) — patrz docs/model-cyklu-maszyny.md.
+REQUIRED_AXES = ("x", "y", "z")
+
+_AXIS_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 HOME_MINUS = "minus"
 HOME_PLUS = "plus"
@@ -35,6 +41,11 @@ HOME_POINTS = (HOME_MINUS, HOME_PLUS, HOME_CENTER)
 # tolerancja porównań [mm] — chroni przed odrzuceniem limitu równego granicy
 # zakresu tylko dlatego, że 300/2 zapisało się jako 149.99999999999997
 EPS = 1e-6
+
+# wartości startowe dla plików sprzed etapu prędkości JOG/bazowania — te same
+# liczby, które wcześniej były wpisane na sztywno w main.py i machine.py
+DEFAULT_VEL_JOG = 500.0     # mm/min
+DEFAULT_VEL_HOME = 1000.0   # mm/min
 
 
 class AxisConfigError(Exception):
@@ -61,6 +72,9 @@ class AxisConfig:
     soft_min: float     # limit programowy dolny [mm]
     soft_max: float     # limit programowy górny [mm]
     mm_per_rev: float   # przełożenie posuwu: mm na obrót silnika
+    vel_jog: float = DEFAULT_VEL_JOG    # prędkość ruchu ręcznego (JOG) [mm/min]
+    vel_home: float = DEFAULT_VEL_HOME  # prędkość bazowania [mm/min] — tylko symulator,
+                                         # na sprzęcie bazowaniem steruje ClearView
 
     # --- zakres fizyczny (wynika z długości i punktu bazowego) -------------
 
@@ -81,6 +95,8 @@ class AxisConfig:
             "soft_min": round(self.soft_min, 4),
             "soft_max": round(self.soft_max, 4),
             "mm_per_rev": round(self.mm_per_rev, 6),
+            "vel_jog": round(self.vel_jog, 4),
+            "vel_home": round(self.vel_home, 4),
             # pola wyliczane — tylko do odczytu, dla panelu i dokumentacji
             "phys_min": round(lo, 4),
             "phys_max": round(hi, 4),
@@ -104,6 +120,18 @@ class AxisConfig:
             soft_min=_num(data["soft_min"], f"{label}: limit programowy MIN"),
             soft_max=_num(data["soft_max"], f"{label}: limit programowy MAX"),
             mm_per_rev=_num(data["mm_per_rev"], f"{label}: przełożenie posuwu"),
+            # opcjonalne — pliki sprzed tego pola dostają dawną stałą wartość,
+            # zamiast odmawiać startu serwera z powodu brakującego pola
+            vel_jog=(
+                _num(data["vel_jog"], f"{label}: prędkość JOG")
+                if "vel_jog" in data
+                else DEFAULT_VEL_JOG
+            ),
+            vel_home=(
+                _num(data["vel_home"], f"{label}: prędkość bazowania")
+                if "vel_home" in data
+                else DEFAULT_VEL_HOME
+            ),
         )
         cfg.validate(axis)
         return cfg
@@ -123,6 +151,10 @@ class AxisConfig:
             raise AxisConfigError(
                 f"{label}: przełożenie posuwu (mm na obrót) musi być większe od zera"
             )
+        if self.vel_jog <= 0:
+            raise AxisConfigError(f"{label}: prędkość JOG musi być większa od zera")
+        if self.vel_home <= 0:
+            raise AxisConfigError(f"{label}: prędkość bazowania musi być większa od zera")
         if self.soft_max - self.soft_min <= EPS:
             raise AxisConfigError(
                 f"{label}: limit programowy MIN ({_mm(self.soft_min)}) musi być "
@@ -152,7 +184,7 @@ def default_axes(work_area: dict) -> dict[str, AxisConfig]:
     i długość dobrana do dalszego z krańców.
     """
     axes: dict[str, AxisConfig] = {}
-    for axis in AXIS_NAMES:
+    for axis in REQUIRED_AXES:
         lo = float(work_area[f"{axis}_min"])
         hi = float(work_area[f"{axis}_max"])
         if abs(lo) < EPS:
@@ -176,15 +208,25 @@ def default_axes(work_area: dict) -> dict[str, AxisConfig]:
 
 
 def parse_axes(data: dict) -> dict[str, AxisConfig]:
-    """Słownik {oś: parametry} -> konfiguracja; rzuca AxisConfigError."""
+    """Słownik {oś: parametry} -> konfiguracja; rzuca AxisConfigError.
+
+    Wymaga co najmniej osi z `REQUIRED_AXES` (X, Y, Z) — reszta kluczy w
+    `data` to osie dodatkowe (np. podajnik, docisk) i zostaje zachowana.
+    """
     if not isinstance(data, dict):
         raise AxisConfigError("oczekiwano obiektu z osiami X, Y, Z")
-    missing = [a for a in AXIS_NAMES if a not in data]
+    missing = [a for a in REQUIRED_AXES if a not in data]
     if missing:
         raise AxisConfigError(
             "brak konfiguracji osi: " + ", ".join(a.upper() for a in missing)
         )
-    return {axis: AxisConfig.from_dict(axis, data[axis]) for axis in AXIS_NAMES}
+    for axis in data:
+        if not _AXIS_NAME_RE.match(axis):
+            raise AxisConfigError(
+                f"nieprawidłowa nazwa osi '{axis}' — małe litery, cyfry, "
+                "podkreślenie, zaczynając od litery"
+            )
+    return {axis: AxisConfig.from_dict(axis, data[axis]) for axis in data}
 
 
 def load(path: Path, fallback_work_area: dict) -> dict[str, AxisConfig]:
@@ -205,7 +247,7 @@ def load(path: Path, fallback_work_area: dict) -> dict[str, AxisConfig]:
 
 def save(path: Path, axes: dict[str, AxisConfig]) -> None:
     """Zapis atomowy — przerwany zapis nie zostawia obciętego pliku limitów."""
-    payload = {"axes": {axis: axes[axis].to_dict() for axis in AXIS_NAMES}}
+    payload = {"axes": {name: cfg.to_dict() for name, cfg in axes.items()}}
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -213,13 +255,17 @@ def save(path: Path, axes: dict[str, AxisConfig]) -> None:
 
 
 def work_area(axes: dict[str, AxisConfig]) -> dict:
-    """Obszar roboczy do walidacji programów — z limitów programowych."""
+    """Obszar roboczy do walidacji programów — z limitów programowych.
+
+    Tylko X/Y/Z: to jest zakres cięcia dla plików `.prg`, nie dotyczy osi
+    dodatkowych (podajnik, docisk).
+    """
     area = {}
-    for axis in AXIS_NAMES:
+    for axis in REQUIRED_AXES:
         area[f"{axis}_min"] = axes[axis].soft_min
         area[f"{axis}_max"] = axes[axis].soft_max
     return area
 
 
 def to_dict(axes: dict[str, AxisConfig]) -> dict:
-    return {axis: axes[axis].to_dict() for axis in AXIS_NAMES}
+    return {name: cfg.to_dict() for name, cfg in axes.items()}

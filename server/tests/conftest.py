@@ -1,12 +1,15 @@
 """Wspólne ustawienia testów.
 
-Konfiguracja osi musi wskazywać na plik tymczasowy, zanim zaimportuje się
-aplikacja — inaczej testy czytałyby (i nadpisywały) konfigurację maszyny.
+Konfiguracja osi i profili musi wskazywać na pliki tymczasowe, zanim
+zaimportuje się aplikacja — inaczej testy czytałyby (i nadpisywały)
+konfigurację maszyny.
 """
 
 import os
 import tempfile
 
-os.environ.setdefault(
-    "AXES_CONFIG", os.path.join(tempfile.mkdtemp(prefix="axes-test-"), "axes.json")
-)
+_tmp = tempfile.mkdtemp(prefix="cfg-test-")
+
+os.environ.setdefault("AXES_CONFIG", os.path.join(_tmp, "axes.json"))
+os.environ.setdefault("PROFILES_CONFIG", os.path.join(_tmp, "profiles.json"))
+os.environ.setdefault("CYCLE_CONFIG", os.path.join(_tmp, "cycle.json"))

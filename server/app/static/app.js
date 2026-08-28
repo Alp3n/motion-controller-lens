@@ -135,14 +135,61 @@ document.querySelectorAll(".rel").forEach((btn) => {
   });
 });
 
+// --- JOG: „martwy człowiek" — ruch tylko przy przytrzymanym przycisku -----
+/* Temat F w docs/plan-rozwoju.md: przytrzymanie = ruch, puszczenie =
+   zatrzymanie. Mostek (i symulator) rozumie tylko ruch o zadany dystans
+   (komenda JOG), nie „jedź, dopóki nie każę stanąć" — więc przytrzymanie
+   realizujemy powtarzaniem krótkich przejazdów co najmniej co JOG_TICK_MS,
+   dopóki przycisk jest wciśnięty. Puszczenie po prostu przestaje wysyłać
+   kolejne przejazdy — trwający w tej chwili przejazd jest krótki (krok z
+   listy), więc kończy się niemal natychmiast. To wygoda operatora, nie
+   certyfikowana funkcja bezpieczeństwa — tę rolę pełni sprzętowy E-stop
+   i Global Stop na SC4-Hub. */
+const JOG_TICK_MS = 50;
+let jogHold = null; // { axis, dir } | null — trzymany w tej chwili przycisk
+
+async function jogLoop(axis, dir) {
+  while (jogHold && jogHold.axis === axis && jogHold.dir === dir) {
+    const distance = Number($("jog-step").value) * dir;
+    const tickStart = performance.now();
+    try {
+      await api("POST", "/api/machine/jog", { axis, distance });
+    } catch (e) {
+      showMsg($("ctrl-msg"), e.message);
+      jogHold = null;
+      break;
+    }
+    const wait = JOG_TICK_MS - (performance.now() - tickStart);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  }
+}
+
+function startJog(btn) {
+  if (jogHold) return; // inny przycisk już trzymany — ignorujemy
+  const axis = btn.dataset.axis;
+  const dir = Number(btn.dataset.dir);
+  jogHold = { axis, dir };
+  jogLoop(axis, dir);
+}
+
+function stopJog() {
+  jogHold = null;
+}
+
 document.querySelectorAll(".jog").forEach((btn) => {
-  btn.onclick = () => {
-    const distance = Number($("jog-step").value) * Number(btn.dataset.dir);
-    api("POST", "/api/machine/jog", { axis: btn.dataset.axis, distance }).catch((e) =>
-      showMsg($("ctrl-msg"), e.message)
-    );
-  };
+  btn.addEventListener("mousedown", () => startJog(btn));
+  btn.addEventListener("touchstart", (ev) => {
+    ev.preventDefault(); // bez tego telefon/tablet dodatkowo emuluje kliknięcie
+    startJog(btn);
+  });
+  btn.addEventListener("mouseleave", stopJog);
+  btn.addEventListener("touchend", stopJog);
+  btn.addEventListener("touchcancel", stopJog);
 });
+// siatka bezpieczeństwa: puszczenie poza przyciskiem albo utrata fokusu karty
+// (np. alt-tab w trakcie trzymania) też musi zatrzymać ruch
+window.addEventListener("mouseup", stopJog);
+window.addEventListener("blur", stopJog);
 
 $("btn-mes").onclick = async () => {
   const order = $("mes-order").value.trim();
@@ -175,14 +222,16 @@ api("POST", "/api/sim/safety-enable", { enabled: true })
   })
   .catch(() => {});
 
-initView();
-connectWs();
-
 // --- podgląd pozycji ------------------------------------------------------
 /* Rysunek obszaru roboczego w osiach XY plus wskaźnik osi Z. Odświeżany
    z każdą ramką statusu, więc pokazuje pozycję rzeczywistą (zmierzoną przez
    enkodery), a nie zadaną. */
 
+/* Deklaracja musi stać PRZED initView()/connectWs() na końcu pliku: `const`
+   nie jest hoistowane jak `function`, więc wywołanie initView() powyżej tej
+   linii kończyło się „Cannot access 'view' before initialization". Skrypt
+   przerywał się w tym miejscu, przez co connectWs() już się nie wykonywało —
+   panel nie odbierał statusu i pozycja stała w miejscu. */
 const view = { cvs: null, ctx: null, area: null, trail: [], prevState: null };
 
 const CSSVAR = (name, fallback) =>
@@ -387,3 +436,8 @@ function drawView(st) {
       `X ${fmt(px)}   Y ${fmt(py)}   Z ${fmt(pz)} mm` + (rel ? `   •  zluzowane: ${rel}` : "");
   }
 }
+
+// --- start ----------------------------------------------------------------
+/* Na samym końcu, po wszystkich deklaracjach — patrz komentarz przy `view`. */
+initView();
+connectWs();

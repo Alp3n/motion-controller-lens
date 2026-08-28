@@ -10,7 +10,9 @@
   <header>
     <h1>Edytor technologa — programy (.prg)</h1>
     <a href="/">← Panel operatora</a>
-    <a href="/axes">Konfiguracja osi →</a>
+    <a href="/axes">Konfiguracja osi</a>
+    <a href="/profiles">Profile parametrów</a>
+    <a href="/cycle">Cykl maszyny →</a>
   </header>
 
   <main>
@@ -63,6 +65,14 @@
           <button class="small" id="btn-save">💾 Zapisz program</button>
           <button class="small" id="btn-download">⬇ Pobierz plik</button>
         </div>
+        <div class="btn-row" style="margin-top:10px; max-width:420px">
+          <input id="save-as-number" placeholder="nowy numer (12 cyfr)" maxlength="12" style="flex:1">
+          <button class="small" id="btn-save-as">📄 Zapisz jako</button>
+        </div>
+        <p class="muted" style="margin-top:4px">
+          Zapisuje bieżący program (ze wszystkimi operacjami) pod nowym
+          numerem — oryginał zostaje bez zmian. Numer musi być inny i wolny.
+        </p>
         <p id="editor-msg" class="msg"></p>
 
         <h2 style="margin-top:20px">Podgląd toru</h2>

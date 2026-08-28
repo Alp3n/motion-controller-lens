@@ -17,25 +17,46 @@ mam to założyć.
       (świadomie odłożone — osobny krok później)
 
 ### B. Model cyklu maszyny i programu detalu
-- [ ] Zaprojektować `Axis`, `ParameterProfile`, `CycleStep`, `PartProgram`, `Operation`
-- [ ] Warstwa cyklu maszyny (podawanie → bazowanie/docisk → program detalu → przywrócenie → wyrzut)
-- [ ] Mechanizm snapshot/restore parametrów osi (z obsługą błędu/przerwania)
-- [ ] Ekran definiowania ruchów cyklu + operacja „skok do podprogramu technologa"
+- [x] Zaprojektować model — propozycja w `model-cyklu-maszyny.md`, do przeglądu
+- [x] Etap 1: `AXIS_NAMES` → `REQUIRED_AXES` w `axes.py`, dowolne osie ponad
+      X/Y/Z zachowane; mostek dalej dostaje `AXCFG` tylko dla X/Y/Z
+- [x] Etap 2: `ParameterProfile` + `/api/profiles`; prędkość działa w symulatorze,
+      moment na razie tylko po stronie serwera (ostrzeżenie w trybie sprzętowym)
+- [ ] Etap 2b: moment i rampy do sprzętu — komenda w protokole mostka (C++,
+      wymaga SDK i sprzętu)
+- [x] Etap 3: `CycleStep` + `/api/cycle` + snapshot/restore profilu w `try/finally`
+      (wraca przy błędzie i przy STOP; `WYJSCIE` na razie tylko w symulatorze)
+- [x] Etap 4: ekran `/cycle` — tabela kroków, walidacja, uruchomienie
+      i podgląd na żywo; krok PROGRAM = skok do podprogramu technologa
+- [ ] **Znalezione przy temacie F, nie wcześniej zgłoszone:** `ClearCoreMachine`
+      nie ma `start_cycle` — `/cycle` (jeden przebieg i tryb automatyczny)
+      działa dziś wyłącznie w symulatorze; na sprzęcie zwróciłby
+      niezłapany błąd. Wymaga C++ i sprzętu — patrz `zmiany/tryby-pracy.md`
 
 ### C. Osie i konfiguracja ruchu
-- [ ] Dodatkowe osie w `/axes` (podajnik, docisk z kontrolą momentu)
-- [ ] Bazowanie bez krańcówek + przycisk „HOME wszystkich osi" + ekran bazowania
-- [ ] Siła trzypoziomowa (globalna / cykl / program technologa)
-- [ ] Prędkości max i robocze (roboczy / bazowanie / JOG) per oś
-- [ ] Siła/prędkość konfigurowalne per krok programu
+- [x] Dodatkowe osie w `/axes` (dodawanie/usuwanie, odznaka „tylko konfiguracja”)
+- [ ] Rozszerzyć protokół mostka, żeby dodana oś faktycznie jeździła (C++, sprzęt)
+- [ ] Bazowanie HardStop + Offset Move + przycisk „HOME wszystkich osi"
+      + ekran bazowania
+- [x] Siła trzypoziomowa (globalna / cykl / program technologa) — mechanizm
+      i API gotowe od etapu 2 tematu B, teraz ekran `/profiles`. Limit
+      momentu dalej tylko w symulatorze (protokół mostka bez komendy
+      momentu — C++, wymaga sprzętu)
+- [x] Prędkości JOG i bazowania per oś (max i robocza już były gotowe —
+      profile parametrów, `POSUW_ROBOCZY`/`POSUW_DOJAZDU`); bazowanie tylko
+      w symulatorze, JOG też na sprzęcie
+- [x] Siła/prędkość zależne od pozycji — sprawdzone: *Conditional Torque
+      Limiting* w serwie (ClearView) + `TrqGlobal` z API
 - [ ] Siła per operacja w programie technologa
+- [ ] Soft limits w silniku jako warstwa dodatkowa (wymagają bazowania)
+- [ ] Ruchy head-tail dla zagłębiania w Z; ruchy asymetryczne
 
 ### D. Wrzeciono
 - [ ] Włączenie przy starcie maszyny (przełącznik)
 - [ ] Włączenie przy starcie programu (dwie opcje konfigurowalne)
-- [ ] Sterowanie prędkością przez PWM
-- [ ] Włącz/wyłącz na osobnym porcie I/O
-- [ ] Konfiguracja rozpędzania/hamowania PWM
+- [ ] Sterowanie prędkością przez zewnętrzny regulator PWM, załączany
+      wyjściem `BRAKE_0`/`BRAKE_1` (decyzja: patrz temat J)
+- [ ] Konfiguracja rozpędzania/hamowania na regulatorze PWM
 
 ### E. Drzwi/osłona i uprawnienia
 - [ ] Wejście sygnału drzwi (PWM/binarny), aktywne tylko w trybie auto
@@ -43,25 +64,48 @@ mam to założyć.
 - [ ] **Decyzja z Tobą:** PIN-y czy osobne konta
 - [ ] Przegląd obwodu bezpieczeństwa z osobą uprawnioną (CE) przed produkcją
 
-### F. Tryby pracy
-- [ ] Manualny (martwy człowiek)
-- [ ] Półautomatyczny (jeden cykl)
-- [ ] Automatyczny (pętla do E-stop/drzwi) + start/stop
+### F. Tryby pracy — zrobione (ekran `/cycle` + panel operatora)
+- [x] Manualny (martwy człowiek) — JOG na panelu reaguje na przytrzymanie
+- [x] Półautomatyczny (jeden cykl) — istniał od etapu 3/4 tematu B
+- [x] Automatyczny (pętla do STOP/błędu/utraty zezwolenia) + start/stop —
+      drzwi jeszcze nie istnieją jako sygnał (temat E), zatrzyma się na tym,
+      co już jest: STOP, błąd w kroku, utrata sygnału zezwolenia
 
 ### G. Ekrany i programy
 - [ ] Ekran główny (nazwa maszyny, logo WALKNER)
-- [ ] Ekran diagnostyczny (admin)
-- [ ] Ekran definiowania operacji cyklu
-- [ ] „Zapisz jako" dla programów technologicznych
+- [ ] Ekran diagnostyczny (admin) — czeka na warstwę ról z tematu E
+- [x] Ekran definiowania operacji cyklu — `/cycle`, zrobione już w etapie 4
+      tematu B (korekta listy, nie nowa praca)
+- [x] „Zapisz jako" dla programów technologicznych
 
 ### H. Uruchomienie sprzętowe
-- [ ] Auto-Tune osi pod obciążeniem (Windows/ClearView)
-- [ ] Homing w ClearView
-- [ ] Weryfikacja pomiarowa toru `LINIA`
+Jedna sesja w ClearView (Windows) domyka pierwsze pięć pozycji:
+- [ ] Auto-Tune osi pod obciążeniem
+- [ ] Homing HardStop + Offset Move
+- [ ] Soft limits w silnikach
+- [ ] Warunkowe limitowanie momentu (Move Done, Absolute Position)
+- [ ] Wejścia A/B węzłów („Input Actions")
+- [ ] Sprawdzić dostępność g-Stop (tłumienie drgań)
+
+Pomiary i testy:
+- [ ] Weryfikacja pomiarowa toru `LINIA` + próba grup wyzwalania
+- [ ] Zmierzyć domyślny watchdog sieciowy (czy w ogóle działa)
 - [ ] Test: utrata zezwolenia w ruchu
 - [ ] Test: komunikacja przy E-stopie
+- [ ] Test: czy USB re-enumeracja załącza `BRAKE_x` (bez wrzeciona!)
 - [ ] Reguła udev — instalacja i weryfikacja
-- [ ] Obciążalność wyjść `BRAKE_0`/`BRAKE_1`
+- [x] Obciążalność wyjść `BRAKE_0`/`BRAKE_1` — 500 mA / 24 VDC
+
+### J. Skąd I/O — decyzja podjęta, drobiazgi zostają
+- [x] Obciążalność `BRAKE_0`/`BRAKE_1` — **500 mA / 24 VDC**; użyć przekaźnika
+      pośredniczącego, nie stycznika bezpośrednio
+- [ ] **Bezpieczeństwo:** `BRAKE_x` → regulator wrzeciona **szeregowo przez
+      obwód osłon** (system może przypadkowo załączyć wyjście)
+- [ ] Osobne zasilanie 24 V do płytki SC4-HUB (warunek działania wyjść)
+- [ ] Wybór konkretnego modelu zewnętrznego regulatora PWM do wrzeciona
+- [x] Przeznaczenie drugiego wyjścia: definiowane w konfiguracji maszyny
+      (temat B, `CycleStep`) — podajnik/wyrzutnik/lampka/błąd, konkretny
+      wybór przy budowie tego ekranu; program technologa go nie używa
 
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`

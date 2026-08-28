@@ -97,13 +97,29 @@ zadanym posuwem nie jest tym, co ta magistrala robi natywnie.
 
 Operacje `PUNKT` (zagłębienie w miejscu) są bezpieczne. Problem dotyczy
 operacji **`LINIA`**, gdzie liczy się tor — mostek może musieć dzielić linię
-na segmenty i pilnować synchronizacji osi. **Do zweryfikowania u Teknica przed
-wyborem architektury.**
+na segmenty i pilnować synchronizacji osi.
+
+> **Częściowa odpowiedź (2026-08-26).** Dokumentacja sFoundation daje
+> **grupy wyzwalania** (Triggered Moves, funkcja Advanced — nasze serwa ją
+> mają): ruchy wysyła się do wszystkich osi z flagą `isTriggered`, a potem
+> jedną komendą (`TriggerMovesInGroup`) startują równocześnie. Usuwa to
+> **niejednoczesny start osi**, ale nie odchyłkę na rampach — każda oś nadal
+> jedzie własnym profilem. To poprawa, nie interpolacja. Szczegóły:
+> [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md). Weryfikacja
+> pomiarowa toru nadal potrzebna.
 
 ### 3. Realtime i utrata łączności
 
 Do zaprojektowania: zachowanie mostka przy utracie USB, zawieszeniu serwera
 i przy `STOP` w trakcie ruchu.
+
+> **Częściowa odpowiedź (2026-08-26).** Silnik ma **watchdog sieciowy** —
+> jego wygaśnięcie z braku ruchu od hosta wywołuje `NodeStop`, czyli przy
+> zawieszeniu mostka osie zatrzymują się same. Wyjścia `BRAKE_x` też
+> rozłączają się przy utracie łączności z PC. **Nie wiadomo jednak, jaki jest
+> domyślny czas watchdoga ani czy jest włączony** — dokumentacja API tego nie
+> podaje. Do zmierzenia, zanim uznamy to za warstwę ochrony. Szczegóły:
+> [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
 
 ## Pakiet sFoundation dla Linuksa
 
@@ -361,7 +377,12 @@ Testy, których jeszcze nie zrobiono:
 
 Pozostałe:
 
-- [ ] Obciążalność wyjść `BRAKE_0`/`BRAKE_1` pod stycznik wrzeciona.
+- [x] ~~Obciążalność wyjść `BRAKE_0`/`BRAKE_1` pod stycznik wrzeciona.~~
+      **500 mA / 24 VDC** (instrukcja ClearPath-SC rev. 1.45, str. 47) —
+      wystarcza na przekaźnik pośredniczący, nie na stycznik bezpośrednio.
+      Uwaga: producent ostrzega, że system operacyjny może **przypadkowo
+      załączyć** to wyjście — wymagane szeregowe wpięcie w obwód osłon.
+      Patrz [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
 - [ ] Zdecydować o losie `firmware/clearcore/` — usunąć czy zostawić jako
       specyfikację protokołu (mostek go implementuje).
 - [x] ~~Przenieść pakiet Teknica do `vendor/teknic/` (poza gitem).~~

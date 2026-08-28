@@ -24,6 +24,16 @@ Ustalenia i analizy:
   zbioru operacji `.prg`, format 2, przebudowa edytora technologa.
 - [konfiguracja-osi.md](konfiguracja-osi.md) — model osi: długość, punkt
   bazowania, limity programowe, przełożenie posuwu; komenda `AXCFG`.
+- [inspiracje-mic488.md](inspiracje-mic488.md) — co warto przenieść z kontrolera
+  WObit MIC488 (tablica pozycji, przerwania, tryby bazowania) i znalezione
+  ryzyko: SC4-Hub nie ma I/O wymaganego przez plany (PWM wrzeciona).
+- [mozliwosci-clearpath-sc.md](mozliwosci-clearpath-sc.md) — czego nie
+  wykorzystujemy z serw (mamy wersję Advanced): limit momentu z API, bazowanie
+  do oporu, grupy wyzwalania, zdarzenia; ryzyko: system może przypadkowo
+  załączyć wyjście BRAKE.
+- [model-cyklu-maszyny.md](model-cyklu-maszyny.md) — propozycja modelu
+  danych dla tematu B: `Axis`/`ParameterProfile`/`CycleStep`/`PartProgram`,
+  snapshot/restore parametrów, podział na etapy.
 
 Zmiany w kodzie opisujemy w [`zmiany/`](zmiany/) — jeden plik na zmianę,
 nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
@@ -49,5 +59,34 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/srodowisko-testowe-vscode.md](zmiany/srodowisko-testowe-vscode.md) —
   konfiguracja VS Code (interpreter, debugger, testy) zweryfikowana na
   Ubuntu 24.04.
+- [zmiany/osie-dodatkowe-etap1.md](zmiany/osie-dodatkowe-etap1.md) —
+  konfiguracja osi przyjmuje dowolne osie ponad wymagane X/Y/Z (etap 1
+  tematu B).
+- [zmiany/profile-parametrow-etap2.md](zmiany/profile-parametrow-etap2.md) —
+  profile parametrów ruchu (prędkość, rampy, limit momentu) i `/api/profiles`
+  (etap 2 tematu B).
+- [zmiany/cykl-maszyny-etap3.md](zmiany/cykl-maszyny-etap3.md) — kroki cyklu
+  maszyny, `/api/cycle` i snapshot/restore profilu wokół programu detalu
+  (etap 3 tematu B).
+- [zmiany/ekran-cyklu-etap4.md](zmiany/ekran-cyklu-etap4.md) — ekran
+  `/cycle` do definiowania i uruchamiania cyklu (etap 4 tematu B).
+- [zmiany/poprawka-podgladu-pozycji.md](zmiany/poprawka-podgladu-pozycji.md) —
+  błąd JS zatrzymywał skrypt panelu, przez co nie działał WebSocket i podgląd
+  pozycji.
+- [zmiany/dodawanie-osi-ekran.md](zmiany/dodawanie-osi-ekran.md) — ekran
+  `/axes` pozwala dopisać oś ponad X/Y/Z, oznaczoną jako „tylko
+  konfiguracja” (bez wsparcia mostka).
+- [zmiany/predkosci-jog-bazowanie.md](zmiany/predkosci-jog-bazowanie.md) —
+  prędkość JOG i bazowania konfigurowalne per oś na ekranie `/axes`;
+  bazowanie działa tylko w symulatorze. Zawiera też poprawkę: zapis zerował
+  pola, gdy serwer nie został zrestartowany po `git pull`.
+- [zmiany/ekran-profili.md](zmiany/ekran-profili.md) — ekran `/profiles`:
+  siła trzypoziomowa (globalny/cykl/program) i prędkość, edycja i
+  przełączanie aktywnego profilu.
+- [zmiany/tryby-pracy.md](zmiany/tryby-pracy.md) — tryb automatyczny (cykl
+  w pętli) i manualny JOG „martwy człowiek"; opisuje też znaleziony błąd
+  zawieszający cały serwer przy kroku cyklu bez realnego ruchu.
+- [zmiany/zapisz-jako-program.md](zmiany/zapisz-jako-program.md) — kopiowanie
+  programu technologa pod nowym numerem NC w edytorze.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

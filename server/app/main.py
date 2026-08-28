@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import axes, config
+from . import axes, config, cycle, profiles
 from .machine import (
     ClearCoreMachine,
     MachineError,
@@ -58,6 +58,17 @@ machine = create_machine(
 axes_cfg = axes.load(config.AXES_FILE, config.WORK_AREA)
 machine.apply_axis_config(axes_cfg)
 
+# Profile parametrów ruchu (prędkości, rampy, limit momentu). Zakładane
+# domyślnie dla osi z konfiguracji; błędny plik przerywa start tak samo jak
+# błędna konfiguracja osi — powód w app/profiles.py.
+profiles_cfg, active_profile = profiles.load(config.PROFILES_FILE, axes_cfg.keys())
+machine.apply_profiles(profiles_cfg, active_profile)
+
+# Cykl maszyny — kroki poziomu admina wokół programu detalu. Pusty, dopóki
+# nie zostanie zdefiniowany; błędny plik przerywa start (powód w app/cycle.py).
+cycle_cfg = cycle.load(config.CYCLE_FILE)
+machine.apply_cycle(cycle_cfg)
+
 STATIC_DIR = Path(__file__).parent / "static"
 
 # Jeden poller na cały serwer. Wcześniej status odpytywała każda pętla
@@ -87,7 +98,8 @@ class SelectOrderRequest(BaseModel):
 class JogRequest(BaseModel):
     axis: str = Field(..., pattern="^[xyzXYZ]$")
     distance: float
-    feed: float = 500.0
+    # brak wartości = użyj prędkości JOG skonfigurowanej dla osi (/axes)
+    feed: float | None = None
 
 
 class ReleaseRequest(BaseModel):
@@ -116,6 +128,38 @@ class AxesRequest(BaseModel):
     axes: dict[str, dict] = Field(..., description="osie x, y, z")
 
 
+class ProfilesRequest(BaseModel):
+    """Profile parametrów ruchu z ekranu konfiguracji.
+
+    Jak przy osiach — walidacją zajmuje się app/profiles.py, żeby operator
+    zobaczył komunikat po polsku zamiast błędu schematu.
+    """
+
+    profiles: dict[str, dict] = Field(..., description="nazwa profilu -> osie")
+    active: str = Field(..., description="nazwa profilu aktywnego")
+
+
+class ActiveProfileRequest(BaseModel):
+    active: str = Field(..., description="nazwa profilu do uaktywnienia")
+
+
+class CycleRequest(BaseModel):
+    """Definicja cyklu maszyny z ekranu admina.
+
+    Jak przy osiach i profilach — walidacją zajmuje się app/cycle.py, żeby
+    operator zobaczył komunikat po polsku z numerem kroku.
+    """
+
+    name: str = Field("", description="nazwa cyklu")
+    steps: list[dict] = Field(..., description="kroki cyklu, LP ciągłe od 1")
+
+
+class CycleStartRequest(BaseModel):
+    """Uruchomienie cyklu — jeden przebieg (domyślnie) albo pętla (temat F)."""
+
+    loop: bool = Field(False, description="tryb automatyczny — powtarzaj cykl bez zatrzymania")
+
+
 # --- pomocnicze -----------------------------------------------------------
 
 
@@ -137,6 +181,27 @@ def _axis_warnings(current: dict) -> list[str]:
                 f"załadowany program {program.number} nie mieści się w tych "
                 f"limitach: {exc}"
             )
+    return warnings
+
+
+def _profile_warnings(current: dict) -> list[str]:
+    """Ostrzeżenia o profilach, które są poprawne, ale nie robią tego, co się wydaje."""
+    warnings = []
+    for name, absent in sorted(profiles.missing_axes(current, axes_cfg.keys()).items()):
+        warnings.append(
+            f"profil '{name}' nie opisuje osi "
+            + ", ".join(a.upper() for a in absent)
+            + " — te osie nie będą przez niego ograniczone"
+        )
+    # Limit momentu jest dziś parametrem wyłącznie po stronie serwera. Na
+    # sprzęcie nie zadziała, dopóki protokół mostka nie dostanie komendy
+    # momentu — a operator, który ustawia 10% „żeby było delikatnie", musi
+    # wiedzieć, że na maszynie to nic nie zmienia.
+    if config.MACHINE_MODE != "sim":
+        warnings.append(
+            "limit momentu nie jest wysyłany do sprzętu — protokół mostka nie ma "
+            "jeszcze komendy momentu; wartość działa tylko w symulatorze"
+        )
     return warnings
 
 
@@ -292,6 +357,114 @@ async def put_axes(req: AxesRequest):
     return {"ok": True, "axes": axes.to_dict(new_axes), "warnings": warnings}
 
 
+# --- profile parametrów ruchu --------------------------------------------
+
+
+@app.get("/api/profiles")
+async def get_profiles():
+    """Profile parametrów ruchu + który jest aktywny."""
+    return {
+        "profiles": profiles.to_dict(profiles_cfg),
+        "active": machine.active_profile,
+        "file": str(config.PROFILES_FILE),
+        "warnings": _profile_warnings(profiles_cfg),
+    }
+
+
+@app.put("/api/profiles")
+async def put_profiles(req: ProfilesRequest):
+    """Zapis profili: walidacja, plik, przekazanie do maszyny."""
+    global profiles_cfg
+    if machine.status.state in (MachineState.RUNNING, MachineState.HOMING):
+        raise HTTPException(
+            409, "nie można zmieniać profili w trakcie ruchu maszyny"
+        )
+    try:
+        new_profiles, active = profiles.parse_profiles(
+            {"profiles": req.profiles, "active": req.active}
+        )
+    except profiles.ProfileError as exc:
+        raise HTTPException(422, str(exc))
+
+    warnings = _profile_warnings(new_profiles)
+    try:
+        profiles.save(config.PROFILES_FILE, new_profiles, active)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.PROFILES_FILE}: {exc}")
+    profiles_cfg = new_profiles
+    machine.apply_profiles(new_profiles, active)
+    return {
+        "ok": True,
+        "profiles": profiles.to_dict(new_profiles),
+        "active": active,
+        "warnings": warnings,
+    }
+
+
+@app.post("/api/profiles/active")
+async def set_active_profile(req: ActiveProfileRequest):
+    """Przełącza aktywny profil bez zmiany samych profili."""
+    try:
+        machine.set_active_profile(req.active)
+    except MachineError as exc:
+        raise HTTPException(409, str(exc))
+    try:
+        profiles.save(config.PROFILES_FILE, profiles_cfg, req.active)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.PROFILES_FILE}: {exc}")
+    return {"ok": True, "active": machine.active_profile}
+
+
+# --- cykl maszyny ---------------------------------------------------------
+
+
+@app.get("/api/cycle")
+async def get_cycle():
+    """Definicja cyklu maszyny."""
+    return {
+        "cycle": cycle_cfg.to_dict(),
+        "step_kinds": list(cycle.STEP_KINDS),
+        "outputs": list(cycle.OUTPUT_NAMES),
+        "file": str(config.CYCLE_FILE),
+        "warnings": cycle.warnings(cycle_cfg, profiles_cfg.keys(), axes_cfg.keys()),
+    }
+
+
+@app.put("/api/cycle")
+async def put_cycle(req: CycleRequest):
+    """Zapis definicji cyklu: walidacja, plik, przekazanie do maszyny."""
+    global cycle_cfg
+    if machine.status.state in (MachineState.RUNNING, MachineState.HOMING):
+        raise HTTPException(409, "nie można zmieniać cyklu w trakcie ruchu maszyny")
+    try:
+        new_cycle = cycle.parse_cycle({"name": req.name, "steps": req.steps})
+    except cycle.CycleError as exc:
+        raise HTTPException(422, str(exc))
+
+    result = cycle.warnings(new_cycle, profiles_cfg.keys(), axes_cfg.keys())
+    try:
+        cycle.save(config.CYCLE_FILE, new_cycle)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.CYCLE_FILE}: {exc}")
+    cycle_cfg = new_cycle
+    machine.apply_cycle(new_cycle)
+    return {"ok": True, "cycle": new_cycle.to_dict(), "warnings": result}
+
+
+@app.post("/api/machine/cycle/start")
+async def start_cycle(req: CycleStartRequest | None = None):
+    """Uruchamia cykl maszyny — jeden przebieg albo pętlę (tryb automatyczny),
+    albo wznawia po PAUZA. Body opcjonalne — brak znaczy jeden przebieg,
+    tak jak przed dodaniem trybu automatycznego (temat F).
+    """
+    loop = req.loop if req is not None else False
+    try:
+        await machine.start_cycle(loop=loop)
+    except MachineError as exc:
+        raise HTTPException(409, str(exc))
+    return {"ok": True}
+
+
 @app.get("/api/status")
 async def get_status():
     return machine.status.to_dict()
@@ -332,8 +505,10 @@ async def machine_reset():
 @app.post("/api/machine/jog")
 async def machine_jog(req: JogRequest):
     distance = max(-config.JOG_MAX_STEP, min(config.JOG_MAX_STEP, req.distance))
+    axis = req.axis.lower()
+    feed = req.feed if req.feed is not None else machine.axis_jog_feed(axis)
     try:
-        await machine.jog(req.axis.lower(), distance, req.feed)
+        await machine.jog(axis, distance, feed)
     except MachineError as exc:
         raise HTTPException(409, str(exc))
     return {"ok": True}
@@ -398,6 +573,16 @@ async def editor():
 @app.get("/axes", include_in_schema=False)
 async def axes_page():
     return FileResponse(STATIC_DIR / "axes.html")
+
+
+@app.get("/cycle", include_in_schema=False)
+async def cycle_page():
+    return FileResponse(STATIC_DIR / "cycle.html")
+
+
+@app.get("/profiles", include_in_schema=False)
+async def profiles_page():
+    return FileResponse(STATIC_DIR / "profiles.html")
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

@@ -1,0 +1,95 @@
+{
+  "name": "produkcja",
+  "steps": [
+    {
+      "lp": 1,
+      "kind": "RUCH",
+      "profile": "cykl",
+      "targets": {
+        "x": 88.0,
+        "y": 70.0,
+        "z": 10.0
+      },
+      "feed": 400.0,
+      "output": null,
+      "output_on": null,
+      "note": "góra"
+    },
+    {
+      "lp": 2,
+      "kind": "RUCH",
+      "profile": "cykl",
+      "targets": {
+        "x": -10.0,
+        "y": 10.0,
+        "z": -2.0
+      },
+      "feed": 500.0,
+      "output": null,
+      "output_on": null,
+      "note": "srodek"
+    },
+    {
+      "lp": 3,
+      "kind": "PROGRAM",
+      "profile": "program",
+      "targets": {},
+      "feed": null,
+      "output": null,
+      "output_on": null,
+      "note": "tech"
+    },
+    {
+      "lp": 4,
+      "kind": "RUCH",
+      "profile": "cykl",
+      "targets": {
+        "x": -20.0,
+        "y": 10.0,
+        "z": -4.0
+      },
+      "feed": 400.0,
+      "output": null,
+      "output_on": null,
+      "note": "wyrzut"
+    },
+    {
+      "lp": 5,
+      "kind": "WYJSCIE",
+      "profile": null,
+      "targets": {},
+      "feed": null,
+      "output": "wyjscie_0",
+      "output_on": true,
+      "note": "out1"
+    },
+    {
+      "lp": 6,
+      "kind": "RUCH",
+      "profile": null,
+      "targets": {
+        "x": 12.0,
+        "y": 54.0,
+        "z": 33.0
+      },
+      "feed": 400.0,
+      "output": null,
+      "output_on": null,
+      "note": ""
+    },
+    {
+      "lp": 7,
+      "kind": "RUCH",
+      "profile": "cykl",
+      "targets": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "feed": 500.0,
+      "output": null,
+      "output_on": null,
+      "note": ""
+    }
+  ]
+}

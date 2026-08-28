@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cykl maszyny — konfiguracja admina</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Cykl maszyny</h1>
+    <a href="/">← Panel operatora</a>
+    <a href="/axes">Konfiguracja osi</a>
+    <a href="/profiles">Profile parametrów</a>
+    <a href="/editor">Edytor technologa →</a>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Kroki cyklu</h2>
+      <p class="muted" style="margin-top:-6px">
+        Cykl opisuje, co maszyna robi <b>wokół</b> programu detalu: podanie,
+        docisk, wywołanie programu technologa, wyrzut. Program detalu (.prg)
+        mówi tylko, co wyciąć — jest wywoływany krokiem <b>PROGRAM</b>.
+        Profil wybrany w kroku obowiązuje <b>tylko na czas tego kroku</b>
+        i wraca po nim — także gdy krok się nie powiedzie albo zostanie
+        przerwany przyciskiem STOP.
+      </p>
+
+      <div class="field" style="max-width:320px; margin-bottom:12px">
+        <label>Nazwa cyklu</label>
+        <input id="f-name" placeholder="np. produkcja">
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>LP</th>
+              <th title="rodzaj kroku">Krok</th>
+              <th title="profil parametrów ruchu na czas tego kroku">Profil</th>
+              <th title="pozycja docelowa osi X [mm]">X</th>
+              <th title="pozycja docelowa osi Y [mm]">Y</th>
+              <th title="pozycja docelowa osi Z [mm]">Z</th>
+              <th title="posuw przejazdu [mm/min]">Posuw</th>
+              <th title="wyjście cyfrowe maszyny">Wyjście</th>
+              <th title="stan wyjścia">Stan</th>
+              <th>Uwagi</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="step-rows"></tbody>
+        </table>
+      </div>
+      <p id="validate-info" class="msg"></p>
+
+      <div class="btn-row" style="margin-top:12px; max-width:520px">
+        <button class="small" id="btn-add">+ Dodaj krok</button>
+        <button id="btn-save">💾 Zapisz cykl</button>
+        <button class="small" id="btn-reload">Przywróć zapisany</button>
+      </div>
+      <p id="cycle-msg" class="msg"></p>
+      <p class="muted" id="cycle-file"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Uruchomienie</h2>
+      <p class="muted" style="margin-top:-6px">
+        Wymaga zbazowanej maszyny (stan READY), a jeśli cykl zawiera krok
+        PROGRAM — także wybranego zlecenia w MES.
+        <b>Półautomatyczny</b> — jeden przebieg cyklu, zatrzymuje się po
+        ostatnim kroku. <b>Automatyczny</b> — cykl powtarza się bez
+        zatrzymania, dopóki nie przerwie go STOP, błąd w kroku albo utrata
+        sygnału zezwolenia.
+      </p>
+      <div class="btn-row" style="max-width:520px">
+        <button id="btn-start">▶ Jeden cykl (półautomatyczny)</button>
+        <button id="btn-start-loop">⟳ Automatyczny (pętla)</button>
+        <button class="small" id="btn-stop">■ STOP</button>
+      </div>
+      <p id="run-state" class="muted" style="margin-top:10px"></p>
+      <p id="run-msg" class="msg"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Rodzaje kroków</h2>
+      <ul class="muted" style="margin:0; padding-left:18px; line-height:1.7">
+        <li><b>RUCH</b> — przejazd wskazanych osi do zadanych pozycji. Osie
+          zostawione puste nie ruszają się. Pozycja poza limitem programowym
+          zatrzymuje cykl alarmem.</li>
+        <li><b>PROGRAM</b> — wywołanie programu detalu wybranego w MES
+          (skok do podprogramu technologa). Po jego zakończeniu cykl idzie
+          dalej.</li>
+        <li><b>WYJSCIE</b> — załączenie lub wyłączenie wyjścia cyfrowego
+          (podajnik, wyrzutnik, lampka).</li>
+        <li><b>PAUZA</b> — zatrzymanie do potwierdzenia przez operatora
+          przyciskiem START.</li>
+      </ul>
+      <p class="muted" style="margin-top:12px">
+        <b>Czego jeszcze nie ma:</b> kroku „czekaj na wejście" (maszyna nie ma
+        dziś czytelnych wejść poza Global Stop) oraz ruchu osi innych niż
+        X/Y/Z. Sterowanie wyjściami działa na razie wyłącznie w symulatorze —
+        protokół mostka nie ma jeszcze komendy ustawiania wyjścia.
+        <b>Uwaga:</b> uruchomienie cyklu (jeden przebieg i tryb automatyczny)
+        działa dziś wyłącznie w symulatorze — na sprzęcie mostek nie ma
+        jeszcze obsługi cyklu (patrz <code>docs/plan-rozwoju.md</code>,
+        temat B).
+      </p>
+    </section>
+  </main>
+
+  <script src="/static/cycle.js"></script>
+</body>
+</html>

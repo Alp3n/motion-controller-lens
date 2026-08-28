@@ -12,7 +12,18 @@ import math
 from dataclasses import dataclass, field
 from enum import Enum
 
-from .axes import AXIS_NAMES, AxisConfig
+from .axes import REQUIRED_AXES, AxisConfig
+from .cycle import (
+    OUTPUT_NAMES,
+    STEP_MOVE,
+    STEP_OUTPUT,
+    STEP_PAUSE,
+    STEP_PROGRAM,
+    Cycle,
+    CycleStep,
+    empty_cycle,
+)
+from .profiles import PROFILE_GLOBAL, AxisParams, ParameterProfile
 from .program import Operation, Program, cut_path, pass_depths
 
 
@@ -42,6 +53,18 @@ class MachineStatus:
     alarm_message: str = ""
     # osie zluzowane (moment zdjęty, da się ruszyć ręcznie), np. ["z"]
     released_axes: list[str] = field(default_factory=list)
+    # cykl maszyny: LP wykonywanego kroku i ich łączna liczba
+    cycle_step: int | None = None
+    total_cycle_steps: int = 0
+    # tryb automatyczny (temat F): cykl powtarza się bez zatrzymania, dopóki
+    # nie przerwie go STOP, błąd albo utrata sygnału zezwolenia
+    cycle_loop: bool = False
+    # wyjścia cyfrowe sterowane z cyklu (podajnik, wyrzutnik, lampka)
+    outputs: dict[str, bool] = field(
+        default_factory=lambda: {name: False for name in OUTPUT_NAMES}
+    )
+    # profil parametrów ruchu obowiązujący w tej chwili
+    active_profile: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -56,6 +79,11 @@ class MachineStatus:
             "total_ops": self.total_ops,
             "alarm_message": self.alarm_message,
             "released_axes": sorted(self.released_axes),
+            "cycle_step": self.cycle_step,
+            "total_cycle_steps": self.total_cycle_steps,
+            "cycle_loop": self.cycle_loop,
+            "outputs": dict(self.outputs),
+            "active_profile": self.active_profile,
         }
 
 
@@ -73,12 +101,91 @@ class Machine:
         # konfiguracja osi z ekranu „Konfiguracja osi" — limity programowe
         # i przełożenia; pusta oznacza brak ograniczeń po stronie serwera
         self.axes: dict[str, AxisConfig] = {}
+        # profile parametrów ruchu; pusty słownik = brak ograniczeń z profilu
+        self.profiles: dict[str, ParameterProfile] = {}
+        self.active_profile: str = PROFILE_GLOBAL
+        self.status.active_profile = PROFILE_GLOBAL
+        # cykl maszyny (poziom admina) — pusty, dopóki nie zostanie zdefiniowany
+        self.cycle: Cycle = empty_cycle()
 
     # --- konfiguracja osi (wspólna) ---------------------------------------
 
     def apply_axis_config(self, axes: dict[str, AxisConfig]) -> None:
         """Podmienia konfigurację osi; podklasy dosyłają ją do sprzętu."""
         self.axes = dict(axes)
+
+    # --- profile parametrów ruchu (wspólne) -------------------------------
+
+    def apply_profiles(
+        self, profiles: dict[str, ParameterProfile], active: str
+    ) -> None:
+        """Podmienia zestaw profili i wskazuje aktywny."""
+        self.profiles = dict(profiles)
+        self._set_profile(active)
+
+    def _set_profile(self, name: str) -> None:
+        """Ustawia aktywny profil bez walidacji stanu — do użytku wewnętrznego.
+
+        Używane przy przywracaniu profilu po programie detalu, gdzie maszyna
+        z definicji jest jeszcze w ruchu.
+        """
+        self.active_profile = name
+        self.status.active_profile = name
+
+    def set_active_profile(self, name: str) -> None:
+        """Przełącza aktywny profil — odrzucane w ruchu, jak zmiana limitów osi."""
+        if self.status.state in (MachineState.RUNNING, MachineState.HOMING):
+            raise MachineError("nie można zmienić profilu w trakcie ruchu maszyny")
+        if name not in self.profiles:
+            raise MachineError(
+                f"nieznany profil '{name}' — dostępne: "
+                + ", ".join(sorted(self.profiles))
+            )
+        self._set_profile(name)
+
+    # --- cykl maszyny (wspólny) -------------------------------------------
+
+    def apply_cycle(self, cycle: Cycle) -> None:
+        """Podmienia definicję cyklu maszyny."""
+        self.cycle = cycle
+        self.status.total_cycle_steps = len(cycle.steps)
+
+    async def start_cycle(self, loop: bool = False) -> None:
+        raise NotImplementedError
+
+    def axis_params(self, axis: str) -> AxisParams | None:
+        """Parametry osi z aktywnego profilu; None = profil jej nie opisuje."""
+        profile = self.profiles.get(self.active_profile)
+        if profile is None:
+            return None
+        return profile.axes.get(axis)
+
+    def _capped_feed(self, feed: float, axes: list[str]) -> float:
+        """Posuw ograniczony prędkością maksymalną z aktywnego profilu.
+
+        Ruch obejmuje kilka osi naraz, więc obowiązuje najniższy limit
+        spośród nich — oś o najwolniejszym limicie wyznacza tempo całości.
+        """
+        limits = [
+            p.vel_max for p in (self.axis_params(a) for a in axes) if p is not None
+        ]
+        if not limits:
+            return feed
+        return min(feed, min(limits))
+
+    def axis_jog_feed(self, axis: str) -> float:
+        """Domyślna prędkość JOG skonfigurowana dla osi (ekran /axes)."""
+        cfg = self.axes.get(axis)
+        return cfg.vel_jog if cfg is not None else 500.0
+
+    def _home_feed(self, axes: list[str]) -> float:
+        """Prędkość bazowania — najwolniejsza spośród skonfigurowanych osi.
+
+        Dotyczy tylko symulatora: na sprzęcie bazowaniem steruje serwo wg
+        ustawień w ClearView, więc `ClearCoreMachine` tej wartości nie używa.
+        """
+        values = [self.axes[a].vel_home for a in axes if a in self.axes]
+        return min(values) if values else 1000.0
 
     def _check_soft_limit(self, axis: str, target: float) -> None:
         """Odrzuca ruch poza limit programowy osi (JOG i ruchy pojedynczej osi).
@@ -212,8 +319,9 @@ class SimulatedMachine(Machine):
             # czyli do zera osi — odjazd ograniczony limitem programowym Z
             z_cfg = self.axes.get("z")
             lift = 40.0 if z_cfg is None else min(40.0, z_cfg.soft_max)
-            await self._move_to(0.0, 0.0, lift, feed=2000)
-            await self._move_to(0.0, 0.0, 0.0, feed=1000)
+            home_feed = self._home_feed(["x", "y", "z"])
+            await self._move_to(0.0, 0.0, lift, feed=home_feed)
+            await self._move_to(0.0, 0.0, 0.0, feed=home_feed)
         except asyncio.CancelledError:
             return
         finally:
@@ -281,12 +389,7 @@ class SimulatedMachine(Machine):
         program = self._program
         assert program is not None
         try:
-            for op in program.operations:
-                self.status.current_op = op.lp
-                await self._execute_operation(program, op)
-            # koniec cyklu: odjazd na Z bezpieczne i powrót do bazy
-            await self._move_to(self.status.x, self.status.y, program.z_safe, program.feed_travel)
-            await self._move_to(0.0, 0.0, program.z_safe, program.feed_travel)
+            await self._run_operations(program)
             self.status.current_op = None
             self.status.state = MachineState.READY
         except asyncio.CancelledError:
@@ -296,6 +399,128 @@ class SimulatedMachine(Machine):
         finally:
             self.status.spindle_on = False
             self._run_task = None
+
+    async def _run_operations(self, program: Program) -> None:
+        """Same operacje programu detalu + odjazd do pozycji bezpiecznej.
+
+        Wydzielone z `_run_program`, bo krok PROGRAM cyklu maszyny wykonuje
+        dokładnie to samo, ale nie kończy pracy maszyny — po nim idą kolejne
+        kroki cyklu.
+        """
+        for op in program.operations:
+            self.status.current_op = op.lp
+            await self._execute_operation(program, op)
+        # odjazd na Z bezpieczne i powrót do bazy
+        await self._move_to(self.status.x, self.status.y, program.z_safe, program.feed_travel)
+        await self._move_to(0.0, 0.0, program.z_safe, program.feed_travel)
+
+    # --- cykl maszyny -----------------------------------------------------
+
+    async def start_cycle(self, loop: bool = False) -> None:
+        """Uruchamia cykl maszyny: jeden przebieg (półautomatyczny, temat F)
+        albo pętlę bez zatrzymania (automatyczny), dopóki nie przerwie jej
+        STOP, błąd w kroku, albo utrata sygnału zezwolenia — to ostatnie
+        obsługuje już `set_safety_enable()`, przerywając `_run_task` tak samo
+        jak przy pojedynczym przebiegu.
+        """
+        if self.status.state == MachineState.PAUSED:
+            self.resume()
+            return
+        if self.status.state != MachineState.READY:
+            raise MachineError(
+                f"start cyklu możliwy tylko w stanie READY "
+                f"(obecnie: {self.status.state.value})"
+            )
+        if not self.cycle.steps:
+            raise MachineError("cykl maszyny nie jest zdefiniowany")
+        if self.cycle.uses_program() and not self._program:
+            raise MachineError(
+                "cykl wywołuje program detalu, a żaden nie jest załadowany "
+                "— wybierz zlecenie w MES"
+            )
+        self._require_not_released(["x", "y", "z"])
+        self._require_enable()
+        self.status.state = MachineState.RUNNING
+        self.status.alarm_message = ""
+        self.status.cycle_loop = loop
+        self._run_task = asyncio.create_task(self._run_cycle(loop))
+
+    async def _run_cycle(self, loop: bool) -> None:
+        try:
+            while True:
+                for step in self.cycle.steps:
+                    self.status.cycle_step = step.lp
+                    await self._execute_cycle_step(step)
+                    # Krok bez realnego ruchu (WYJSCIE, albo RUCH do pozycji,
+                    # w której oś już jest) nie zawiesza się na niczym — bez
+                    # tego punktu zawieszenia pętla automatyczna nigdy nie
+                    # oddałaby sterowania do event loopa i zamroziłaby cały
+                    # serwer (znalezione i sprawdzone przy pisaniu testu).
+                    await asyncio.sleep(0)
+                self.status.cycle_step = None
+                self.status.current_op = None
+                if not loop:
+                    break
+            self.status.state = MachineState.READY
+        except asyncio.CancelledError:
+            raise
+        except MachineError as exc:
+            self._abort(str(exc))
+        finally:
+            self.status.spindle_on = False
+            self.status.cycle_loop = False
+            self._run_task = None
+
+    async def _execute_cycle_step(self, step: CycleStep) -> None:
+        """Jeden krok cyklu; profil kroku obowiązuje tylko na czas jego trwania.
+
+        Profil przywracamy w `finally`, więc wraca także przy błędzie
+        i przy zatrzymaniu (STOP anuluje zadanie, co tu wchodzi jako
+        CancelledError). Bez tego przerwany program detalu zostawiłby maszynę
+        na swoich parametrach — np. na 10% momentu — a kolejne kroki cyklu
+        pojechałyby z nimi po cichu. Wymóg z DECYZJE_2026-08-25.md §3.
+        """
+        previous_profile = self.active_profile
+        if step.profile and step.profile in self.profiles:
+            self._set_profile(step.profile)
+        try:
+            await self._run_cycle_step_body(step)
+        finally:
+            self._set_profile(previous_profile)
+
+    async def _run_cycle_step_body(self, step: CycleStep) -> None:
+        if step.kind == STEP_PAUSE:
+            self.status.spindle_on = False
+            self.status.state = MachineState.PAUSED
+            self._resume_event.clear()
+            await self._resume_event.wait()
+            self.status.state = MachineState.RUNNING
+            return
+
+        if step.kind == STEP_OUTPUT:
+            self.status.outputs[step.output] = bool(step.output_on)
+            return
+
+        if step.kind == STEP_PROGRAM:
+            program = self._program
+            if program is None:
+                raise MachineError("krok PROGRAM: nie załadowano programu detalu")
+            await self._run_operations(program)
+            self.status.current_op = None
+            return
+
+        # STEP_MOVE — przejazd wskazanych osi; osie pominięte zostają na miejscu
+        target = {"x": self.status.x, "y": self.status.y, "z": self.status.z}
+        for axis, value in step.targets.items():
+            if axis not in target:
+                raise MachineError(
+                    f"krok {step.lp}: oś {axis.upper()} nie jest obsługiwana "
+                    "przez ruch symulatora (dziś tylko X/Y/Z)"
+                )
+            self._check_soft_limit(axis, value)
+            target[axis] = value
+        feed = step.feed or 1000.0
+        await self._move_to(target["x"], target["y"], target["z"], feed)
 
     async def _execute_operation(self, program: Program, op: Operation) -> None:
         if op.op_type == "PAUZA":
@@ -340,12 +565,23 @@ class SimulatedMachine(Machine):
                 await self._move_to(op.x, op.y, program.z_safe, program.feed_travel)
 
     async def _move_to(self, x: float, y: float, z: float, feed: float) -> None:
-        """Ruch liniowy z interpolacją pozycji w czasie (feed w mm/min)."""
+        """Ruch liniowy z interpolacją pozycji w czasie (feed w mm/min).
+
+        Wszystkie ruchy symulatora przechodzą tędy, więc tu stosujemy limit
+        prędkości z aktywnego profilu — jedno miejsce zamiast powtarzania
+        przy każdym wywołaniu.
+        """
         self._require_enable()
         sx, sy, sz = self.status.x, self.status.y, self.status.z
         dist = math.dist((sx, sy, sz), (x, y, z))
         if dist < 1e-9:
             return
+        moving = [
+            axis
+            for axis, delta in (("x", x - sx), ("y", y - sy), ("z", z - sz))
+            if abs(delta) > 1e-9
+        ]
+        feed = self._capped_feed(feed, moving)
         duration = dist / (feed / 60.0)
         steps = max(1, int(duration / 0.05))
         for i in range(1, steps + 1):
@@ -384,11 +620,16 @@ class ClearCoreMachine(Machine):
         self._axes_pending = True
 
     async def _push_axis_config(self) -> None:
-        """Wysyła limity i przełożenia osi do mostka (wołane spod zamka)."""
+        """Wysyła limity i przełożenia osi do mostka (wołane spod zamka).
+
+        Tylko REQUIRED_AXES (X/Y/Z) — protokół mostka dziś nie zna innych
+        liter osi. Ewentualne osie dodatkowe (podajnik, docisk) w
+        `self.axes` czekają na rozszerzenie protokołu (temat C).
+        """
         # znacznik kasujemy przed wysyłką: przy błędzie łącze i tak zostanie
         # zamknięte, a ponowne wejście tutaj dałoby pętlę
         self._axes_pending = False
-        for axis in AXIS_NAMES:
+        for axis in REQUIRED_AXES:
             cfg = self.axes.get(axis)
             if cfg is None:
                 continue

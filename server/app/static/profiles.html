@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile parametrów ruchu — maszyna do ocinania wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Profile parametrów ruchu</h1>
+    <a href="/">← Panel operatora</a>
+    <a href="/axes">Konfiguracja osi</a>
+    <a href="/cycle">Cykl maszyny</a>
+    <a href="/editor">Edytor technologa →</a>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Siła i prędkość — trzy poziomy</h2>
+      <p class="muted" style="margin-top:-6px">
+        Trzy nazwane zestawy parametrów ruchu, po jednym komplecie na oś:
+        prędkość maksymalna, przyspieszenie/hamowanie i limit momentu (siły)
+        silnika. Krok cyklu maszyny (ekran <a href="/cycle">Cykl maszyny</a>)
+        może włączyć inny profil na czas swojego wykonania — po kroku wraca
+        profil, który był aktywny wcześniej, nawet przy błędzie albo
+        zatrzymaniu.
+      </p>
+      <div id="profiles-grid"></div>
+      <div class="btn-row" style="margin-top:14px; max-width:420px">
+        <button id="btn-save">💾 Zapisz profile</button>
+        <button class="small" id="btn-reload">Przywróć zapisane</button>
+      </div>
+      <p id="profiles-msg" class="msg"></p>
+      <p class="muted" id="profiles-file"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Co zmienia ta konfiguracja</h2>
+      <ul class="muted" style="margin:0; padding-left:18px; line-height:1.7">
+        <li><b>Aktywny profil</b> ogranicza ruch od razu, niezależnie od tego,
+          co go wywoła — JOG, bazowanie, program technologa czy krok cyklu.</li>
+        <li><b>Prędkość maksymalna</b> realnie ogranicza każdy ruch osi, także
+          na sprzęcie — ruch szybszy niż limit zostaje do niego przycięty.</li>
+        <li><b>Limit momentu</b> działa dziś <b>wyłącznie w symulatorze</b>.
+          Protokół mostka do sterownika nie ma jeszcze komendy momentu —
+          wpisana tu wartość nic nie zmienia na prawdziwej maszynie, dopóki
+          ten protokół nie zostanie rozszerzony (wymaga C++ i sprzętu).</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="/static/profiles.js"></script>
+</body>
+</html>
