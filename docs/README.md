@@ -86,5 +86,7 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/tryby-pracy.md](zmiany/tryby-pracy.md) — tryb automatyczny (cykl
   w pętli) i manualny JOG „martwy człowiek"; opisuje też znaleziony błąd
   zawieszający cały serwer przy kroku cyklu bez realnego ruchu.
+- [zmiany/zapisz-jako-program.md](zmiany/zapisz-jako-program.md) — kopiowanie
+  programu technologa pod nowym numerem NC w edytorze.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

@@ -235,9 +235,14 @@ nie sprawdził i nie zapisał. Wymaga C++ i fizycznego sprzętu (temat B/H).
 - [ ] Ekran główny — prosty, niezbędne przyciski i komunikaty, nazwa maszyny
       „Demontaż pinów z optyki", logo WALKNER.
 - [ ] Ekran diagnostyczny (tylko admin) — definiowanie, praca ręczna,
-      półautomatyczna i automatyczna z funkcjami zabezpieczeń.
-- [ ] Ekran definiowania operacji cyklu — osobne okno/zakładka.
-- [ ] Kopiowanie programów technologicznych — opcja „zapisz jako".
+      półautomatyczna i automatyczna z funkcjami zabezpieczeń. Wymaga
+      warstwy ról (temat E) — dziś nie ma pojęcia „tylko admin".
+- [x] Ekran definiowania operacji cyklu — osobne okno/zakładka. Zrobione
+      jako `/cycle` już w etapie 4 tematu B — korekta tej listy, nie nowa
+      praca (nikt wcześniej nie odhaczył tego punktu tutaj).
+- [x] Kopiowanie programów technologicznych — opcja „zapisz jako" w edytorze
+      technologa. Szczegóły:
+      [`zmiany/zapisz-jako-program.md`](zmiany/zapisz-jako-program.md).
 
 Inspiracja funkcjonalna: sterownik MD488 jako punkt odniesienia (ale bez
 konfiguracji siły — nasze serwa Teknic mają to natywnie); ekrany mają

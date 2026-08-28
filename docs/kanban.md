@@ -73,9 +73,10 @@ mam to założyć.
 
 ### G. Ekrany i programy
 - [ ] Ekran główny (nazwa maszyny, logo WALKNER)
-- [ ] Ekran diagnostyczny (admin)
-- [ ] Ekran definiowania operacji cyklu
-- [ ] „Zapisz jako" dla programów technologicznych
+- [ ] Ekran diagnostyczny (admin) — czeka na warstwę ról z tematu E
+- [x] Ekran definiowania operacji cyklu — `/cycle`, zrobione już w etapie 4
+      tematu B (korekta listy, nie nowa praca)
+- [x] „Zapisz jako" dla programów technologicznych
 
 ### H. Uruchomienie sprzętowe
 Jedna sesja w ClearView (Windows) domyka pierwsze pięć pozycji:

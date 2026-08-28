@@ -511,6 +511,45 @@ $("btn-save").onclick = async () => {
   }
 };
 
+$("btn-save-as").onclick = async () => {
+  if (!currentNumber) return showMsg("najpierw wybierz lub utwórz program");
+  const input = $("save-as-number");
+  const newNumber = input.value.trim();
+  if (!/^\d{12}$/.test(newNumber)) {
+    showMsg("nowy numer programu musi mieć dokładnie 12 cyfr");
+    return;
+  }
+  if (newNumber === currentNumber) {
+    showMsg("podaj inny numer niż bieżący — to już jest ten program");
+    return;
+  }
+  try {
+    const list = await api("GET", "/api/programs");
+    if (list.programs.some((p) => p.number === newNumber)) {
+      showMsg(
+        `program ${newNumber} już istnieje — wybierz inny numer albo otwórz go ` +
+          "z listy i zapisz nad nim świadomie"
+      );
+      return;
+    }
+  } catch (e) {
+    /* brak listy nie blokuje próby zapisu — PUT poniżej i tak sprawdzi numer */
+  }
+
+  const previousNumber = currentNumber;
+  currentNumber = newNumber; // collectContent() czyta numer z tej zmiennej
+  try {
+    const data = await api("PUT", `/api/programs/${newNumber}`, { content: collectContent() });
+    $("edit-number").textContent = newNumber;
+    input.value = "";
+    showMsg(`zapisano jako nowy program ${data.number} (${data.name}) — edytujesz teraz kopię`, true);
+    refreshList();
+  } catch (e) {
+    currentNumber = previousNumber; // nieudany zapis nie może przełączyć edytora na nieistniejący numer
+    showMsg("nie zapisano — " + e.message);
+  }
+};
+
 $("btn-download").onclick = () => {
   if (!currentNumber) return showMsg("najpierw wybierz lub utwórz program");
   window.open(`/api/programs/${currentNumber}/raw`, "_blank");
