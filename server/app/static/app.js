@@ -175,14 +175,16 @@ api("POST", "/api/sim/safety-enable", { enabled: true })
   })
   .catch(() => {});
 
-initView();
-connectWs();
-
 // --- podgląd pozycji ------------------------------------------------------
 /* Rysunek obszaru roboczego w osiach XY plus wskaźnik osi Z. Odświeżany
    z każdą ramką statusu, więc pokazuje pozycję rzeczywistą (zmierzoną przez
    enkodery), a nie zadaną. */
 
+/* Deklaracja musi stać PRZED initView()/connectWs() na końcu pliku: `const`
+   nie jest hoistowane jak `function`, więc wywołanie initView() powyżej tej
+   linii kończyło się „Cannot access 'view' before initialization". Skrypt
+   przerywał się w tym miejscu, przez co connectWs() już się nie wykonywało —
+   panel nie odbierał statusu i pozycja stała w miejscu. */
 const view = { cvs: null, ctx: null, area: null, trail: [], prevState: null };
 
 const CSSVAR = (name, fallback) =>
@@ -387,3 +389,8 @@ function drawView(st) {
       `X ${fmt(px)}   Y ${fmt(py)}   Z ${fmt(pz)} mm` + (rel ? `   •  zluzowane: ${rel}` : "");
   }
 }
+
+// --- start ----------------------------------------------------------------
+/* Na samym końcu, po wszystkich deklaracjach — patrz komentarz przy `view`. */
+initView();
+connectWs();

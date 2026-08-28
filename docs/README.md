@@ -70,5 +70,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   (etap 3 tematu B).
 - [zmiany/ekran-cyklu-etap4.md](zmiany/ekran-cyklu-etap4.md) — ekran
   `/cycle` do definiowania i uruchamiania cyklu (etap 4 tematu B).
+- [zmiany/poprawka-podgladu-pozycji.md](zmiany/poprawka-podgladu-pozycji.md) —
+  błąd JS zatrzymywał skrypt panelu, przez co nie działał WebSocket i podgląd
+  pozycji.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.
