@@ -7,7 +7,7 @@ Dwa narzędzia dla obsługi maszyny: skrót na pulpicie uruchamiający całe
 
 - `tools/uruchom-maszyne.sh` — mostek (jeśli zbudowany i widzi sprzęt) →
   serwer → panel w przeglądarce; sprzątanie przy zamknięciu okna.
-- `tools/zainstaluj-skrot.sh` — zakłada `maszyna-ocinanie.desktop` na pulpicie
+- `tools/zainstaluj-skrot.sh` — zakłada `maszyna-odcinanie.desktop` na pulpicie
   ze ścieżką do bieżącego katalogu repozytorium.
 - `tools/docs-pdf.py` — `docs/**.md` → `docs/pdf/*.pdf` (własny konwerter
   Markdown → HTML + LibreOffice w trybie wsadowym).

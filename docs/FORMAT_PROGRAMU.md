@@ -1,6 +1,6 @@
 # Format pliku programu (.prg) — wersje 1, 2 i 3
 
-Plik programu opisuje operacje ocinania wlewków dla jednej płytki optyki.
+Plik programu opisuje operacje odcinania wlewków dla jednej płytki optyki.
 Założenia:
 
 - **prosty i czytelny dla technologa** — bez programowania,
@@ -16,7 +16,7 @@ Plik składa się z dwóch sekcji: `[NAGLOWEK]` i `[OPERACJE]`.
 Linie zaczynające się od `#` to komentarze i są pomijane.
 
 ```
-# Program ocinania wlewkow — plytka soczewki 50 mm, strona lewa
+# Program odcinania wlewkow — plytka soczewki 50 mm, strona lewa
 [NAGLOWEK]
 FORMAT;1
 PROGRAM;583912004711

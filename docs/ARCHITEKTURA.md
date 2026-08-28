@@ -1,4 +1,4 @@
-# Architektura systemu — maszyna do ocinania wlewków płytek optycznych
+# Architektura systemu — maszyna do odcinania wlewków płytek optycznych
 
 ## Cel maszyny
 

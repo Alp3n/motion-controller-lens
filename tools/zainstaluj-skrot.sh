@@ -10,13 +10,13 @@ PULPIT="$(xdg-user-dir DESKTOP 2>/dev/null || true)"
 [ -n "$PULPIT" ] && [ -d "$PULPIT" ] || PULPIT="$HOME/Pulpit"
 mkdir -p "$PULPIT"
 
-SKROT="$PULPIT/maszyna-ocinanie.desktop"
+SKROT="$PULPIT/maszyna-odcinanie.desktop"
 
 cat > "$SKROT" <<EOF
 [Desktop Entry]
 Type=Application
 Version=1.0
-Name=Maszyna — ocinanie wlewków
+Name=Maszyna — odcinanie wlewków
 Comment=Uruchamia mostek, serwer maszyny i panel operatora
 Exec=$ROOT/tools/uruchom-maszyne.sh
 Path=$ROOT

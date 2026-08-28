@@ -1,4 +1,4 @@
-# Program ocinania wlewkow — plytka soczewki 70 mm, obustronna
+# Program odcinania wlewkow — plytka soczewki 70 mm, obustronna
 [NAGLOWEK]
 FORMAT;1
 PROGRAM;583912004844

@@ -232,7 +232,7 @@ def build_html(md_path: Path) -> str:
         "<!DOCTYPE html>\n<html lang=\"pl\"><head><meta charset=\"utf-8\">"
         f"<title>{html.escape(title)}</title><style>{CSS}</style></head><body>\n"
         f"{body}\n<p class=\"meta\">Źródło: {html.escape(str(rel))} — "
-        "maszyna do ocinania wlewków płytek optyki</p>\n</body></html>\n"
+        "maszyna do odcinania wlewków płytek optyki</p>\n</body></html>\n"
     )
 
 

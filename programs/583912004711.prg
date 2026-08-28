@@ -1,4 +1,4 @@
-# Program ocinania wlewkow — plytka soczewki 50 mm, strona lewa
+# Program odcinania wlewkow — plytka soczewki 50 mm, strona lewa
 [NAGLOWEK]
 FORMAT;1
 PROGRAM;583912004711
