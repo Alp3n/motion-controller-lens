@@ -16,12 +16,13 @@
 
   <main>
     <section class="panel">
-      <h2>Osie X / Y / Z</h2>
+      <h2>Osie maszyny</h2>
       <p class="muted" style="margin-top:-6px">
         Zakres fizyczny nie jest wpisywany wprost — wynika z długości osi
         i punktu bazowania, czyli miejsca, w którym po bazowaniu leży zero osi.
         Limity programowe muszą się mieścić w zakresie fizycznym; to one
-        ograniczają maszynę na co dzień.
+        ograniczają maszynę na co dzień. <b>X, Y, Z</b> są wymagane zawsze —
+        to w nich zdefiniowana jest geometria cięcia programów technologa.
       </p>
 
       <div class="table-scroll">
@@ -35,6 +36,7 @@
               <th title="dolny limit programowy">Limit MIN [mm]</th>
               <th title="górny limit programowy">Limit MAX [mm]</th>
               <th title="ile milimetrów przejeżdża oś na jeden obrót silnika">mm / obrót</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="axis-rows"></tbody>
@@ -48,6 +50,24 @@
       </div>
       <p id="axes-msg" class="msg"></p>
       <p class="muted" id="axes-file"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Dodatkowe osie <span class="axis-extra-badge">tylko konfiguracja</span></h2>
+      <p class="muted" style="margin-top:-6px">
+        Miejsce na przyszłe osie maszyny — podajnik, docisk i podobne
+        (temat C w planie rozwoju). <b>To dziś wyłącznie zapis w pliku
+        konfiguracji.</b> Mostek do sterownika zna komendy ruchu tylko dla
+        X/Y/Z — dodana tu oś zapisze parametry (długość, limity,
+        przełożenie), ale <b>nic fizycznie nie pojedzie</b>, dopóki protokół
+        mostka nie zostanie rozszerzony. Zobacz
+        <code>docs/zmiany/osie-dodatkowe-etap1.md</code>.
+      </p>
+      <div class="btn-row" style="max-width:420px">
+        <input id="new-axis-name" placeholder="nazwa osi, np. podajnik" style="flex:1">
+        <button class="small" id="btn-add-axis">+ Dodaj oś</button>
+      </div>
+      <p id="new-axis-msg" class="msg"></p>
     </section>
 
     <section class="panel">

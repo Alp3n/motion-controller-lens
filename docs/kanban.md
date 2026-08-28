@@ -30,7 +30,8 @@ mam to założyć.
       i podgląd na żywo; krok PROGRAM = skok do podprogramu technologa
 
 ### C. Osie i konfiguracja ruchu
-- [ ] Dodatkowe osie w `/axes` (podajnik, docisk z kontrolą momentu)
+- [x] Dodatkowe osie w `/axes` (dodawanie/usuwanie, odznaka „tylko konfiguracja”)
+- [ ] Rozszerzyć protokół mostka, żeby dodana oś faktycznie jeździła (C++, sprzęt)
 - [ ] Bazowanie HardStop + Offset Move + przycisk „HOME wszystkich osi"
       + ekran bazowania
 - [ ] Siła trzypoziomowa (globalna / cykl / program technologa) —

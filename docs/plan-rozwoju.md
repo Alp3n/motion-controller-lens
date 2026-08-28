@@ -111,9 +111,14 @@ cyklu (temat F), ruch osi innych niż X/Y/Z (temat C).
 
 ## C. Dodatkowe osie i konfiguracja ruchu
 
-- [ ] Rozszerzyć model `/axes` o dodatkowe osie (podajnik automatyczny, oś
-      bazowania/docisku z kontrolą momentu) — dziś model zna tylko X/Y/Z
-      (`docs/konfiguracja-osi.md`).
+- [x] Model i ekran `/axes` przyjmują dodatkowe osie (podajnik automatyczny,
+      oś bazowania/docisku z kontrolą momentu) — backend od etapu 1 tematu B,
+      teraz też interfejs: dodawanie/usuwanie z ekranu, odznaka „tylko
+      konfiguracja”. Szczegóły:
+      [`zmiany/dodawanie-osi-ekran.md`](zmiany/dodawanie-osi-ekran.md).
+- [ ] **Pozostaje najważniejsze:** rozszerzyć protokół mostka (`AXCFG` i
+      komendy ruchu dla liter osi spoza X/Y/Z), żeby dodana oś faktycznie
+      jeździła — dziś zapisuje się tylko w konfiguracji. Wymaga C++ i sprzętu.
 - [ ] Bazowanie bez wyłączników krańcowych: tryb **HardStop** z parametrem
       *Homing Torque Limit*, plus *Offset Move* odwzorowujący nasz „punkt
       bazowania"; przycisk „dojazd do HOME wszystkich osi"; oddzielny ekran

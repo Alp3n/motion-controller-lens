@@ -73,5 +73,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/poprawka-podgladu-pozycji.md](zmiany/poprawka-podgladu-pozycji.md) —
   błąd JS zatrzymywał skrypt panelu, przez co nie działał WebSocket i podgląd
   pozycji.
+- [zmiany/dodawanie-osi-ekran.md](zmiany/dodawanie-osi-ekran.md) — ekran
+  `/axes` pozwala dopisać oś ponad X/Y/Z, oznaczoną jako „tylko
+  konfiguracja” (bez wsparcia mostka).
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

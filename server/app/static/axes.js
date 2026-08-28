@@ -4,7 +4,14 @@
 
 const $ = (id) => document.getElementById(id);
 
-const AXES = ["x", "y", "z"];
+/* X/Y/Z są wymagane zawsze — geometria cięcia .prg jest w nich zdefiniowana
+   (patrz REQUIRED_AXES w app/axes.py). Osie dodatkowe (podajnik, docisk...)
+   admin może dopisać z tego ekranu, ale to dziś WYŁĄCZNIE zapis w pliku
+   konfiguracji — mostek do sterownika zna komendy ruchu tylko dla X/Y/Z,
+   więc dodatkowa oś nigdzie fizycznie nie pojedzie. Patrz docs/plan-rozwoju.md,
+   temat C, i docs/zmiany/osie-dodatkowe-etap1.md. */
+const REQUIRED_AXES = ["x", "y", "z"];
+const AXIS_NAME_RE = /^[a-z][a-z0-9_]*$/;
 const HOME_LABELS = {
   minus: "minus — zero na końcu −",
   plus: "plus — zero na końcu +",
@@ -13,6 +20,12 @@ const HOME_LABELS = {
 
 let saved = null; // ostatnia konfiguracja potwierdzona przez serwer
 let machineBusy = false; // RUNNING/HOMING — zapis odrzucany przez serwer
+let homePoints = ["minus", "plus", "srodek"];
+let extraAxes = []; // dodatkowe osie ponad X/Y/Z, w kolejności wyświetlania
+
+function allAxes() {
+  return REQUIRED_AXES.concat(extraAxes);
+}
 
 function num(value) {
   const v = String(value).trim().replace(",", ".");
@@ -68,28 +81,74 @@ function writeAxis(axis, cfg) {
 
 // --- budowa tabeli --------------------------------------------------------
 
-function buildRows(homePoints) {
+function buildRows(axisNames) {
+  $("axis-rows").innerHTML = "";
+  for (const axis of axisNames) addAxisRow(axis, !REQUIRED_AXES.includes(axis));
+}
+
+function addAxisRow(axis, extra) {
   const tbody = $("axis-rows");
-  tbody.innerHTML = "";
-  for (const axis of AXES) {
-    const tr = document.createElement("tr");
-    const options = homePoints
-      .map((h) => `<option value="${h}">${HOME_LABELS[h] || h}</option>`)
-      .join("");
-    tr.innerHTML =
-      `<td style="font-size:20px; font-weight:700">${axis.toUpperCase()}</td>` +
-      `<td><input id="f-${axis}-length" type="number" step="0.1" min="0"></td>` +
-      `<td><select id="f-${axis}-home">${options}</select></td>` +
-      `<td class="muted" id="f-${axis}-phys" style="white-space:nowrap"></td>` +
-      `<td><input id="f-${axis}-min" type="number" step="0.1"></td>` +
-      `<td><input id="f-${axis}-max" type="number" step="0.1"></td>` +
-      `<td><input id="f-${axis}-mmrev" type="number" step="0.001" min="0"></td>`;
-    tbody.appendChild(tr);
-  }
-  tbody.querySelectorAll("input, select").forEach((el) => {
+  const tr = document.createElement("tr");
+  tr.dataset.axis = axis;
+  const options = homePoints
+    .map((h) => `<option value="${h}">${HOME_LABELS[h] || h}</option>`)
+    .join("");
+  const nameCell = extra
+    ? `${axis.toUpperCase()} <span class="axis-extra-badge" ` +
+      `title="Zapisuje się w konfiguracji, ale mostek do sterownika nie zna ` +
+      `jeszcze komend ruchu dla tej osi — dziś jeździ tylko X/Y/Z.">tylko konfiguracja</span>`
+    : axis.toUpperCase();
+  const actions = extra
+    ? `<button class="small icon" title="usuń oś" data-action="remove-axis">✕</button>`
+    : "";
+  tr.innerHTML =
+    `<td style="font-size:20px; font-weight:700; white-space:nowrap">${nameCell}</td>` +
+    `<td><input id="f-${axis}-length" type="number" step="0.1" min="0"></td>` +
+    `<td><select id="f-${axis}-home">${options}</select></td>` +
+    `<td class="muted" id="f-${axis}-phys" style="white-space:nowrap"></td>` +
+    `<td><input id="f-${axis}-min" type="number" step="0.1"></td>` +
+    `<td><input id="f-${axis}-max" type="number" step="0.1"></td>` +
+    `<td><input id="f-${axis}-mmrev" type="number" step="0.001" min="0"></td>` +
+    `<td class="row-actions">${actions}</td>`;
+  tbody.appendChild(tr);
+  tr.querySelectorAll("input, select").forEach((el) => {
     el.addEventListener("input", refresh);
     el.addEventListener("change", refresh);
   });
+  const removeBtn = tr.querySelector('[data-action="remove-axis"]');
+  if (removeBtn) removeBtn.onclick = () => removeAxis(axis);
+}
+
+/* Usunięcie jest tylko lokalne, dopóki admin nie kliknie „Zapisz konfigurację" —
+   ten sam wzorzec co dodanie: zmiana trafia do pliku dopiero świadomym zapisem. */
+function removeAxis(axis) {
+  extraAxes = extraAxes.filter((a) => a !== axis);
+  const tr = $("axis-rows").querySelector(`tr[data-axis="${axis}"]`);
+  if (tr) tr.remove();
+  refresh();
+}
+
+function addNewAxis() {
+  const input = $("new-axis-name");
+  const msg = $("new-axis-msg");
+  const raw = input.value.trim().toLowerCase();
+
+  if (!AXIS_NAME_RE.test(raw)) {
+    showMsg(msg, "nazwa osi: małe litery, cyfry, podkreślenie, zaczynając od litery");
+    return;
+  }
+  if (allAxes().includes(raw)) {
+    showMsg(msg, `oś „${raw.toUpperCase()}" już istnieje`);
+    return;
+  }
+
+  extraAxes.push(raw);
+  addAxisRow(raw, true);
+  // wartości startowe, żeby nowy wiersz nie był od razu czerwony od pustych pól
+  writeAxis(raw, { length: 100, home: "srodek", soft_min: -50, soft_max: 50, mm_per_rev: 5 });
+  input.value = "";
+  msg.className = "msg";
+  refresh();
 }
 
 // --- walidacja i podgląd --------------------------------------------------
@@ -131,7 +190,7 @@ function refresh() {
     el.classList.remove("bad")
   );
 
-  for (const axis of AXES) {
+  for (const axis of allAxes()) {
     const cfg = readAxis(axis);
     const physCell = $(`f-${axis}-phys`);
     if (cfg.length > 0) {
@@ -180,7 +239,7 @@ function refresh() {
 function drawBars() {
   const wrap = $("axis-bars");
   wrap.innerHTML = "";
-  for (const axis of AXES) {
+  for (const axis of allAxes()) {
     const cfg = readAxis(axis);
     if (!(cfg.length > 0)) continue;
     const [lo, hi] = physRange(cfg);
@@ -209,9 +268,18 @@ function drawBars() {
 
 // --- serwer ---------------------------------------------------------------
 
+/* Zawsze przebudowuje tabelę od zera z tego, co potwierdził serwer — także
+   po zapisie. Dzięki temu „Przywróć zapisane" poprawnie odrzuca lokalnie
+   dodane/usunięte wiersze, których admin nie zapisał, a kolejność osi
+   dodatkowych jest zawsze zgodna z plikiem konfiguracji. */
 function applyAxes(data) {
   saved = data.axes;
-  for (const axis of AXES) writeAxis(axis, saved[axis]);
+  if (data.home_points) homePoints = data.home_points;
+  extraAxes = Object.keys(saved)
+    .filter((a) => !REQUIRED_AXES.includes(a))
+    .sort();
+  buildRows(allAxes());
+  for (const axis of allAxes()) writeAxis(axis, saved[axis]);
   $("axes-file").textContent = "Plik konfiguracji: " + data.file;
   refresh();
   if (data.warnings && data.warnings.length) {
@@ -227,12 +295,10 @@ async function loadAxes() {
 async function save() {
   if (!refresh()) return;
   const payload = { axes: {} };
-  for (const axis of AXES) payload.axes[axis] = readAxis(axis);
+  for (const axis of allAxes()) payload.axes[axis] = readAxis(axis);
   try {
     const data = await api("PUT", "/api/axes", payload);
-    saved = data.axes;
-    for (const axis of AXES) writeAxis(axis, saved[axis]);
-    refresh();
+    applyAxes(data);
     const extra = data.warnings && data.warnings.length ? "\nUwaga:\n" + data.warnings.join("\n") : "";
     showMsg($("axes-msg"), "zapisano konfigurację osi" + extra, true);
     $("axes-msg").style.whiteSpace = "pre-line";
@@ -245,7 +311,7 @@ async function save() {
    zakresowi fizycznemu. Świadomie osobny przycisk, a nie wartość domyślna —
    zawężenie limitów jest normalną praktyką, a nie wyjątkiem. */
 function limitsToPhysical() {
-  for (const axis of AXES) {
+  for (const axis of allAxes()) {
     const cfg = readAxis(axis);
     if (!(cfg.length > 0)) continue;
     const [lo, hi] = physRange(cfg);
@@ -271,13 +337,14 @@ async function pollState() {
 $("btn-save").onclick = save;
 $("btn-reload").onclick = () => loadAxes().catch((e) => showMsg($("axes-msg"), e.message));
 $("btn-full").onclick = limitsToPhysical;
+$("btn-add-axis").onclick = addNewAxis;
+$("new-axis-name").addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter") addNewAxis();
+});
 
-api("GET", "/api/axes")
-  .then((data) => {
-    buildRows(data.home_points || ["minus", "plus", "srodek"]);
-    applyAxes(data);
-  })
-  .catch((e) => showMsg($("axes-msg"), "nie udało się wczytać konfiguracji: " + e.message));
+loadAxes().catch((e) =>
+  showMsg($("axes-msg"), "nie udało się wczytać konfiguracji: " + e.message)
+);
 
 pollState();
 setInterval(pollState, 1500);
