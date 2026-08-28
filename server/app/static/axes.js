@@ -68,6 +68,8 @@ function readAxis(axis) {
     soft_min: num($(`f-${axis}-min`).value),
     soft_max: num($(`f-${axis}-max`).value),
     mm_per_rev: num($(`f-${axis}-mmrev`).value),
+    vel_jog: num($(`f-${axis}-veljog`).value),
+    vel_home: num($(`f-${axis}-velhome`).value),
   };
 }
 
@@ -77,6 +79,8 @@ function writeAxis(axis, cfg) {
   $(`f-${axis}-min`).value = cfg.soft_min;
   $(`f-${axis}-max`).value = cfg.soft_max;
   $(`f-${axis}-mmrev`).value = cfg.mm_per_rev;
+  $(`f-${axis}-veljog`).value = cfg.vel_jog;
+  $(`f-${axis}-velhome`).value = cfg.vel_home;
 }
 
 // --- budowa tabeli --------------------------------------------------------
@@ -109,6 +113,8 @@ function addAxisRow(axis, extra) {
     `<td><input id="f-${axis}-min" type="number" step="0.1"></td>` +
     `<td><input id="f-${axis}-max" type="number" step="0.1"></td>` +
     `<td><input id="f-${axis}-mmrev" type="number" step="0.001" min="0"></td>` +
+    `<td><input id="f-${axis}-veljog" type="number" step="1" min="0"></td>` +
+    `<td><input id="f-${axis}-velhome" type="number" step="1" min="0"></td>` +
     `<td class="row-actions">${actions}</td>`;
   tbody.appendChild(tr);
   tr.querySelectorAll("input, select").forEach((el) => {
@@ -145,7 +151,15 @@ function addNewAxis() {
   extraAxes.push(raw);
   addAxisRow(raw, true);
   // wartości startowe, żeby nowy wiersz nie był od razu czerwony od pustych pól
-  writeAxis(raw, { length: 100, home: "srodek", soft_min: -50, soft_max: 50, mm_per_rev: 5 });
+  writeAxis(raw, {
+    length: 100,
+    home: "srodek",
+    soft_min: -50,
+    soft_max: 50,
+    mm_per_rev: 5,
+    vel_jog: 500,
+    vel_home: 1000,
+  });
   input.value = "";
   msg.className = "msg";
   refresh();
@@ -161,6 +175,12 @@ function validateAxis(axis, cfg) {
   }
   if (!(cfg.mm_per_rev > 0)) {
     bad.push([`f-${axis}-mmrev`, `${label}: przełożenie (mm na obrót) musi być większe od zera`]);
+  }
+  if (!(cfg.vel_jog > 0)) {
+    bad.push([`f-${axis}-veljog`, `${label}: prędkość JOG musi być większa od zera`]);
+  }
+  if (!(cfg.vel_home > 0)) {
+    bad.push([`f-${axis}-velhome`, `${label}: prędkość bazowania musi być większa od zera`]);
   }
   if (Number.isNaN(cfg.soft_min)) bad.push([`f-${axis}-min`, `${label}: podaj limit MIN`]);
   if (Number.isNaN(cfg.soft_max)) bad.push([`f-${axis}-max`, `${label}: podaj limit MAX`]);

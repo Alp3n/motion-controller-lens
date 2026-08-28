@@ -129,8 +129,12 @@ cyklu (temat F), ruch osi innych niż X/Y/Z (temat C).
       podczas programu technologa (domyślnie 10%).
       Mechanizm: `ILimits.TrqGlobal` + `TrqUnit(PCT_MAX)` — ustawialny
       z API w czasie pracy.
-- [ ] Prędkości maksymalne (per oś) i robocze osobno dla: ruchu roboczego,
-      bazowania, trybu JOG.
+- [x] Prędkości JOG i bazowania per oś — ekran `/axes`; JOG działa też na
+      sprzęcie (trafia do mostka komendą `JOG`), bazowanie tylko w
+      symulatorze (na sprzęcie steruje nim ClearView, nie nasz serwer).
+      Prędkość maksymalna i robocza już istniały wcześniej (profile
+      parametrów, `POSUW_ROBOCZY`/`POSUW_DOJAZDU`). Szczegóły:
+      [`zmiany/predkosci-jog-bazowanie.md`](zmiany/predkosci-jog-bazowanie.md).
 - [x] Siła/prędkość zależne od pozycji — **sprawdzone**: serwa mają
       *Conditional Torque Limiting* z warunkiem „Absolute Position"
       (konfiguracja w ClearView, działa w silniku). Wersję „per operacja"

@@ -216,7 +216,7 @@ input.bad, select.bad { border-color: var(--err); background: #3a1f1c; }
 
 #axis-table input, #axis-table select { width: 130px; }
 #axis-table td, #axis-table th { vertical-align: middle; }
-#axis-table { min-width: 940px; }
+#axis-table { min-width: 1200px; }
 #axis-table .row-actions { white-space: nowrap; }
 #axis-table button.icon { padding: 2px 7px; margin-right: 2px; line-height: 1.2; }
 

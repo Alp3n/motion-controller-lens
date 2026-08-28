@@ -76,5 +76,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/dodawanie-osi-ekran.md](zmiany/dodawanie-osi-ekran.md) — ekran
   `/axes` pozwala dopisać oś ponad X/Y/Z, oznaczoną jako „tylko
   konfiguracja” (bez wsparcia mostka).
+- [zmiany/predkosci-jog-bazowanie.md](zmiany/predkosci-jog-bazowanie.md) —
+  prędkość JOG i bazowania konfigurowalne per oś na ekranie `/axes`;
+  bazowanie działa tylko w symulatorze.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

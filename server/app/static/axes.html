@@ -36,6 +36,8 @@
               <th title="dolny limit programowy">Limit MIN [mm]</th>
               <th title="górny limit programowy">Limit MAX [mm]</th>
               <th title="ile milimetrów przejeżdża oś na jeden obrót silnika">mm / obrót</th>
+              <th title="prędkość ruchu ręcznego z panelu operatora">JOG [mm/min]</th>
+              <th title="prędkość dojazdu przy bazowaniu — tylko symulator, na sprzęcie bazowaniem steruje ClearView">Bazowanie [mm/min]</th>
               <th></th>
             </tr>
           </thead>
@@ -89,6 +91,11 @@
           Zła wartość to ruch o złą wielkość mimo poprawnie wyglądającego
           odczytu pozycji — po każdej zmianie sprawdź skok przejazdem
           kontrolnym na wolnym posuwie.</li>
+        <li><b>Prędkość JOG</b> ogranicza ruch ręczny z panelu operatora dla danej
+          osi — działa zarówno w symulatorze, jak i na sprzęcie.</li>
+        <li><b>Prędkość bazowania</b> działa dziś tylko w symulatorze. Na
+          prawdziwej maszynie bazowaniem steruje serwo — sposób najazdu i jego
+          prędkość konfiguruje się w ClearView, nie tutaj.</li>
         <li><b>Punkt bazowania</b> określa, gdzie leży zero układu współrzędnych.
           Samą procedurę bazowania (czujniki, kierunek najazdu) konfiguruje się
           w serwie — w programie ClearView. Ten ekran nie zastępuje tamtej

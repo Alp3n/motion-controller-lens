@@ -12,6 +12,7 @@ os.environ.setdefault(
 )
 
 from app import axes  # noqa: E402
+from app.machine import MachineState, SimulatedMachine  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -60,6 +61,8 @@ def test_soft_limits_may_touch_physical_range():
         (dict(soft_min=-200), "poza zakres fizyczny"),
         (dict(soft_max=200), "poza zakres fizyczny"),
         (dict(home="lewo"), "punkt bazowania"),
+        (dict(vel_jog=0), "prędkość JOG"),
+        (dict(vel_home=0), "prędkość bazowania"),
     ],
 )
 def test_invalid_axis_rejected(kwargs, fragment):
@@ -84,6 +87,26 @@ def test_defaults_keep_work_area_from_env():
     assert cfg["y"].home == axes.HOME_MINUS and cfg["y"].length == 250
     # zakres nieosiągalny końcami osi: środek i długość do dalszego krańca
     assert cfg["z"].home == axes.HOME_CENTER and cfg["z"].length == 100
+
+
+def test_missing_speed_fields_get_old_defaults():
+    """Pliki sprzed pola JOG/bazowania nie mogą blokować startu serwera."""
+    data = {
+        axis: dict(length=300, home="srodek", soft_min=-100, soft_max=100, mm_per_rev=5)
+        for axis in ("x", "y", "z")
+    }
+    parsed = axes.parse_axes(data)
+    assert parsed["x"].vel_jog == axes.DEFAULT_VEL_JOG
+    assert parsed["x"].vel_home == axes.DEFAULT_VEL_HOME
+
+
+def test_speed_fields_round_trip_through_to_dict():
+    cfg = axes.AxisConfig(
+        length=300, home="srodek", soft_min=-100, soft_max=100, mm_per_rev=5,
+        vel_jog=250, vel_home=800,
+    )
+    d = cfg.to_dict()
+    assert d["vel_jog"] == 250 and d["vel_home"] == 800
 
 
 # --- plik -----------------------------------------------------------------
@@ -242,3 +265,46 @@ def test_jog_beyond_soft_limit_is_rejected(client, restore_axes):
 
     # ruch mieszczący się w limicie nadal działa
     assert client.post("/api/machine/jog", json={"axis": "x", "distance": 0.5}).status_code == 200
+
+
+def test_jog_uses_configured_axis_speed_when_feed_omitted(client, restore_axes):
+    """`vel_jog` musi realnie ograniczać ruch, nie być samą liczbą w pliku."""
+    import time
+
+    new = {axis: dict(restore_axes[axis]) for axis in ("x", "y", "z")}
+    new["x"]["vel_jog"] = 60  # 60 mm/min = 1 mm/s
+    assert client.put("/api/axes", json={"axes": new}).status_code == 200
+
+    # feed pominięty w żądaniu -> serwer musi sam użyć skonfigurowanej prędkości
+    start = time.monotonic()
+    res = client.post("/api/machine/jog", json={"axis": "x", "distance": 1})
+    assert res.status_code == 200, res.text
+    assert time.monotonic() - start > 0.5
+
+
+def test_home_uses_configured_axis_speed():
+    """`vel_home` musi realnie ograniczać ruch bazowania w symulatorze.
+
+    Instancja izolowana (nie współdzielony `client`) — bazowanie zmienia stan
+    maszyny na czas ruchu i nie chcemy zakłócać innych testów modułu.
+    """
+    import asyncio
+    import time
+
+    area = {"x_min": -100, "x_max": 100, "y_min": -100, "y_max": 100, "z_min": -20, "z_max": 40}
+    cfg = axes.default_axes(area)
+    for axis_cfg in cfg.values():
+        axis_cfg.vel_home = 60  # 60 mm/min = 1 mm/s
+
+    m = SimulatedMachine()
+    m.apply_axis_config(cfg)
+
+    async def drive():
+        await m.home()
+        while m.status.state == MachineState.HOMING:
+            await asyncio.sleep(0.02)
+
+    start = time.monotonic()
+    asyncio.run(drive())
+    assert time.monotonic() - start > 0.5
+    assert m.status.state == MachineState.READY

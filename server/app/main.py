@@ -98,7 +98,8 @@ class SelectOrderRequest(BaseModel):
 class JogRequest(BaseModel):
     axis: str = Field(..., pattern="^[xyzXYZ]$")
     distance: float
-    feed: float = 500.0
+    # brak wartości = użyj prędkości JOG skonfigurowanej dla osi (/axes)
+    feed: float | None = None
 
 
 class ReleaseRequest(BaseModel):
@@ -494,8 +495,10 @@ async def machine_reset():
 @app.post("/api/machine/jog")
 async def machine_jog(req: JogRequest):
     distance = max(-config.JOG_MAX_STEP, min(config.JOG_MAX_STEP, req.distance))
+    axis = req.axis.lower()
+    feed = req.feed if req.feed is not None else machine.axis_jog_feed(axis)
     try:
-        await machine.jog(req.axis.lower(), distance, req.feed)
+        await machine.jog(axis, distance, feed)
     except MachineError as exc:
         raise HTTPException(409, str(exc))
     return {"ok": True}

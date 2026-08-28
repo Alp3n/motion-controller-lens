@@ -42,6 +42,11 @@ HOME_POINTS = (HOME_MINUS, HOME_PLUS, HOME_CENTER)
 # zakresu tylko dlatego, że 300/2 zapisało się jako 149.99999999999997
 EPS = 1e-6
 
+# wartości startowe dla plików sprzed etapu prędkości JOG/bazowania — te same
+# liczby, które wcześniej były wpisane na sztywno w main.py i machine.py
+DEFAULT_VEL_JOG = 500.0     # mm/min
+DEFAULT_VEL_HOME = 1000.0   # mm/min
+
 
 class AxisConfigError(Exception):
     """Błąd konfiguracji osi — komunikat po polsku dla operatora."""
@@ -67,6 +72,9 @@ class AxisConfig:
     soft_min: float     # limit programowy dolny [mm]
     soft_max: float     # limit programowy górny [mm]
     mm_per_rev: float   # przełożenie posuwu: mm na obrót silnika
+    vel_jog: float = DEFAULT_VEL_JOG    # prędkość ruchu ręcznego (JOG) [mm/min]
+    vel_home: float = DEFAULT_VEL_HOME  # prędkość bazowania [mm/min] — tylko symulator,
+                                         # na sprzęcie bazowaniem steruje ClearView
 
     # --- zakres fizyczny (wynika z długości i punktu bazowego) -------------
 
@@ -87,6 +95,8 @@ class AxisConfig:
             "soft_min": round(self.soft_min, 4),
             "soft_max": round(self.soft_max, 4),
             "mm_per_rev": round(self.mm_per_rev, 6),
+            "vel_jog": round(self.vel_jog, 4),
+            "vel_home": round(self.vel_home, 4),
             # pola wyliczane — tylko do odczytu, dla panelu i dokumentacji
             "phys_min": round(lo, 4),
             "phys_max": round(hi, 4),
@@ -110,6 +120,18 @@ class AxisConfig:
             soft_min=_num(data["soft_min"], f"{label}: limit programowy MIN"),
             soft_max=_num(data["soft_max"], f"{label}: limit programowy MAX"),
             mm_per_rev=_num(data["mm_per_rev"], f"{label}: przełożenie posuwu"),
+            # opcjonalne — pliki sprzed tego pola dostają dawną stałą wartość,
+            # zamiast odmawiać startu serwera z powodu brakującego pola
+            vel_jog=(
+                _num(data["vel_jog"], f"{label}: prędkość JOG")
+                if "vel_jog" in data
+                else DEFAULT_VEL_JOG
+            ),
+            vel_home=(
+                _num(data["vel_home"], f"{label}: prędkość bazowania")
+                if "vel_home" in data
+                else DEFAULT_VEL_HOME
+            ),
         )
         cfg.validate(axis)
         return cfg
@@ -129,6 +151,10 @@ class AxisConfig:
             raise AxisConfigError(
                 f"{label}: przełożenie posuwu (mm na obrót) musi być większe od zera"
             )
+        if self.vel_jog <= 0:
+            raise AxisConfigError(f"{label}: prędkość JOG musi być większa od zera")
+        if self.vel_home <= 0:
+            raise AxisConfigError(f"{label}: prędkość bazowania musi być większa od zera")
         if self.soft_max - self.soft_min <= EPS:
             raise AxisConfigError(
                 f"{label}: limit programowy MIN ({_mm(self.soft_min)}) musi być "

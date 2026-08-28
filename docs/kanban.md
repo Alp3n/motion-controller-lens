@@ -36,7 +36,9 @@ mam to założyć.
       + ekran bazowania
 - [ ] Siła trzypoziomowa (globalna / cykl / program technologa) —
       `ILimits.TrqGlobal`
-- [ ] Prędkości max i robocze (roboczy / bazowanie / JOG) per oś
+- [x] Prędkości JOG i bazowania per oś (max i robocza już były gotowe —
+      profile parametrów, `POSUW_ROBOCZY`/`POSUW_DOJAZDU`); bazowanie tylko
+      w symulatorze, JOG też na sprzęcie
 - [x] Siła/prędkość zależne od pozycji — sprawdzone: *Conditional Torque
       Limiting* w serwie (ClearView) + `TrqGlobal` z API
 - [ ] Siła per operacja w programie technologa

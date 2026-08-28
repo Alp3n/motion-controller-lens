@@ -169,6 +169,20 @@ class Machine:
             return feed
         return min(feed, min(limits))
 
+    def axis_jog_feed(self, axis: str) -> float:
+        """Domyślna prędkość JOG skonfigurowana dla osi (ekran /axes)."""
+        cfg = self.axes.get(axis)
+        return cfg.vel_jog if cfg is not None else 500.0
+
+    def _home_feed(self, axes: list[str]) -> float:
+        """Prędkość bazowania — najwolniejsza spośród skonfigurowanych osi.
+
+        Dotyczy tylko symulatora: na sprzęcie bazowaniem steruje serwo wg
+        ustawień w ClearView, więc `ClearCoreMachine` tej wartości nie używa.
+        """
+        values = [self.axes[a].vel_home for a in axes if a in self.axes]
+        return min(values) if values else 1000.0
+
     def _check_soft_limit(self, axis: str, target: float) -> None:
         """Odrzuca ruch poza limit programowy osi (JOG i ruchy pojedynczej osi).
 
@@ -301,8 +315,9 @@ class SimulatedMachine(Machine):
             # czyli do zera osi — odjazd ograniczony limitem programowym Z
             z_cfg = self.axes.get("z")
             lift = 40.0 if z_cfg is None else min(40.0, z_cfg.soft_max)
-            await self._move_to(0.0, 0.0, lift, feed=2000)
-            await self._move_to(0.0, 0.0, 0.0, feed=1000)
+            home_feed = self._home_feed(["x", "y", "z"])
+            await self._move_to(0.0, 0.0, lift, feed=home_feed)
+            await self._move_to(0.0, 0.0, 0.0, feed=home_feed)
         except asyncio.CancelledError:
             return
         finally:
