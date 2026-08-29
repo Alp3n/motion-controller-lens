@@ -51,7 +51,9 @@ mam to założyć.
 - [x] Siła per operacja w programie technologa — kolumna MOMENT, format 4
       `.prg`; jak profile, dziś tylko zapis w pliku
 - [ ] Soft limits w silniku jako warstwa dodatkowa (wymagają bazowania)
-- [ ] Ruchy head-tail dla zagłębiania w Z; ruchy asymetryczne
+- [ ] Ruchy head-tail dla zagłębiania w Z; ruchy asymetryczne — propozycja
+      z pytaniami do decyzji w `propozycja-head-tail-asymetria.md`,
+      świadomie niezaimplementowane bez ustalenia z Tobą
 
 ### D. Wrzeciono
 - [ ] Włączenie przy starcie maszyny (przełącznik)

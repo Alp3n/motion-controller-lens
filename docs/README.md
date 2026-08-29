@@ -34,6 +34,10 @@ Ustalenia i analizy:
 - [model-cyklu-maszyny.md](model-cyklu-maszyny.md) — propozycja modelu
   danych dla tematu B: `Axis`/`ParameterProfile`/`CycleStep`/`PartProgram`,
   snapshot/restore parametrów, podział na etapy.
+- [propozycja-head-tail-asymetria.md](propozycja-head-tail-asymetria.md) —
+  propozycja ruchów head-tail (zagłębianie w Z) i asymetrycznych
+  (przyspieszenie ≠ hamowanie), temat C; pytania do decyzji, celowo bez
+  kodu — to zmiana zachowania ruchu w materiale.
 
 Zmiany w kodzie opisujemy w [`zmiany/`](zmiany/) — jeden plik na zmianę,
 nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).

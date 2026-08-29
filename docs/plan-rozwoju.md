@@ -152,7 +152,10 @@ cyklu (temat F), ruch osi innych niż X/Y/Z (temat C).
       dodatkowej (dziś nieaktywne — wymagają prawdziwego bazowania).
 - [ ] Rozważyć ruchy **head-tail** dla zagłębiania w Z (szybki zjazd +
       delikatne wejście w materiał w jednej komendzie) i **asymetryczne**
-      (inne przyspieszenie niż hamowanie).
+      (inne przyspieszenie niż hamowanie). **Świadomie niezaimplementowane
+      bez decyzji** — to zmiana fizycznego zachowania ruchu w materiale, nie
+      ekran ani zapis danych. Propozycja z pytaniami do rozstrzygnięcia:
+      [`propozycja-head-tail-asymetria.md`](propozycja-head-tail-asymetria.md).
 
 Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §1, §2; `notatki.txt`;
 [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
