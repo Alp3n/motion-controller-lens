@@ -28,10 +28,11 @@ mam to założyć.
       (wraca przy błędzie i przy STOP; `WYJSCIE` na razie tylko w symulatorze)
 - [x] Etap 4: ekran `/cycle` — tabela kroków, walidacja, uruchomienie
       i podgląd na żywo; krok PROGRAM = skok do podprogramu technologa
-- [ ] **Znalezione przy temacie F, nie wcześniej zgłoszone:** `ClearCoreMachine`
-      nie ma `start_cycle` — `/cycle` (jeden przebieg i tryb automatyczny)
-      działa dziś wyłącznie w symulatorze; na sprzęcie zwróciłby
-      niezłapany błąd. Wymaga C++ i sprzętu — patrz `zmiany/tryby-pracy.md`
+- [x] `ClearCoreMachine.start_cycle` dopisany — RUCH/PROGRAM/PAUZA przez
+      istniejące komendy mostka (MOVEZ/MOVEXY/SPINDLE), WYJSCIE dalej tylko
+      w statusie (brak komendy w protokole). **Nie zweryfikowane na
+      fizycznym sterowniku** — do potwierdzenia przy uruchomieniu
+      sprzętowym (temat H). `zmiany/cykl-na-sprzecie.md`
 
 ### C. Osie i konfiguracja ruchu
 - [x] Dodatkowe osie w `/axes` (dodawanie/usuwanie, odznaka „tylko konfiguracja”)
@@ -89,6 +90,7 @@ Jedna sesja w ClearView (Windows) domyka pierwsze pięć pozycji:
 - [ ] Sprawdzić dostępność g-Stop (tłumienie drgań)
 
 Pomiary i testy:
+- [ ] Zweryfikować cykl maszyny (`ClearCoreMachine.start_cycle`) na sprzęcie
 - [ ] Weryfikacja pomiarowa toru `LINIA` + próba grup wyzwalania
 - [ ] Zmierzyć domyślny watchdog sieciowy (czy w ogóle działa)
 - [ ] Test: utrata zezwolenia w ruchu

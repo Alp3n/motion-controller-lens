@@ -226,10 +226,13 @@ niżej; rozstrzygnąć **przed** rozpoczęciem tego tematu.
       zawieszenia mroziła **cały serwer**, nie tylko cykl.
       Szczegóły: [`zmiany/tryby-pracy.md`](zmiany/tryby-pracy.md).
 
-**Nowo znalezione, nie wcześniej zgłoszone:** cykl (jeden przebieg i pętla)
-działa dziś tylko w symulatorze — `ClearCoreMachine` nie ma `start_cycle`.
-`/cycle` nie działał na sprzęcie już od etapu 4 tematu B; nikt tego wcześniej
-nie sprawdził i nie zapisał. Wymaga C++ i fizycznego sprzętu (temat B/H).
+**Domknięte:** `ClearCoreMachine.start_cycle` dopisany — RUCH/PROGRAM/PAUZA
+przez istniejące komendy mostka (nie trzeba było C++ — MOVEZ/MOVEXY/SPINDLE
+już tam są), WYJSCIE dalej tylko w statusie (protokół nie ma tej komendy).
+Pierwsze testy automatyczne dla `ClearCoreMachine` w ogóle (wcześniej klasa
+nie miała żadnych). **Nie zweryfikowane na fizycznym sterowniku** — do
+potwierdzenia przy najbliższym uruchomieniu sprzętowym (temat H). Szczegóły:
+[`zmiany/cykl-na-sprzecie.md`](zmiany/cykl-na-sprzecie.md).
 
 Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §6.
 
@@ -283,6 +286,10 @@ jako **jedno wejście**, nie kilka osobnych:
 
 Pomiary i testy:
 
+- [ ] Zweryfikować `ClearCoreMachine.start_cycle` (jeden przebieg i tryb
+      automatyczny, temat F) na fizycznym sterowniku — napisane i pokryte
+      testami z podstawionym `_command`, ale nigdy nie uruchomione na
+      sprzęcie. Szczegóły: [`zmiany/cykl-na-sprzecie.md`](zmiany/cykl-na-sprzecie.md).
 - [ ] Zweryfikować pomiarowo tor operacji `LINIA` (interpolacja przybliżona;
       zmierzone odchylenie czasu przejazdu, ale nie geometrii toru).
       Przy okazji spróbować **grup wyzwalania** (`TriggerGroup` +

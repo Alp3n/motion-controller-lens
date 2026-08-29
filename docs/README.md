@@ -94,5 +94,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/sila-per-operacja.md](zmiany/sila-per-operacja.md) — kolumna
   MOMENT w programie technologa (format 4 pliku `.prg`), limit siły tylko
   dla jednej operacji; dziś wyłącznie zapis w pliku, jak w profilach.
+- [zmiany/cykl-na-sprzecie.md](zmiany/cykl-na-sprzecie.md) — `ClearCoreMachine`
+  dostaje `start_cycle` (brakowało go od etapu 4 tematu B — `/cycle` nie
+  działał na sprzęcie). Pierwsze testy automatyczne dla tej klasy. Nie
+  zweryfikowane na fizycznym sterowniku.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.
