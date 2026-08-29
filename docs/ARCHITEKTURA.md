@@ -52,9 +52,20 @@ Aplikacja webowa w Pythonie (FastAPI) uruchamiana na komputerze przemysłowym
   tabeli, bez programowania; zapis do pliku w formacie opisanym w
   [FORMAT_PROGRAMU.md](FORMAT_PROGRAMU.md).
 - **Konfiguracja osi** (`/axes`) — długość fizyczna, punkt bazowania, limity
-  programowe i przełożenie posuwu każdej osi; limity są obszarem roboczym przy
-  walidacji programów i granicą ruchu ręcznego. Model:
-  [konfiguracja-osi.md](konfiguracja-osi.md).
+  programowe, przełożenie posuwu oraz prędkości JOG/bazowania każdej osi;
+  limity są obszarem roboczym przy walidacji programów i granicą ruchu
+  ręcznego. Model: [konfiguracja-osi.md](konfiguracja-osi.md).
+- **Profile parametrów** (`/profiles`) — trzy poziomy siły i prędkości
+  (globalny/cykl/program technologa), edycja i przełączanie aktywnego
+  profilu. Limit momentu dziś tylko w symulatorze — protokół mostka nie ma
+  jeszcze tej komendy. Szczegóły:
+  [zmiany/profile-parametrow-etap2.md](zmiany/profile-parametrow-etap2.md),
+  [zmiany/ekran-profili.md](zmiany/ekran-profili.md).
+- **Cykl maszyny** (`/cycle`) — kroki poziomu admina wokół programu detalu
+  (RUCH, PROGRAM, WYJSCIE, PAUZA), uruchomienie jako jeden przebieg
+  (półautomatyczny) albo pętla bez zatrzymania (automatyczny, temat F).
+  Szczegóły: [model-cyklu-maszyny.md](model-cyklu-maszyny.md),
+  [zmiany/cykl-na-sprzecie.md](zmiany/cykl-na-sprzecie.md).
 - **API REST dla MES** — MES po wybraniu zlecenia wywołuje
   `POST /api/mes/select-order` z numerem zlecenia i 12-cyfrowym numerem
   programu; serwer ładuje plik programu i przygotowuje maszynę.
