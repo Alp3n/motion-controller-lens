@@ -47,7 +47,8 @@ mam to założyć.
       w symulatorze, JOG też na sprzęcie
 - [x] Siła/prędkość zależne od pozycji — sprawdzone: *Conditional Torque
       Limiting* w serwie (ClearView) + `TrqGlobal` z API
-- [ ] Siła per operacja w programie technologa
+- [x] Siła per operacja w programie technologa — kolumna MOMENT, format 4
+      `.prg`; jak profile, dziś tylko zapis w pliku
 - [ ] Soft limits w silniku jako warstwa dodatkowa (wymagają bazowania)
 - [ ] Ruchy head-tail dla zagłębiania w Z; ruchy asymetryczne
 

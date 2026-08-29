@@ -143,8 +143,11 @@ cyklu (temat F), ruch osi innych niż X/Y/Z (temat C).
       (konfiguracja w ClearView, działa w silniku). Wersję „per operacja"
       realizuje `TrqGlobal` z API. Szczegóły:
       [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
-- [ ] W programie technologa: możliwość ustawienia siły per operacja (jeśli
-      nieustawiona — wartość domyślna z ekranu parametrów maszyny).
+- [x] W programie technologa: możliwość ustawienia siły per operacja (jeśli
+      nieustawiona — wartość domyślna z aktywnego profilu). Kolumna `MOMENT`,
+      format 4 pliku `.prg`. Jak limit momentu w profilach — dziś wyłącznie
+      zapis w pliku, nie dociera do symulatora ani sprzętu. Szczegóły:
+      [`zmiany/sila-per-operacja.md`](zmiany/sila-per-operacja.md).
 - [ ] Rozważyć włączenie **soft limits w samym silniku** jako warstwy
       dodatkowej (dziś nieaktywne — wymagają prawdziwego bazowania).
 - [ ] Rozważyć ruchy **head-tail** dla zagłębiania w Z (szybki zjazd +

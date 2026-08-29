@@ -91,5 +91,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/ekran-glowny.md](zmiany/ekran-glowny.md) — poprawiona nazwa maszyny
   (literówka „ocinanie” → „odcinanie” w całym repo) i miejsce na logo WALKNER
   w nagłówku panelu operatora.
+- [zmiany/sila-per-operacja.md](zmiany/sila-per-operacja.md) — kolumna
+  MOMENT w programie technologa (format 4 pliku `.prg`), limit siły tylko
+  dla jednej operacji; dziś wyłącznie zapis w pliku, jak w profilach.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.
