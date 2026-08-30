@@ -29,6 +29,10 @@ PROFILES_FILE = Path(
 # plik definicji cyklu maszyny (kroki poziomu admina wokół programu detalu)
 CYCLE_FILE = Path(os.environ.get("CYCLE_CONFIG", "config/cycle.json")).resolve()
 
+# plik definicji SMART (nazwane zestawy parametrów procedur sterowanych siłą,
+# np. „SMART-sila"); wspólne dla programu technologa i cyklu maszyny
+SMART_FILE = Path(os.environ.get("SMART_CONFIG", "config/smart.json")).resolve()
+
 # wartości startowe obszaru roboczego [mm] — używane tylko, dopóki nie ma
 # pliku konfiguracji osi
 WORK_AREA = {

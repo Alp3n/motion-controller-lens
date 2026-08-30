@@ -422,10 +422,11 @@ dla programu technologa i cyklu maszyny.
       operatora pokazuje obciążenie osi. Najmniejszy krok weryfikujący całą
       drogę odczytu na maszynie; pozwala zmierzyć realny koszt próbkowania.
       Przydatny sam w sobie. *(mostek — wymaga maszyny)*
-- [ ] **Etap 1:** model definicji (`server/app/smart.py`, `config/smart.json`),
+- [x] **Etap 1:** model definicji (`server/app/smart.py`, `config/smart.json`),
       `GET/PUT /api/smart` i **ekran `/smart`** — lista definicji, edycja,
       „zapisz jako", usuwanie, pola rysowane wg rejestru procedur.
-      **Bez sprzętu.**
+      29 nowych testów, 170/170 przechodzi. Szczegóły:
+      [`zmiany/ekran-smart.md`](zmiany/ekran-smart.md).
 - [ ] **Etap 2:** operacja `SMART` w programie technologa (format 5 `.prg`,
       kolumna z nazwą definicji) + wybór z listy w edytorze. **Bez sprzętu.**
 - [ ] **Etap 3:** krok `SMART` w cyklu maszyny (`/cycle`). **Bez sprzętu.**

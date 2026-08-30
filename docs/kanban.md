@@ -124,8 +124,8 @@ Trzy poziomy: **procedura** (C++, programista) → **definicja SMART**
 Definicje wspólne dla programu technologa i cyklu maszyny.
 - [ ] Etap 0: `STATUS` z odczytem momentu (`TRQX/Y/Z`) + podgląd na panelu
       — mały krok, weryfikuje sprzęt i koszt próbkowania *(maszyna)*
-- [ ] Etap 1: model definicji + `/api/smart` + **ekran `/smart`** (lista,
-      edycja, „zapisz jako", usuwanie) **— bez sprzętu**
+- [x] Etap 1: model definicji + `/api/smart` + **ekran `/smart`** (lista,
+      edycja, „zapisz jako", usuwanie) — `zmiany/ekran-smart.md`
 - [ ] Etap 2: operacja `SMART` w `.prg` (format 5) + wybór z listy
       w edytorze **— bez sprzętu**
 - [ ] Etap 3: krok `SMART` w cyklu maszyny (`/cycle`) **— bez sprzętu**

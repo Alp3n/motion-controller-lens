@@ -102,6 +102,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/sila-per-operacja.md](zmiany/sila-per-operacja.md) — kolumna
   MOMENT w programie technologa (format 4 pliku `.prg`), limit siły tylko
   dla jednej operacji; dziś wyłącznie zapis w pliku, jak w profilach.
+- [zmiany/ekran-smart.md](zmiany/ekran-smart.md) — model definicji SMART,
+  `/api/smart` i ekran `/smart` z „zapisz jako" (etap 1 tematu K); procedura
+  w mostku jeszcze nie istnieje.
 - [zmiany/cykl-na-sprzecie.md](zmiany/cykl-na-sprzecie.md) — `ClearCoreMachine`
   dostaje `start_cycle` (brakowało go od etapu 4 tematu B — `/cycle` nie
   działał na sprzęcie). Pierwsze testy automatyczne dla tej klasy. Nie
