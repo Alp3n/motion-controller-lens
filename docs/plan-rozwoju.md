@@ -143,13 +143,19 @@ cyklu (temat F), ruch osi innych niż X/Y/Z (temat C).
       (konfiguracja w ClearView, działa w silniku). Wersję „per operacja"
       realizuje `TrqGlobal` z API. Szczegóły:
       [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
-- [ ] W programie technologa: możliwość ustawienia siły per operacja (jeśli
-      nieustawiona — wartość domyślna z ekranu parametrów maszyny).
+- [x] W programie technologa: możliwość ustawienia siły per operacja (jeśli
+      nieustawiona — wartość domyślna z aktywnego profilu). Kolumna `MOMENT`,
+      format 4 pliku `.prg`. Jak limit momentu w profilach — dziś wyłącznie
+      zapis w pliku, nie dociera do symulatora ani sprzętu. Szczegóły:
+      [`zmiany/sila-per-operacja.md`](zmiany/sila-per-operacja.md).
 - [ ] Rozważyć włączenie **soft limits w samym silniku** jako warstwy
       dodatkowej (dziś nieaktywne — wymagają prawdziwego bazowania).
 - [ ] Rozważyć ruchy **head-tail** dla zagłębiania w Z (szybki zjazd +
       delikatne wejście w materiał w jednej komendzie) i **asymetryczne**
-      (inne przyspieszenie niż hamowanie).
+      (inne przyspieszenie niż hamowanie). **Świadomie niezaimplementowane
+      bez decyzji** — to zmiana fizycznego zachowania ruchu w materiale, nie
+      ekran ani zapis danych. Propozycja z pytaniami do rozstrzygnięcia:
+      [`propozycja-head-tail-asymetria.md`](propozycja-head-tail-asymetria.md).
 
 Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §1, §2; `notatki.txt`;
 [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
@@ -223,17 +229,27 @@ niżej; rozstrzygnąć **przed** rozpoczęciem tego tematu.
       zawieszenia mroziła **cały serwer**, nie tylko cykl.
       Szczegóły: [`zmiany/tryby-pracy.md`](zmiany/tryby-pracy.md).
 
-**Nowo znalezione, nie wcześniej zgłoszone:** cykl (jeden przebieg i pętla)
-działa dziś tylko w symulatorze — `ClearCoreMachine` nie ma `start_cycle`.
-`/cycle` nie działał na sprzęcie już od etapu 4 tematu B; nikt tego wcześniej
-nie sprawdził i nie zapisał. Wymaga C++ i fizycznego sprzętu (temat B/H).
+**Domknięte:** `ClearCoreMachine.start_cycle` dopisany — RUCH/PROGRAM/PAUZA
+przez istniejące komendy mostka (nie trzeba było C++ — MOVEZ/MOVEXY/SPINDLE
+już tam są), WYJSCIE dalej tylko w statusie (protokół nie ma tej komendy).
+Pierwsze testy automatyczne dla `ClearCoreMachine` w ogóle (wcześniej klasa
+nie miała żadnych). **Nie zweryfikowane na fizycznym sterowniku** — do
+potwierdzenia przy najbliższym uruchomieniu sprzętowym (temat H). Szczegóły:
+[`zmiany/cykl-na-sprzecie.md`](zmiany/cykl-na-sprzecie.md).
 
 Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §6.
 
 ## G. Ekrany i zarządzanie programami
 
-- [ ] Ekran główny — prosty, niezbędne przyciski i komunikaty, nazwa maszyny
-      „Demontaż pinów z optyki", logo WALKNER.
+- [x] Ekran główny — to już jest panel operatora (`/`): prosty, ma
+      niezbędne przyciski i komunikaty. Nazwa: nie „Demontaż pinów z optyki"
+      z notatki §7 — ta nazwa jest sprzeczna z resztą repo i CLAUDE.md,
+      okazała się nieaktualna (potwierdzone z Tobą) — poprawiona literówka
+      w całym repo: „ocinanie" → **„odcinanie wlewków płytek optyki"**.
+      Logo WALKNER: miejsce w nagłówku gotowe (`#logo` w `index.html`,
+      znika automatycznie, gdy pliku nie ma), plik jeszcze nie dostarczony —
+      wystarczy wrzucić `server/app/static/img/logo.png` i wypchnąć, bez
+      zmian w kodzie. Szczegóły: [`zmiany/ekran-glowny.md`](zmiany/ekran-glowny.md).
 - [ ] Ekran diagnostyczny (tylko admin) — definiowanie, praca ręczna,
       półautomatyczna i automatyczna z funkcjami zabezpieczeń. Wymaga
       warstwy ról (temat E) — dziś nie ma pojęcia „tylko admin".
@@ -273,6 +289,10 @@ jako **jedno wejście**, nie kilka osobnych:
 
 Pomiary i testy:
 
+- [ ] Zweryfikować `ClearCoreMachine.start_cycle` (jeden przebieg i tryb
+      automatyczny, temat F) na fizycznym sterowniku — napisane i pokryte
+      testami z podstawionym `_command`, ale nigdy nie uruchomione na
+      sprzęcie. Szczegóły: [`zmiany/cykl-na-sprzecie.md`](zmiany/cykl-na-sprzecie.md).
 - [ ] Zweryfikować pomiarowo tor operacji `LINIA` (interpolacja przybliżona;
       zmierzone odchylenie czasu przejazdu, ale nie geometrii toru).
       Przy okazji spróbować **grup wyzwalania** (`TriggerGroup` +
@@ -299,7 +319,7 @@ Pomiary i testy:
 
 - [ ] `LUK`, `OKRAG`, `POLILINIA` (operacje grupy B w `.prg`) — świadomie
       pominięte, wraca tylko jeśli łuki okażą się faktycznie potrzebne przy
-      ocinaniu wlewków (dziś odcinki wystarczają).
+      odcinaniu wlewków (dziś odcinki wystarczają).
 - [ ] GRBL/G-code jako alternatywny sposób programowania — zaplanowane jako
       rozszerzenie na później, niski priorytet.
 

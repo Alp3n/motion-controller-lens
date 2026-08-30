@@ -147,8 +147,8 @@ def test_format_1_still_parses_and_upgrades_on_save():
     p = parse_program(VALID)
     assert p.operations[0].passes is None
     text = serialize_program(p)
-    assert "FORMAT;3" in text
-    assert "POSUW;OBROTY;PRZEJSCIA;PRZYROST" in text
+    assert "FORMAT;4" in text
+    assert "POSUW;OBROTY;MOMENT;PRZEJSCIA;PRZYROST" in text
     again = parse_program(text)
     assert len(again.operations) == len(p.operations)
 
@@ -276,7 +276,73 @@ def test_rectangle_corners_checked_against_work_area():
 def test_format_3_roundtrip():
     p = parse_program(FORMAT3, "583912004711")
     text = serialize_program(p)
-    assert "FORMAT;3" in text
+    assert "FORMAT;4" in text
     again = parse_program(text, "583912004711")
     assert [o.op_type for o in again.operations] == [o.op_type for o in p.operations]
     assert again.operations[0].rpm == 8000
+
+
+# --- format 4: MOMENT (siła per operacja) ----------------------------------
+
+FORMAT4 = """[NAGLOWEK]
+FORMAT;4
+PROGRAM;583912004711
+NAZWA;Test formatu 4
+OBROTY_FREZU;12000
+POSUW_ROBOCZY;300
+POSUW_DOJAZDU;3000
+Z_BEZPIECZNE;10
+
+[OPERACJE]
+LP;OPERACJA;X;Y;Z;X2;Y2;POSUW;OBROTY;MOMENT;PRZEJSCIA;PRZYROST;UWAGI
+1;PUNKT;5;5;-1;;;;;8;;;delikatnie
+2;SZYBKI;20;10;;;;;;;;;przejazd bez zmiany momentu
+3;WRZECIONO;;;;;;;8000;;;;wlacz wrzeciono
+"""
+
+
+def test_parse_format_4_torque_column():
+    p = parse_program(FORMAT4, "583912004711")
+    assert p.operations[0].torque_pct == 8
+    assert p.operations[1].torque_pct is None  # dziedziczy z profilu
+
+
+def test_format_4_roundtrip():
+    p = parse_program(FORMAT4, "583912004711")
+    text = serialize_program(p)
+    assert "FORMAT;4" in text
+    again = parse_program(text, "583912004711")
+    assert again.operations[0].torque_pct == 8
+    assert again.operations[1].torque_pct is None
+
+
+def test_torque_out_of_range_rejected():
+    bad = FORMAT4.replace("1;PUNKT;5;5;-1;;;;;8;;;delikatnie",
+                          "1;PUNKT;5;5;-1;;;;;150;;;za duzo")
+    with pytest.raises(ProgramError) as e:
+        parse_program(bad, "583912004711")
+    assert "MOMENT" in str(e.value)
+
+
+def test_torque_zero_rejected_not_treated_as_safest():
+    bad = FORMAT4.replace("1;PUNKT;5;5;-1;;;;;8;;;delikatnie",
+                          "1;PUNKT;5;5;-1;;;;;0;;;zero")
+    with pytest.raises(ProgramError) as e:
+        parse_program(bad, "583912004711")
+    assert "MOMENT" in str(e.value)
+
+
+def test_torque_rejected_on_non_moving_operation():
+    bad = FORMAT4.replace(
+        "3;WRZECIONO;;;;;;;8000;;;;wlacz wrzeciono",
+        "3;WRZECIONO;;;;;;;8000;5;;;wlacz wrzeciono",
+    )
+    with pytest.raises(ProgramError) as e:
+        parse_program(bad, "583912004711")
+    assert "MOMENT" in str(e.value)
+
+
+def test_format_1_upgrade_has_no_torque_override():
+    """Stare pliki nie znają MOMENT — po awansie do formatu 4 musi zostać puste."""
+    p = parse_program(VALID)
+    assert all(op.torque_pct is None for op in p.operations)

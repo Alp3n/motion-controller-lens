@@ -34,6 +34,10 @@ Ustalenia i analizy:
 - [model-cyklu-maszyny.md](model-cyklu-maszyny.md) — propozycja modelu
   danych dla tematu B: `Axis`/`ParameterProfile`/`CycleStep`/`PartProgram`,
   snapshot/restore parametrów, podział na etapy.
+- [propozycja-head-tail-asymetria.md](propozycja-head-tail-asymetria.md) —
+  propozycja ruchów head-tail (zagłębianie w Z) i asymetrycznych
+  (przyspieszenie ≠ hamowanie), temat C; pytania do decyzji, celowo bez
+  kodu — to zmiana zachowania ruchu w materiale.
 
 Zmiany w kodzie opisujemy w [`zmiany/`](zmiany/) — jeden plik na zmianę,
 nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
@@ -88,5 +92,15 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   zawieszający cały serwer przy kroku cyklu bez realnego ruchu.
 - [zmiany/zapisz-jako-program.md](zmiany/zapisz-jako-program.md) — kopiowanie
   programu technologa pod nowym numerem NC w edytorze.
+- [zmiany/ekran-glowny.md](zmiany/ekran-glowny.md) — poprawiona nazwa maszyny
+  (literówka „ocinanie” → „odcinanie” w całym repo) i miejsce na logo WALKNER
+  w nagłówku panelu operatora.
+- [zmiany/sila-per-operacja.md](zmiany/sila-per-operacja.md) — kolumna
+  MOMENT w programie technologa (format 4 pliku `.prg`), limit siły tylko
+  dla jednej operacji; dziś wyłącznie zapis w pliku, jak w profilach.
+- [zmiany/cykl-na-sprzecie.md](zmiany/cykl-na-sprzecie.md) — `ClearCoreMachine`
+  dostaje `start_cycle` (brakowało go od etapu 4 tematu B — `/cycle` nie
+  działał na sprzęcie). Pierwsze testy automatyczne dla tej klasy. Nie
+  zweryfikowane na fizycznym sterowniku.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

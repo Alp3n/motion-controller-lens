@@ -1,6 +1,6 @@
-# Format pliku programu (.prg) — wersje 1, 2 i 3
+# Format pliku programu (.prg) — wersje 1, 2, 3 i 4
 
-Plik programu opisuje operacje ocinania wlewków dla jednej płytki optyki.
+Plik programu opisuje operacje odcinania wlewków dla jednej płytki optyki.
 Założenia:
 
 - **prosty i czytelny dla technologa** — bez programowania,
@@ -16,7 +16,7 @@ Plik składa się z dwóch sekcji: `[NAGLOWEK]` i `[OPERACJE]`.
 Linie zaczynające się od `#` to komentarze i są pomijane.
 
 ```
-# Program ocinania wlewkow — plytka soczewki 50 mm, strona lewa
+# Program odcinania wlewkow — plytka soczewki 50 mm, strona lewa
 [NAGLOWEK]
 FORMAT;1
 PROGRAM;583912004711
@@ -43,7 +43,7 @@ Pary `KLUCZ;WARTOSC`, po jednej w linii.
 
 | Klucz           | Wymagany | Opis                                                     |
 |-----------------|----------|----------------------------------------------------------|
-| `FORMAT`        | tak      | wersja formatu: `1` (8 kolumn), `2` (11), `3` (12)       |
+| `FORMAT`        | tak      | wersja formatu: `1` (8 kolumn), `2` (11), `3` (12), `4` (13) |
 | `PROGRAM`       | tak      | 12-cyfrowy numer programu — musi zgadzać się z nazwą pliku |
 | `NAZWA`         | tak      | czytelna nazwa programu / detalu                         |
 | `MATERIAL`      | nie      | materiał płytki (np. PMMA, PC)                           |
@@ -60,6 +60,7 @@ Pierwsza linia to nagłówek kolumn (stały):
 - **format 1:** `LP;OPERACJA;X;Y;Z;X2;Y2;UWAGI`
 - **format 2:** `LP;OPERACJA;X;Y;Z;X2;Y2;POSUW;PRZEJSCIA;PRZYROST;UWAGI`
 - **format 3:** `LP;OPERACJA;X;Y;Z;X2;Y2;POSUW;OBROTY;PRZEJSCIA;PRZYROST;UWAGI`
+- **format 4:** `LP;OPERACJA;X;Y;Z;X2;Y2;POSUW;OBROTY;MOMENT;PRZEJSCIA;PRZYROST;UWAGI`
 
 Nagłówek musi odpowiadać wersji podanej w `FORMAT`. Parser czyta wszystkie
 wersje, a edytor zapisuje zawsze w najnowszej — starsze pliki awansują przy
@@ -84,19 +85,22 @@ zapisany z Excela w polskich ustawieniach też zadziała).
 Kolumna `UWAGI` jest dowolnym opisem dla operatora (wyświetlana na panelu).
 Puste kolumny zostawia się puste (same średniki).
 
-### Parametry operacji (format 2)
+### Parametry operacji (format 2+)
 
-Kolumny opcjonalne. Puste znaczy „weź wartość z nagłówka programu".
+Kolumny opcjonalne. Puste znaczy „weź wartość z nagłówka programu" (albo,
+dla `MOMENT`, „weź wartość z aktywnego profilu parametrów").
 
 `PRZEJSCIA` i `PRZYROST` przyjmują **tylko operacje skrawające**
-(`PUNKT`, `LINIA`, `PROSTOKAT`). `POSUW` nie dotyczy `PAUZA` ani
-`WRZECIONO`. `OBROTY` dotyczą wyłącznie `WRZECIONO`. Złamanie tych reguł
-jest błędem z numerem linii, a nie cichym zignorowaniem wartości.
+(`PUNKT`, `LINIA`, `PROSTOKAT`). `POSUW` i `MOMENT` nie dotyczą `PAUZA` ani
+`WRZECIONO` (nie poruszają osiami). `OBROTY` dotyczą wyłącznie `WRZECIONO`.
+Złamanie tych reguł jest błędem z numerem linii, a nie cichym
+zignorowaniem wartości.
 
 | Kolumna     | Opis                                                                 |
 |-------------|----------------------------------------------------------------------|
 | `POSUW`     | posuw roboczy tylko dla tej operacji [mm/min]; puste = `POSUW_ROBOCZY`. Dla `SZYBKI` nadpisuje `POSUW_DOJAZDU` |
 | `OBROTY`    | obroty wrzeciona [obr/min] — **wyłącznie** dla operacji `WRZECIONO`    |
+| `MOMENT`    | limit siły (momentu silnika) tylko dla tej operacji, w % (0, 100]; puste = wartość z aktywnego profilu parametrów. **Dziś tylko zapis w pliku** — jak limit momentu w profilach, nie działa jeszcze w symulatorze ani na sprzęcie (protokół mostka nie ma komendy momentu) |
 | `PRZEJSCIA` | liczba przejść na głębokość (liczba całkowita ≥ 1)                    |
 | `PRZYROST`  | przyrost głębokości na przejście [mm]                                 |
 

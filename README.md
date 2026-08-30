@@ -1,6 +1,6 @@
 # motion-controller-lens
 
-Maszyna do **ocinania wlewków z plastikowych płytek optyki** (frezowanie
+Maszyna do **odcinania wlewków z plastikowych płytek optyki** (frezowanie
 wystających, niepotrzebnych elementów po wtrysku), budowana od zera na serwach
 **Teknic ClearPath-SC**, sterowanych bezpośrednio z PC przez bibliotekę
 **Teknic sFoundation** (mostek do **SC4-Hub** po USB), z aplikacją webową
@@ -8,7 +8,7 @@ do obsługi i sterowania oraz API dla systemu **MES**.
 
 ## Jak to działa
 
-1. **Technolog** przygotowuje program ocinania (współrzędne wlewków i rodzaj
+1. **Technolog** przygotowuje program odcinania (współrzędne wlewków i rodzaj
    operacji) w webowym edytorze albo w Excelu — prosty plik tekstowy `.prg`,
    bez programowania. Nazwa pliku to 12-cyfrowy numer programu (12 NC).
 2. **Operator** wybiera zlecenie w MES; MES wywołuje API maszyny i podaje
@@ -66,7 +66,7 @@ PROGRAMS_DIR=../programs uvicorn app.main:app --host 0.0.0.0 --port 8000
 ## Uruchomienie całości z pulpitu (maszyna albo symulator)
 
 ```bash
-tools/zainstaluj-skrot.sh      # zakłada skrót „Maszyna — ocinanie wlewków" na pulpicie
+tools/zainstaluj-skrot.sh      # zakłada skrót „Maszyna — odcinanie wlewków" na pulpicie
 ```
 
 Kliknięcie skrótu uruchamia mostek SC4-Hub (jeśli jest zbudowany i widzi

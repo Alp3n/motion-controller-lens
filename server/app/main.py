@@ -45,7 +45,7 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="Maszyna do ocinania wlewków — API", version="0.1.0", lifespan=lifespan
+    title="Maszyna do odcinania wlewków — API", version="0.1.0", lifespan=lifespan
 )
 
 machine = create_machine(

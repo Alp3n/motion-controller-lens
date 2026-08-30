@@ -28,10 +28,11 @@ mam to założyć.
       (wraca przy błędzie i przy STOP; `WYJSCIE` na razie tylko w symulatorze)
 - [x] Etap 4: ekran `/cycle` — tabela kroków, walidacja, uruchomienie
       i podgląd na żywo; krok PROGRAM = skok do podprogramu technologa
-- [ ] **Znalezione przy temacie F, nie wcześniej zgłoszone:** `ClearCoreMachine`
-      nie ma `start_cycle` — `/cycle` (jeden przebieg i tryb automatyczny)
-      działa dziś wyłącznie w symulatorze; na sprzęcie zwróciłby
-      niezłapany błąd. Wymaga C++ i sprzętu — patrz `zmiany/tryby-pracy.md`
+- [x] `ClearCoreMachine.start_cycle` dopisany — RUCH/PROGRAM/PAUZA przez
+      istniejące komendy mostka (MOVEZ/MOVEXY/SPINDLE), WYJSCIE dalej tylko
+      w statusie (brak komendy w protokole). **Nie zweryfikowane na
+      fizycznym sterowniku** — do potwierdzenia przy uruchomieniu
+      sprzętowym (temat H). `zmiany/cykl-na-sprzecie.md`
 
 ### C. Osie i konfiguracja ruchu
 - [x] Dodatkowe osie w `/axes` (dodawanie/usuwanie, odznaka „tylko konfiguracja”)
@@ -47,9 +48,12 @@ mam to założyć.
       w symulatorze, JOG też na sprzęcie
 - [x] Siła/prędkość zależne od pozycji — sprawdzone: *Conditional Torque
       Limiting* w serwie (ClearView) + `TrqGlobal` z API
-- [ ] Siła per operacja w programie technologa
+- [x] Siła per operacja w programie technologa — kolumna MOMENT, format 4
+      `.prg`; jak profile, dziś tylko zapis w pliku
 - [ ] Soft limits w silniku jako warstwa dodatkowa (wymagają bazowania)
-- [ ] Ruchy head-tail dla zagłębiania w Z; ruchy asymetryczne
+- [ ] Ruchy head-tail dla zagłębiania w Z; ruchy asymetryczne — propozycja
+      z pytaniami do decyzji w `propozycja-head-tail-asymetria.md`,
+      świadomie niezaimplementowane bez ustalenia z Tobą
 
 ### D. Wrzeciono
 - [ ] Włączenie przy starcie maszyny (przełącznik)
@@ -72,7 +76,7 @@ mam to założyć.
       co już jest: STOP, błąd w kroku, utrata sygnału zezwolenia
 
 ### G. Ekrany i programy
-- [ ] Ekran główny (nazwa maszyny, logo WALKNER)
+- [x] Ekran główny (nazwa poprawiona, miejsce na logo gotowe — czeka na plik)
 - [ ] Ekran diagnostyczny (admin) — czeka na warstwę ról z tematu E
 - [x] Ekran definiowania operacji cyklu — `/cycle`, zrobione już w etapie 4
       tematu B (korekta listy, nie nowa praca)
@@ -88,6 +92,7 @@ Jedna sesja w ClearView (Windows) domyka pierwsze pięć pozycji:
 - [ ] Sprawdzić dostępność g-Stop (tłumienie drgań)
 
 Pomiary i testy:
+- [ ] Zweryfikować cykl maszyny (`ClearCoreMachine.start_cycle`) na sprzęcie
 - [ ] Weryfikacja pomiarowa toru `LINIA` + próba grup wyzwalania
 - [ ] Zmierzyć domyślny watchdog sieciowy (czy w ogóle działa)
 - [ ] Test: utrata zezwolenia w ruchu

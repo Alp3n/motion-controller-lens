@@ -5,7 +5,7 @@
 > i `POSUW` — patrz [`zmiany/operacje-grupy-a.md`](zmiany/operacje-grupy-a.md)
 > i [`zmiany/parametry-operacji.md`](zmiany/parametry-operacji.md).
 > **Grupa B (`LUK`, `OKRAG`, `POLILINIA`) świadomie pominięta** — uzgodniono,
-> że przy ocinaniu wlewków odcinki wystarczą. Reszta dokumentu pozostaje jako
+> że przy odcinaniu wlewków odcinki wystarczą. Reszta dokumentu pozostaje jako
 > punkt wyjścia, gdyby łuki jednak okazały się potrzebne.
 
 Dziś format `.prg` zna trzy operacje: `PUNKT`, `LINIA`, `PAUZA`
@@ -141,7 +141,7 @@ Propozycja:
 
 ## Otwarte pytania
 
-- Czy łuki są w ogóle potrzebne przy ocinaniu wlewków, czy wystarczą odcinki?
+- Czy łuki są w ogóle potrzebne przy odcinaniu wlewków, czy wystarczą odcinki?
   To decyduje, czy w ogóle wchodzimy w grupę B.
 - Czy `PRZEJSCIA` mają dzielić głębokość równomiernie, czy technolog chce
   podać przyrost na przejście?
