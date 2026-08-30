@@ -7,4 +7,4 @@ Opis zwięzły: 1–3 zdania o co chodzi, lista zmienionych plików z jednolinij
 komentarzem, ewentualne uwagi o ryzyku lub rzeczach do zweryfikowania.
 Bez diffów. Szablon i pełna konwencja: [`../../CLAUDE.md`](../../CLAUDE.md).
 
-Na razie pusto — nie wprowadzono jeszcze zmian w kodzie.
+Lista zmian: patrz indeks w [`../README.md`](../README.md).
