@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+# Program odcinania wlewkow — plytka soczewki 50 mm, strona lewa
+>>>>>>> cd729bd20a56a88c84655a0bc56e35e94c977ce1
 [NAGLOWEK]
 FORMAT;3
 PROGRAM;583912004711

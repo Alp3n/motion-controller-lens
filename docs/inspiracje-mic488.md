@@ -213,7 +213,7 @@ w stronę wykonania.
 | Nadzór pozycji z enkodera (`POSCTR`, `KP`, `KP_SPEED`, `MOTRES`, `ENCRES`) | To proteza dla silników krokowych gubiących kroki. Nasze serwa mają pętlę zamkniętą wewnątrz. |
 | Limity pamięci (4000 komend, 200 pozycji, 2000 rejestrów) | To ograniczenia układu wbudowanego. Na PC nie obowiązują — kopiujemy **pojęcia**, nie limity. |
 | Modbus jako główne API | Mamy REST + WebSocket, lepiej dopasowane do MES i panelu WWW. Modbus ma u nas sens wyłącznie do rozmowy z urządzeniami (patrz niżej). |
-| Interpolacja kołowa (`DOCIRC`, `DOARC`) | Grupa B operacji `.prg` została świadomie odłożona — przy ocinaniu wlewków odcinki wystarczają ([`nowe-operacje-programu.md`](nowe-operacje-programu.md)). Wracamy do tego tylko, jeśli łuki okażą się potrzebne. |
+| Interpolacja kołowa (`DOCIRC`, `DOARC`) | Grupa B operacji `.prg` została świadomie odłożona — przy odcinaniu wlewków odcinki wystarczają ([`nowe-operacje-programu.md`](nowe-operacje-programu.md)). Wracamy do tego tylko, jeśli łuki okażą się potrzebne. |
 
 Warto natomiast odnotować, jak oni rozwiązali **interpolację wieloosiową**
 (str. 34): przy `MOVELIN2` parametry ruchu bierze się z **osi o największym

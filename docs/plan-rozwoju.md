@@ -232,8 +232,15 @@ nie sprawdził i nie zapisał. Wymaga C++ i fizycznego sprzętu (temat B/H).
 
 ## G. Ekrany i zarządzanie programami
 
-- [ ] Ekran główny — prosty, niezbędne przyciski i komunikaty, nazwa maszyny
-      „Demontaż pinów z optyki", logo WALKNER.
+- [x] Ekran główny — to już jest panel operatora (`/`): prosty, ma
+      niezbędne przyciski i komunikaty. Nazwa: nie „Demontaż pinów z optyki"
+      z notatki §7 — ta nazwa jest sprzeczna z resztą repo i CLAUDE.md,
+      okazała się nieaktualna (potwierdzone z Tobą) — poprawiona literówka
+      w całym repo: „ocinanie" → **„odcinanie wlewków płytek optyki"**.
+      Logo WALKNER: miejsce w nagłówku gotowe (`#logo` w `index.html`,
+      znika automatycznie, gdy pliku nie ma), plik jeszcze nie dostarczony —
+      wystarczy wrzucić `server/app/static/img/logo.png` i wypchnąć, bez
+      zmian w kodzie. Szczegóły: [`zmiany/ekran-glowny.md`](zmiany/ekran-glowny.md).
 - [ ] Ekran diagnostyczny (tylko admin) — definiowanie, praca ręczna,
       półautomatyczna i automatyczna z funkcjami zabezpieczeń. Wymaga
       warstwy ról (temat E) — dziś nie ma pojęcia „tylko admin".
@@ -299,7 +306,7 @@ Pomiary i testy:
 
 - [ ] `LUK`, `OKRAG`, `POLILINIA` (operacje grupy B w `.prg`) — świadomie
       pominięte, wraca tylko jeśli łuki okażą się faktycznie potrzebne przy
-      ocinaniu wlewków (dziś odcinki wystarczają).
+      odcinaniu wlewków (dziś odcinki wystarczają).
 - [ ] GRBL/G-code jako alternatywny sposób programowania — zaplanowane jako
       rozszerzenie na później, niski priorytet.
 

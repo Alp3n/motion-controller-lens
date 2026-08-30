@@ -72,7 +72,7 @@ mam to założyć.
       co już jest: STOP, błąd w kroku, utrata sygnału zezwolenia
 
 ### G. Ekrany i programy
-- [ ] Ekran główny (nazwa maszyny, logo WALKNER)
+- [x] Ekran główny (nazwa poprawiona, miejsce na logo gotowe — czeka na plik)
 - [ ] Ekran diagnostyczny (admin) — czeka na warstwę ról z tematu E
 - [x] Ekran definiowania operacji cyklu — `/cycle`, zrobione już w etapie 4
       tematu B (korekta listy, nie nowa praca)

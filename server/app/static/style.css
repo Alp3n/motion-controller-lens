@@ -30,6 +30,9 @@ header {
 }
 
 header h1 { font-size: 18px; margin: 0; flex: 1; }
+/* Logo opcjonalne — plik server/app/static/img/logo.png. Gdy go nie ma,
+   onerror w HTML usuwa <img>, żeby nie zostawała połamana ikonka. */
+#logo { height: 32px; display: block; }
 header a { color: var(--accent); text-decoration: none; font-size: 14px; }
 
 main {

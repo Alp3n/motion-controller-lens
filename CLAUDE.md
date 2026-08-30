@@ -56,7 +56,7 @@ Każdy nowy plik w `docs/` dopisuję do listy w `docs/README.md`
 
 ## Kontekst projektu
 
-Maszyna do ocinania wlewków z płytek optyki. Serwer (`server/`, FastAPI)
+Maszyna do odcinania wlewków z płytek optyki. Serwer (`server/`, FastAPI)
 rozmawia z maszyną wyłącznie przez klasę `Machine` (`server/app/machine.py`) —
 to jedyny szew między aplikacją a sprzętem. Panel, API MES i parser `.prg`
 nie mogą zależeć od konkretnego sterownika.

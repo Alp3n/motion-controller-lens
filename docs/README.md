@@ -88,5 +88,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   zawieszający cały serwer przy kroku cyklu bez realnego ruchu.
 - [zmiany/zapisz-jako-program.md](zmiany/zapisz-jako-program.md) — kopiowanie
   programu technologa pod nowym numerem NC w edytorze.
+- [zmiany/ekran-glowny.md](zmiany/ekran-glowny.md) — poprawiona nazwa maszyny
+  (literówka „ocinanie” → „odcinanie” w całym repo) i miejsce na logo WALKNER
+  w nagłówku panelu operatora.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.
