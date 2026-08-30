@@ -54,19 +54,49 @@ Konsekwencje:
 i już teraz sprawdza w niej sygnał zezwolenia. To jest naturalne
 i małoinwazyjne miejsce na wpięcie odczytu momentu i reakcji.
 
-## Model danych — jak to wchodzi do programu i cyklu
+## Model danych — trzy poziomy
 
-### Program technologa: nowa operacja `SMART` (format 5 `.prg`)
+Warto je rozdzielić, bo mylenie ich prowadzi do złych decyzji:
 
-Zgodnie z Twoim opisem — **osobna operacja wstawiana po punkcie**, a nie
-kolejna kolumna przy `PUNKT`:
+| Poziom | Co to jest | Kto to robi | Gdzie żyje |
+|---|---|---|---|
+| **Procedura** | algorytm reagujący na siłę, np. `ciecie_adaptacyjne` | programista | C++ w mostku |
+| **Definicja SMART** | nazwany zestaw parametrów, np. `SMART-sila` | technolog / admin | `config/smart.json`, ekran `/smart` |
+| **Użycie** | jeden wiersz programu albo krok cyklu | technolog | `.prg` / `config/cycle.json` |
+
+Procedura deklaruje, **jakie ma parametry** (nazwa, jednostka, zakres,
+wartość domyślna). Definicja SMART **wypełnia je konkretnymi wartościami**
+i dostaje własną nazwę. Program tylko **wskazuje definicję po nazwie**.
+
+Dzięki temu w tabeli operacji jest **jedna dodatkowa kolumna**, a nie osiem —
+parametrów jest za dużo, żeby wpychać je w wiersz.
+
+### Osobny ekran `/smart` — definicje funkcji
+
+Ekran na wzór edytora technologa (`/editor`), bo definicje SMART są
+dokumentami użytkownika, nie ustawieniem maszyny:
+
+- lista definicji po lewej, edycja wybranej po prawej,
+- wybór **procedury** (z rejestru) → ekran sam rysuje właściwe pola,
+- **„Zapisz jako"** — skopiuj istniejącą definicję pod nową nazwą i zmień
+  parametry (np. `wlewek-cienki` → `wlewek-gruby`); ten sam wzorzec, co już
+  działa w edytorze programów,
+- usuwanie, walidacja zakresów na bieżąco.
+
+Typowe użycie: jedna definicja na rodzaj wlewka albo materiału. Zmiana
+parametrów cięcia = poprawka w jednym miejscu, a nie w każdym programie
+z osobna.
+
+### Program technologa: operacja `SMART` (format 5 `.prg`)
+
+Wstawiana **po punkcie**, wybierana z listy jak każda inna operacja:
 
 ```
-LP;OPERACJA;X;Y;Z;...;PROCEDURA;PARAMETRY;UWAGI
-1;PUNKT;12.5;30;-1.5;...;;;wlewek gorny
-2;SMART;;;;...;ciecie_adaptacyjne;sila=30 dojazd=5 cofniecie=1;odetnij
-3;PUNKT;12.5;-30;-1.5;...;;;wlewek dolny
-4;SMART;;;;...;ciecie_adaptacyjne;sila=30 dojazd=5 cofniecie=1;odetnij
+LP;OPERACJA;X;Y;Z;...;SMART;UWAGI
+1;PUNKT;12.5;30;-1.5;...;;wlewek gorny
+2;SMART;;;;...;SMART-sila;odetnij
+3;PUNKT;12.5;-30;-1.5;...;;wlewek dolny
+4;SMART;;;;...;SMART-sila;odetnij
 ```
 
 Dlaczego osobna operacja, a nie kolumny przy `PUNKT`:
@@ -84,13 +114,26 @@ z kontrolą siły. To się składa w naturalny sposób i jest alternatywą dla
 dzisiejszego zagłębiania przez `PRZEJSCIA`/`PRZYROST` (tam głębokość jest
 sztywna, tu decyduje siła).
 
-Oś ruchu jako parametr procedury (domyślnie `Z`).
+Oś ruchu jest parametrem definicji (domyślnie `Z`).
 
-### Cykl maszyny: nowy rodzaj kroku `SMART`
+**Decyzja, którą warto znać:** rodzajem operacji jest `SMART`, a nazwa
+definicji siedzi w osobnej kolumnie. Kusiło, żeby wrzucić nazwy definicji
+wprost do listy rodzajów operacji (`SMART-sila` obok `PUNKT`) — odrzuciłem,
+bo wtedy parser `.prg` musiałby znać konfigurację definicji, a **skasowanie
+definicji uczyniłoby stare programy niemożliwymi do wczytania**. Przy
+osobnej kolumnie brak definicji to czytelne ostrzeżenie, a nie zepsuty plik.
+W edytorze i tak wygląda to jak dwie listy obok siebie, więc dla technologa
+różnicy nie ma.
 
-Ten sam rejestr procedur i te same parametry, jako `CycleStep.kind = "SMART"`
-— obok istniejących `RUCH`/`PROGRAM`/`WYJSCIE`/`PAUZA`. Przydatne do
-docisku detalu przed cięciem albo do bazowania do oporu na osi podajnika.
+### Cykl maszyny: krok `SMART`
+
+Ten sam mechanizm i te same definicje, jako `CycleStep.kind = "SMART"` —
+obok istniejących `RUCH`/`PROGRAM`/`WYJSCIE`/`PAUZA`, wybierany z tej samej
+listy co one. Przydatne do docisku detalu przed cięciem albo do dojazdu do
+oporu na osi podajnika.
+
+**Definicje są wspólne** dla programu technologa i cyklu maszyny — jedna
+lista, jeden ekran, to samo zachowanie. Tego wymagałeś wprost.
 
 ## „Język programisty" — jak to rozumiem i co proponuję
 
@@ -116,6 +159,15 @@ dzisiejsze `OP_SCHEMA` w `editor.js`, gdzie pola zależą od rodzaju operacji.
 czy podobnego do pętli sterującej siłą to duże ryzyko (błąd skryptu = ruch
 z pełną siłą, trudniejsze testowanie, gorsza przewidywalność czasowa).
 Wracamy do tego tylko, jeśli rejestr procedur okaże się realnie za ciasny.
+
+**4. Rejestr istnieje po obu stronach — i to jest celowe.** Serwer ma własny,
+wbudowany opis znanych procedur (Python), a mostek swój (C++). Dzięki temu
+ekran `/smart` i edytor **działają w symulatorze, bez podłączonego mostka** —
+inaczej całej warstwy interfejsu nie dałoby się zbudować ani przetestować
+przed pracą przy maszynie. Po połączeniu ze sprzętem `SMARTLIST` pozwala
+sprawdzić, czy obie strony mówią o tym samym; rozjazd (procedura znana
+serwerowi, nieznana mostkowi) musi być **czytelnym ostrzeżeniem**, a nie
+cichym błędem przy starcie cyklu.
 
 ## Rozszerzenie protokołu mostka
 
@@ -186,26 +238,33 @@ krok (nic nie jeździ inaczej), a **od razu weryfikuje całą drogę odczytu na
 prawdziwej maszynie** i pozwala zmierzyć koszt próbkowania (ryzyko 3).
 Przydatny sam w sobie — operator widzi, czy nóż się nie zakleszcza.
 
-**Etap 1 — procedura `ciecie_adaptacyjne` w mostku.** Algorytm z materiału
-źródłowego, wpięty w `waitMoves`: `TrqGlobal` jako sufit, próbkowanie,
-adaptacja prędkości, cofnięcie po przekroczeniu progu, wykrycie kolizji.
-Plus komendy `SMART` i `SMARTLIST`. Testowane na maszynie **na odpadzie,
-od małych sił w górę**.
+**Etap 1 — model definicji + ekran `/smart`.** `server/app/smart.py`
+(definicja, rejestr procedur, walidacja, plik `config/smart.json`),
+`GET/PUT /api/smart`, ekran `/smart` z listą, edycją, „zapisz jako"
+i usuwaniem. **Cały do zrobienia i przetestowania bez sprzętu** — dlatego
+idzie przed pracą w C++. Po nim widać na ekranie, jak funkcja będzie
+wyglądać, zanim cokolwiek pojedzie.
 
-**Etap 2 — `SMART` w programie technologa.** Format 5 `.prg` (kolumny
-`PROCEDURA` i `PARAMETRY`), walidacja w `program.py`, kolumny w edytorze
-z polami rysowanymi wg rejestru z `SMARTLIST`. **Da się zrobić i przetestować
-bez sprzętu** (symulator wykonuje `SMART` jako zwykły ruch z logiem
-ostrzeżenia).
+**Etap 2 — `SMART` w programie technologa.** Format 5 `.prg` (kolumna
+`SMART` z nazwą definicji), walidacja w `program.py`, wybór z listy
+w edytorze. Symulator wykonuje `SMART` jako zwykły ruch na zadany dystans,
+z ostrzeżeniem w logu, że siła nie jest kontrolowana. **Bez sprzętu.**
 
 **Etap 3 — `SMART` w cyklu maszyny.** Nowy rodzaj kroku na ekranie `/cycle`,
-ten sam rejestr.
+te same definicje. **Bez sprzętu.**
 
-**Etap 4 — kolejne procedury.** `szukanie_kontaktu`, `miekki_docisk`,
-`detekcja_kolizji` — programista dopisuje w C++, edytor podchwytuje je
-automatycznie z rejestru.
+**Etap 4 — procedura `ciecie_adaptacyjne` w mostku.** Algorytm z materiału
+źródłowego, wpięty w `waitMoves`: `TrqGlobal` jako sufit, próbkowanie,
+adaptacja prędkości, cofnięcie po przekroczeniu progu, wykrycie kolizji.
+Plus komendy `SMART` i `SMARTLIST`. **Wymaga maszyny** — testowane
+na odpadzie, od małych sił w górę. Dopiero tu funkcja zaczyna realnie
+działać.
 
-**Etap 5 (opcjonalny) — profil siły.** Zapis przebiegu momentu z cyklu
+**Etap 5 — kolejne procedury.** `szukanie_kontaktu`, `miekki_docisk`,
+`detekcja_kolizji` — programista dopisuje w C++, ekran `/smart` podchwytuje
+je z rejestru automatycznie.
+
+**Etap 6 (opcjonalny) — profil siły.** Zapis przebiegu momentu z cyklu
 i analiza: ocena jakości cięcia, wykrywanie zużycia noża (siła rośnie
 z cyklu na cykl). W materiale źródłowym opisane jako „podpis siły".
 

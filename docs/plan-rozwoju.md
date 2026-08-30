@@ -411,21 +411,37 @@ i `STATUS`, reszta komend jest ignorowana. Pętli monitorującej **nie da się
 napisać po stronie Pythona**; musi działać w mostku (C++). Wpina się
 w istniejącą pętlę `waitMoves()`, która już chodzi co 20 ms.
 
+**Model — trzy poziomy** (mylenie ich prowadzi do złych decyzji):
+**procedura** (algorytm w C++, pisze programista) → **definicja SMART**
+(nazwany zestaw parametrów, np. `SMART-sila`, edytowana na własnym ekranie
+`/smart` z „zapisz jako") → **użycie** (jeden wiersz programu albo krok
+cyklu, wybierany z listy jak każda inna operacja). Definicje są **wspólne**
+dla programu technologa i cyklu maszyny.
+
 - [ ] **Etap 0:** `STATUS` z odczytem momentu (`TRQX/TRQY/TRQZ`) → panel
       operatora pokazuje obciążenie osi. Najmniejszy krok weryfikujący całą
       drogę odczytu na maszynie; pozwala zmierzyć realny koszt próbkowania.
-      Przydatny sam w sobie.
-- [ ] **Etap 1:** procedura `ciecie_adaptacyjne` w mostku + komendy `SMART`
-      i `SMARTLIST`. Wymaga sprzętu (kompilacja przeciw `vendor/`).
-- [ ] **Etap 2:** operacja `SMART` w programie technologa (format 5 `.prg`)
-      + pola w edytorze rysowane wg rejestru procedur. **Da się zrobić bez
-      sprzętu.**
-- [ ] **Etap 3:** krok `SMART` w cyklu maszyny (`/cycle`).
-- [ ] **Etap 4:** kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
-      `detekcja_kolizji`) — programista dopisuje w C++, edytor podchwytuje
-      je z rejestru automatycznie.
-- [ ] **Etap 5 (opcjonalny):** profil siły — zapis przebiegu i analiza
+      Przydatny sam w sobie. *(mostek — wymaga maszyny)*
+- [ ] **Etap 1:** model definicji (`server/app/smart.py`, `config/smart.json`),
+      `GET/PUT /api/smart` i **ekran `/smart`** — lista definicji, edycja,
+      „zapisz jako", usuwanie, pola rysowane wg rejestru procedur.
+      **Bez sprzętu.**
+- [ ] **Etap 2:** operacja `SMART` w programie technologa (format 5 `.prg`,
+      kolumna z nazwą definicji) + wybór z listy w edytorze. **Bez sprzętu.**
+- [ ] **Etap 3:** krok `SMART` w cyklu maszyny (`/cycle`). **Bez sprzętu.**
+- [ ] **Etap 4:** procedura `ciecie_adaptacyjne` w mostku + komendy `SMART`
+      i `SMARTLIST`. *(C++, wymaga `vendor/` i maszyny — tu funkcja zaczyna
+      realnie działać)*
+- [ ] **Etap 5:** kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
+      `detekcja_kolizji`) — programista dopisuje w C++, ekran `/smart`
+      podchwytuje je z rejestru automatycznie.
+- [ ] **Etap 6 (opcjonalny):** profil siły — zapis przebiegu i analiza
       (jakość cięcia, zużycie noża).
+
+Rejestr procedur istnieje **po obu stronach celowo** — serwer ma własny opis
+(Python), mostek swój (C++), dzięki czemu etapy 1–3 da się zbudować
+i przetestować bez podłączonego mostka. Rozjazd między nimi musi być
+czytelnym ostrzeżeniem, nie cichym błędem przy starcie cyklu.
 
 **Ryzyka, których nie zmiękczam** (pełny opis w dokumencie):
 

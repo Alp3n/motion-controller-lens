@@ -118,16 +118,22 @@ procedurę pisze programista, technolog wybiera ją i podaje parametry.
 Analiza, model danych i ryzyka: [`funkcje-smart.md`](funkcje-smart.md).
 Potwierdzone u źródła: `IMotion::TrqMeasured` daje odczyt momentu (PCT_MAX).
 Pętla musi być w mostku (C++) — Python nie może nic robić w trakcie ruchu.
+Trzy poziomy: **procedura** (C++, programista) → **definicja SMART**
+(nazwany zestaw parametrów, np. `SMART-sila`, własny ekran z „zapisz jako")
+→ **użycie** (wiersz programu albo krok cyklu, z listy jak inne operacje).
+Definicje wspólne dla programu technologa i cyklu maszyny.
 - [ ] Etap 0: `STATUS` z odczytem momentu (`TRQX/Y/Z`) + podgląd na panelu
-      — mały krok, weryfikuje sprzęt i koszt próbkowania; zrobić pierwszy
-- [ ] Etap 1: procedura `ciecie_adaptacyjne` + `SMART`/`SMARTLIST` w mostku
-      (C++, wymaga `vendor/` i maszyny)
-- [ ] Etap 2: operacja `SMART` w `.prg` (format 5) + pola w edytorze
-      **— da się zrobić bez sprzętu**
-- [ ] Etap 3: krok `SMART` w cyklu maszyny (`/cycle`)
-- [ ] Etap 4: kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
+      — mały krok, weryfikuje sprzęt i koszt próbkowania *(maszyna)*
+- [ ] Etap 1: model definicji + `/api/smart` + **ekran `/smart`** (lista,
+      edycja, „zapisz jako", usuwanie) **— bez sprzętu**
+- [ ] Etap 2: operacja `SMART` w `.prg` (format 5) + wybór z listy
+      w edytorze **— bez sprzętu**
+- [ ] Etap 3: krok `SMART` w cyklu maszyny (`/cycle`) **— bez sprzętu**
+- [ ] Etap 4: procedura `ciecie_adaptacyjne` + `SMART`/`SMARTLIST` w mostku
+      *(C++, wymaga `vendor/` i maszyny — tu zaczyna realnie działać)*
+- [ ] Etap 5: kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
       `detekcja_kolizji`)
-- [ ] Etap 5 (opcjonalny): profil siły — jakość cięcia, zużycie noża
+- [ ] Etap 6 (opcjonalny): profil siły — jakość cięcia, zużycie noża
 - [ ] **Do zmierzenia na maszynie:** ile realnie kosztuje odczyt
       `TrqMeasured` i jak gęsto da się próbkować przy trzech osiach
 - [ ] **Do dobrania doświadczalnie:** przełożenie % momentu → siła na nożu
