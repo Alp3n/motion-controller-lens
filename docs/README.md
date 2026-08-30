@@ -102,5 +102,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   dostaje `start_cycle` (brakowało go od etapu 4 tematu B — `/cycle` nie
   działał na sprzęcie). Pierwsze testy automatyczne dla tej klasy. Nie
   zweryfikowane na fizycznym sterowniku.
+- [zmiany/skill-uruchom-projekt.md](zmiany/skill-uruchom-projekt.md) — skill
+  Claude Code uruchamiający panel serwera jednym poleceniem, bezpiecznie na
+  hoście produkcyjnym i na checkoucie deweloperskim.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

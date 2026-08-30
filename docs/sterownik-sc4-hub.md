@@ -650,11 +650,16 @@ sFoundation ↔ sprzęt jest połączony.
 
 **Stan na koniec sesji (2026-08-30): `MACHINE_MODE=clearcore` jest aktywny w
 produkcji.** Panel WWW od teraz wysyła realne komendy do prawdziwego
-sprzętu. Serwa nie były jeszcze bazowane ani włączone (`EnableReq`) w tej
-sesji poza jednorazowym, kontrolowanym testem `NodeStopClear()` opisanym
-wyżej — **pierwsza realna komenda ruchu (bazowanie) czeka na osobne, jawne
-potwierdzenie użytkownika przy fizycznej obecności przy maszynie**, zgodnie
-z zasadą tego wdrożenia.
+sprzętu.
+
+> **Korekta (2026-08-30, sesja późniejsza).** Powyższe „czeka na
+> potwierdzenie” już nieaktualne — w logu serwera widać udane
+> `POST /api/machine/home` i wielokrotne `POST /api/machine/jog` (200 OK)
+> jeszcze tego samego dnia, po starcie w trybie `clearcore`. Użytkownik
+> potwierdził fizycznie przy maszynie: **ruch osi X/Y/Z i bazowanie
+> działają poprawnie na sprzęcie.** `GET /api/status` zwraca `"state":
+> "READY"`. Pierwsza realna komenda ruchu (temat tego zastrzeżenia) już się
+> odbyła i została zweryfikowana — nie jest to już krok oczekujący.
 
 ## Do zrobienia
 
@@ -678,9 +683,9 @@ Testy, których jeszcze nie zrobiono:
 - [x] ~~Reguła udev (`tools/99-teknic-sc4hub.rules`) — instalacja i weryfikacja
       przez przewtyknięcie huba.~~ Potwierdzone działające na hoście
       produkcyjnym 2026-08-30 (było już zainstalowane z wcześniejszej sesji).
-- [ ] **Pierwsze realne bazowanie na hoście produkcyjnym** — wymaga jawnej
-      zgody użytkownika przy fizycznej obecności przy maszynie. `MACHINE_MODE`
-      jest już `clearcore`, mostek działa — to jedyny brakujący krok.
+- [x] ~~Pierwsze realne bazowanie na hoście produkcyjnym~~ — potwierdzone
+      fizycznie przez użytkownika 2026-08-30: bazowanie i ruch osi X/Y/Z
+      działają poprawnie na sprzęcie.
 - [ ] Dokładne rozszyfrowanie maski `ShutdownWhenGet()` odpowiedzialnej za
       Group Shutdown (robocza interpretacja: realizacja watchdoga sieciowego
       — niepotwierdzona w 100%, patrz sekcja 3 „Ryzyka do rozstrzygnięcia”).
