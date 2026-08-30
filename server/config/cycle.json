@@ -8,7 +8,7 @@
       "targets": {
         "x": 88.0,
         "y": 70.0,
-        "z": 10.0
+        "z": 10.2
       },
       "feed": 400.0,
       "output": null,
@@ -66,7 +66,7 @@
     {
       "lp": 6,
       "kind": "RUCH",
-      "profile": null,
+      "profile": "cykl",
       "targets": {
         "x": 12.0,
         "y": 54.0,
