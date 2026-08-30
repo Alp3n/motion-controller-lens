@@ -1,4 +1,4 @@
-"""Parser i serializator plików programu (.prg) — formaty 1, 2 i 3.
+"""Parser i serializator plików programu (.prg) — formaty 1, 2, 3 i 4.
 
 Format opisany w docs/FORMAT_PROGRAMU.md: sekcja [NAGLOWEK] z parami
 KLUCZ;WARTOSC oraz sekcja [OPERACJE] z tabelą rozdzielaną średnikami.
@@ -48,11 +48,31 @@ OPERATIONS_HEADER_V3 = [
     "PRZYROST",
     "UWAGI",
 ]
-OPERATIONS_HEADER = OPERATIONS_HEADER_V3  # domyślny przy zapisie
+# Format 4 dokłada MOMENT — limit siły (momentu silnika) dla pojedynczej
+# operacji, w procentach [%]. Puste = dziedziczy z aktywnego profilu
+# parametrów (docs/zmiany/profile-parametrow-etap2.md). Jak OBROTY w formacie
+# 3: osobna kolumna, nie przeciążanie znaczenia POSUW.
+OPERATIONS_HEADER_V4 = [
+    "LP",
+    "OPERACJA",
+    "X",
+    "Y",
+    "Z",
+    "X2",
+    "Y2",
+    "POSUW",
+    "OBROTY",
+    "MOMENT",
+    "PRZEJSCIA",
+    "PRZYROST",
+    "UWAGI",
+]
+OPERATIONS_HEADER = OPERATIONS_HEADER_V4  # domyślny przy zapisie
 SUPPORTED_FORMATS = {
     1: OPERATIONS_HEADER_V1,
     2: OPERATIONS_HEADER_V2,
     3: OPERATIONS_HEADER_V3,
+    4: OPERATIONS_HEADER_V4,
 }
 
 REQUIRED_HEADER_KEYS = [
@@ -104,6 +124,7 @@ class Operation:
     rpm: float | None = None           # obroty wrzeciona (operacja WRZECIONO)
     passes: int | None = None          # liczba przejść na głębokość
     depth_step: float | None = None    # przyrost głębokości na przejście [mm]
+    torque_pct: float | None = None    # limit momentu tylko dla tej operacji [%]
     note: str = ""
 
     def to_dict(self) -> dict:
@@ -119,6 +140,7 @@ class Operation:
             "rpm": self.rpm,
             "passes": self.passes,
             "depth_step": self.depth_step,
+            "torque_pct": self.torque_pct,
             "note": self.note,
         }
 
@@ -250,17 +272,23 @@ def parse_program(text: str, expected_number: str | None = None) -> Program:
 
         if ops_header is OPERATIONS_HEADER_V1:
             lp_raw, op_type_raw, x, y, z, x2, y2, note = cells
-            feed_raw = rpm_raw = passes_raw = step_raw = ""
+            feed_raw = rpm_raw = passes_raw = step_raw = torque_raw = ""
         elif ops_header is OPERATIONS_HEADER_V2:
             (
                 lp_raw, op_type_raw, x, y, z, x2, y2,
                 feed_raw, passes_raw, step_raw, note,
             ) = cells
-            rpm_raw = ""
-        else:
+            rpm_raw = torque_raw = ""
+        elif ops_header is OPERATIONS_HEADER_V3:
             (
                 lp_raw, op_type_raw, x, y, z, x2, y2,
                 feed_raw, rpm_raw, passes_raw, step_raw, note,
+            ) = cells
+            torque_raw = ""
+        else:
+            (
+                lp_raw, op_type_raw, x, y, z, x2, y2,
+                feed_raw, rpm_raw, torque_raw, passes_raw, step_raw, note,
             ) = cells
         try:
             lp = int(lp_raw)
@@ -287,11 +315,18 @@ def parse_program(text: str, expected_number: str | None = None) -> Program:
             rpm=_parse_optional_number(rpm_raw, "OBROTY", line_no),
             passes=_parse_positive_int(passes_raw, "PRZEJSCIA", line_no),
             depth_step=_parse_positive(step_raw, "PRZYROST", line_no),
+            torque_pct=_parse_optional_number(torque_raw, "MOMENT", line_no),
             note=note,
         )
 
         if op.rpm is not None and op.rpm < 0:
             raise ProgramError("OBROTY nie mogą być ujemne (0 = wyłącz wrzeciono)", line_no)
+        if op.torque_pct is not None and not (0 < op.torque_pct <= 100):
+            raise ProgramError(
+                f"MOMENT musi mieścić się w przedziale (0, 100] %, jest "
+                f"{_fmt(op.torque_pct)}",
+                line_no,
+            )
         if op.passes is not None and op.depth_step is not None:
             raise ProgramError(
                 "wypełnij PRZEJSCIA albo PRZYROST, nie oba naraz "
@@ -308,6 +343,10 @@ def parse_program(text: str, expected_number: str | None = None) -> Program:
             )
         if op_type in ("PAUZA", "WRZECIONO") and op.feed is not None:
             raise ProgramError(f"operacja {op_type} nie przyjmuje POSUW", line_no)
+        if op_type in ("PAUZA", "WRZECIONO") and op.torque_pct is not None:
+            raise ProgramError(
+                f"operacja {op_type} nie przyjmuje MOMENT — nie porusza osiami", line_no
+            )
         if op_type != "WRZECIONO" and op.rpm is not None:
             raise ProgramError(
                 "kolumna OBROTY dotyczy wyłącznie operacji WRZECIONO", line_no
@@ -398,10 +437,10 @@ def _fmt(value: float | None) -> str:
 
 
 def serialize_program(program: Program) -> str:
-    """Zapisuje program do tekstu w formacie .prg (format 1)."""
+    """Zapisuje program do tekstu w formacie .prg (format 4)."""
     lines = [
         "[NAGLOWEK]",
-        "FORMAT;3",
+        "FORMAT;4",
         f"PROGRAM;{program.number}",
         f"NAZWA;{program.name}",
     ]
@@ -433,6 +472,7 @@ def serialize_program(program: Program) -> str:
                     _fmt(op.y2),
                     _fmt(op.feed),
                     _fmt(op.rpm),
+                    _fmt(op.torque_pct),
                     "" if op.passes is None else str(op.passes),
                     _fmt(op.depth_step),
                     op.note.replace(";", ","),

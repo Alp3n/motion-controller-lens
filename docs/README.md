@@ -31,9 +31,18 @@ Ustalenia i analizy:
   wykorzystujemy z serw (mamy wersję Advanced): limit momentu z API, bazowanie
   do oporu, grupy wyzwalania, zdarzenia; ryzyko: system może przypadkowo
   załączyć wyjście BRAKE.
+- [funkcje-smart.md](funkcje-smart.md) — ruch z kontrolą siły (temat K):
+  odczyt momentu `TrqMeasured` potwierdzony u źródła, dlaczego pętla musi
+  być w mostku a nie w Pythonie, definicje SMART i ekran `/smart`, operacja
+  `SMART` w `.prg` i w cyklu, **ekran `/sila` do kontroli siły i kalibracji**
+  (charakterystyka obciążenia w ruchu), etapy i ryzyka.
 - [model-cyklu-maszyny.md](model-cyklu-maszyny.md) — propozycja modelu
   danych dla tematu B: `Axis`/`ParameterProfile`/`CycleStep`/`PartProgram`,
   snapshot/restore parametrów, podział na etapy.
+- [propozycja-head-tail-asymetria.md](propozycja-head-tail-asymetria.md) —
+  propozycja ruchów head-tail (zagłębianie w Z) i asymetrycznych
+  (przyspieszenie ≠ hamowanie), temat C; pytania do decyzji, celowo bez
+  kodu — to zmiana zachowania ruchu w materiale.
 
 Zmiany w kodzie opisujemy w [`zmiany/`](zmiany/) — jeden plik na zmianę,
 nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
@@ -91,5 +100,18 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/ekran-glowny.md](zmiany/ekran-glowny.md) — poprawiona nazwa maszyny
   (literówka „ocinanie” → „odcinanie” w całym repo) i miejsce na logo WALKNER
   w nagłówku panelu operatora.
+- [zmiany/sila-per-operacja.md](zmiany/sila-per-operacja.md) — kolumna
+  MOMENT w programie technologa (format 4 pliku `.prg`), limit siły tylko
+  dla jednej operacji; dziś wyłącznie zapis w pliku, jak w profilach.
+- [zmiany/ekran-smart.md](zmiany/ekran-smart.md) — model definicji SMART,
+  `/api/smart` i ekran `/smart` z „zapisz jako" (etap 1 tematu K); procedura
+  w mostku jeszcze nie istnieje.
+- [zmiany/cykl-na-sprzecie.md](zmiany/cykl-na-sprzecie.md) — `ClearCoreMachine`
+  dostaje `start_cycle` (brakowało go od etapu 4 tematu B — `/cycle` nie
+  działał na sprzęcie). Pierwsze testy automatyczne dla tej klasy. Nie
+  zweryfikowane na fizycznym sterowniku.
+- [zmiany/skill-uruchom-projekt.md](zmiany/skill-uruchom-projekt.md) — skill
+  Claude Code uruchamiający panel serwera jednym poleceniem, bezpiecznie na
+  hoście produkcyjnym i na checkoucie deweloperskim.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

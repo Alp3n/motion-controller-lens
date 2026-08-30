@@ -143,13 +143,19 @@ cyklu (temat F), ruch osi innych niż X/Y/Z (temat C).
       (konfiguracja w ClearView, działa w silniku). Wersję „per operacja"
       realizuje `TrqGlobal` z API. Szczegóły:
       [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
-- [ ] W programie technologa: możliwość ustawienia siły per operacja (jeśli
-      nieustawiona — wartość domyślna z ekranu parametrów maszyny).
+- [x] W programie technologa: możliwość ustawienia siły per operacja (jeśli
+      nieustawiona — wartość domyślna z aktywnego profilu). Kolumna `MOMENT`,
+      format 4 pliku `.prg`. Jak limit momentu w profilach — dziś wyłącznie
+      zapis w pliku, nie dociera do symulatora ani sprzętu. Szczegóły:
+      [`zmiany/sila-per-operacja.md`](zmiany/sila-per-operacja.md).
 - [ ] Rozważyć włączenie **soft limits w samym silniku** jako warstwy
       dodatkowej (dziś nieaktywne — wymagają prawdziwego bazowania).
 - [ ] Rozważyć ruchy **head-tail** dla zagłębiania w Z (szybki zjazd +
       delikatne wejście w materiał w jednej komendzie) i **asymetryczne**
-      (inne przyspieszenie niż hamowanie).
+      (inne przyspieszenie niż hamowanie). **Świadomie niezaimplementowane
+      bez decyzji** — to zmiana fizycznego zachowania ruchu w materiale, nie
+      ekran ani zapis danych. Propozycja z pytaniami do rozstrzygnięcia:
+      [`propozycja-head-tail-asymetria.md`](propozycja-head-tail-asymetria.md).
 
 Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §1, §2; `notatki.txt`;
 [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
@@ -223,10 +229,13 @@ niżej; rozstrzygnąć **przed** rozpoczęciem tego tematu.
       zawieszenia mroziła **cały serwer**, nie tylko cykl.
       Szczegóły: [`zmiany/tryby-pracy.md`](zmiany/tryby-pracy.md).
 
-**Nowo znalezione, nie wcześniej zgłoszone:** cykl (jeden przebieg i pętla)
-działa dziś tylko w symulatorze — `ClearCoreMachine` nie ma `start_cycle`.
-`/cycle` nie działał na sprzęcie już od etapu 4 tematu B; nikt tego wcześniej
-nie sprawdził i nie zapisał. Wymaga C++ i fizycznego sprzętu (temat B/H).
+**Domknięte:** `ClearCoreMachine.start_cycle` dopisany — RUCH/PROGRAM/PAUZA
+przez istniejące komendy mostka (nie trzeba było C++ — MOVEZ/MOVEXY/SPINDLE
+już tam są), WYJSCIE dalej tylko w statusie (protokół nie ma tej komendy).
+Pierwsze testy automatyczne dla `ClearCoreMachine` w ogóle (wcześniej klasa
+nie miała żadnych). **Nie zweryfikowane na fizycznym sterowniku** — do
+potwierdzenia przy najbliższym uruchomieniu sprzętowym (temat H). Szczegóły:
+[`zmiany/cykl-na-sprzecie.md`](zmiany/cykl-na-sprzecie.md).
 
 Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §6.
 
@@ -280,6 +289,10 @@ jako **jedno wejście**, nie kilka osobnych:
 
 Pomiary i testy:
 
+- [ ] Zweryfikować `ClearCoreMachine.start_cycle` (jeden przebieg i tryb
+      automatyczny, temat F) na fizycznym sterowniku — napisane i pokryte
+      testami z podstawionym `_command`, ale nigdy nie uruchomione na
+      sprzęcie. Szczegóły: [`zmiany/cykl-na-sprzecie.md`](zmiany/cykl-na-sprzecie.md).
 - [ ] Zweryfikować pomiarowo tor operacji `LINIA` (interpolacja przybliżona;
       zmierzone odchylenie czasu przejazdu, ale nie geometrii toru).
       Przy okazji spróbować **grup wyzwalania** (`TriggerGroup` +
@@ -375,6 +388,93 @@ podstawą zakupu sprzętu.
 (cytujące teknic.com/sc4-hub/ i ClearPath-SC User Manual str. 104 —
 niezweryfikowane bezpośrednio, patrz zastrzeżenie wyżej).
 
+## K. Funkcje SMART — ruch z kontrolą siły
+
+Nowy temat (2026-08-30), z materiału [`../zbyszek/kontrola-sily.md`](../zbyszek/kontrola-sily.md).
+Technolog podaje współrzędne wlewków, a **po każdym punkcie może wstawić
+„funkcję smart"** — procedurę reagującą na siłę (wykrycie kontaktu, cięcie
+adaptacyjne, cofnięcie po przekroczeniu progu). Procedurę pisze programista,
+technolog wybiera ją w edytorze i podaje parametry.
+
+Pełna analiza, model danych, protokół i ryzyka:
+[`funkcje-smart.md`](funkcje-smart.md).
+
+**Potwierdzone u źródła** (referencja API w `zbyszek/S-FoundationRef.chm`):
+`sFnd::IMotion::TrqMeasured` daje **odczyt zmierzonego momentu**, domyślnie
+w procentach maksimum (`_trqUnits{PCT_MAX, AMPS}`). To jest brakujący
+klocek — limit `TrqGlobal` znaliśmy z tematu C, ale bez odczytu nie dało
+się na siłę *reagować*. Funkcja jest wykonalna na naszym sprzęcie.
+
+**Ustalenie architektoniczne** (sprawdzone w kodzie, nie założone): mostek
+blokuje się na czas ruchu — `pollDuringMove()` obsługuje wyłącznie `STOP`
+i `STATUS`, reszta komend jest ignorowana. Pętli monitorującej **nie da się
+napisać po stronie Pythona**; musi działać w mostku (C++). Wpina się
+w istniejącą pętlę `waitMoves()`, która już chodzi co 20 ms.
+
+**Model — trzy poziomy** (mylenie ich prowadzi do złych decyzji):
+**procedura** (algorytm w C++, pisze programista) → **definicja SMART**
+(nazwany zestaw parametrów, np. `SMART-sila`, edytowana na własnym ekranie
+`/smart` z „zapisz jako") → **użycie** (jeden wiersz programu albo krok
+cyklu, wybierany z listy jak każda inna operacja). Definicje są **wspólne**
+dla programu technologa i cyklu maszyny.
+
+- [ ] **Etap 0:** `STATUS` z odczytem momentu (`TRQX/TRQY/TRQZ`) → panel
+      operatora pokazuje obciążenie osi. Najmniejszy krok weryfikujący całą
+      drogę odczytu na maszynie; pozwala zmierzyć realny koszt próbkowania.
+      Przydatny sam w sobie. *(mostek — wymaga maszyny)*
+- [x] **Etap 1:** model definicji (`server/app/smart.py`, `config/smart.json`),
+      `GET/PUT /api/smart` i **ekran `/smart`** — lista definicji, edycja,
+      „zapisz jako", usuwanie, pola rysowane wg rejestru procedur.
+      29 nowych testów, 170/170 przechodzi. Szczegóły:
+      [`zmiany/ekran-smart.md`](zmiany/ekran-smart.md).
+- [ ] **Etap 2:** **ekran `/sila` — kontrola siły i kalibracja.** Podgląd
+      obciążenia na żywo, **próba przejazdu wyznaczająca charakterystykę
+      bazową osi** (tarcie, ciężar, osobno dla obu kierunków i kilku
+      prędkości), kalibracja moment→siła siłomierzem, pomiar realnej
+      częstotliwości próbkowania; zapis do `config/kalibracja.json`.
+      Interfejs w Pythonie/JS (rejestrowanie to nie reagowanie — nie musi
+      być w C++), ale **sensowne liczby dopiero po etapie 0**. Ten ekran
+      daje progi siły do definicji SMART; bez niego dobiera się je na oślep.
+- [ ] **Etap 3:** operacja `SMART` w programie technologa (format 5 `.prg`,
+      kolumna z nazwą definicji) + wybór z listy w edytorze. **Bez sprzętu.**
+- [ ] **Etap 4:** krok `SMART` w cyklu maszyny (`/cycle`). **Bez sprzętu.**
+- [ ] **Etap 5:** procedura `ciecie_adaptacyjne` w mostku + komendy `SMART`
+      i `SMARTLIST`. *(C++, wymaga `vendor/` i maszyny — tu funkcja zaczyna
+      realnie działać)*
+- [ ] **Etap 6:** kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
+      `detekcja_kolizji`) — programista dopisuje w C++, ekran `/smart`
+      podchwytuje je z rejestru automatycznie.
+- [ ] **Etap 7 (opcjonalny):** profil siły — zapis przebiegu i analiza
+      (jakość cięcia, zużycie noża).
+
+Rejestr procedur istnieje **po obu stronach celowo** — serwer ma własny opis
+(Python), mostek swój (C++), dzięki czemu etapy 1–3 da się zbudować
+i przetestować bez podłączonego mostka. Rozjazd między nimi musi być
+czytelnym ostrzeżeniem, nie cichym błędem przy starcie cyklu.
+
+**Ryzyka, których nie zmiękczam** (pełny opis w dokumencie):
+
+1. Pętla programowa **nie jest funkcją bezpieczeństwa**. `TrqGlobal`
+   ustawiany przed ruchem jako twardy sufit w serwie pozostaje realnym
+   zabezpieczeniem — pętla dopracowuje zachowanie wewnątrz limitu, nie
+   zastępuje go. Błąd w pętli nie może oznaczać ruchu z pełną siłą.
+2. Wzór `F = 2πM/p` z materiału źródłowego **pomija sprawność śruby** —
+   realnie `F = 2πMη/p`. Nastawy procentowe dobieramy doświadczalnie na
+   odpadzie, a nie wyliczamy w niutonach. **Rozwiązuje to etap 2** —
+   kalibracja siłomierzem na ekranie `/sila`.
+3. Częstotliwość próbkowania `TrqMeasured` — **do zmierzenia na maszynie**,
+   nie do założenia (materiał zakłada 10 ms, nasza pętla chodzi co 20 ms).
+   **Mierzy to etap 2** — ekran `/sila` pokazuje realną liczbę próbek/s.
+4. Kod C++ powstaje tutaj, ale **kompilacja i testy wyłącznie na mini PC**
+   przy maszynie — `vendor/` (SDK Teknica) jest poza repozytorium.
+5. Maszyna przestaje być sterowana wyłącznie pozycją — oś może stanąć
+   gdzie indziej, niż zapisano w programie. To sens tej funkcji, ale musi
+   być widoczne na panelu, inaczej diagnostyka będzie zgadywanką.
+
+Źródło: `zbyszek/kontrola-sily.md`; referencja API `zbyszek/S-FoundationRef.chm`
+(`sFnd::IMotion`, `sFnd::ILimits`, `sFnd::INode`) — sprawdzona bezpośrednio;
+`bridge/sc4hub_bridge.cpp` (`waitMoves`, `pollDuringMove`).
+
 ## Proponowana kolejność — do potwierdzenia
 
 To jest **propozycja**, nie decyzja — ustalmy razem, czy się zgadzasz:
@@ -392,4 +492,8 @@ To jest **propozycja**, nie decyzja — ustalmy razem, czy się zgadzasz:
 6. **G** (ekrany) — najlepiej równolegle z C–F, w miarę jak funkcje powstają.
 7. **H** — osobny tor, fizyczny, nie blokuje pracy nad softwarem, ale blokuje
    produkcję.
-8. **I** — dopiero jeśli się okaże potrzebne.
+8. **K** (funkcje SMART) — nowy temat, buduje się na C (limit momentu) i B
+   (model cyklu/programu). Etap 0 (odczyt momentu na panelu) warto zrobić
+   **od razu** — jest mały, bezpieczny i weryfikuje sprzęt pod resztę
+   tematu. Reszta etapów wymaga pracy przy maszynie.
+9. **I** — dopiero jeśli się okaże potrzebne.

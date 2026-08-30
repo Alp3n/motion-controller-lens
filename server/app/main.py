@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import axes, config, cycle, profiles
+from . import axes, config, cycle, profiles, smart
 from .machine import (
     ClearCoreMachine,
     MachineError,
@@ -68,6 +68,12 @@ machine.apply_profiles(profiles_cfg, active_profile)
 # nie zostanie zdefiniowany; błędny plik przerywa start (powód w app/cycle.py).
 cycle_cfg = cycle.load(config.CYCLE_FILE)
 machine.apply_cycle(cycle_cfg)
+
+# Definicje SMART — nazwane zestawy parametrów procedur sterowanych siłą,
+# wspólne dla programu technologa i cyklu maszyny. Błędny plik przerywa start,
+# jak przy osiach i profilach: te wartości decydują o sile dociskanej do
+# materiału (powód w app/smart.py).
+smart_cfg = smart.load(config.SMART_FILE)
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -152,6 +158,18 @@ class CycleRequest(BaseModel):
 
     name: str = Field("", description="nazwa cyklu")
     steps: list[dict] = Field(..., description="kroki cyklu, LP ciągłe od 1")
+
+
+class SmartRequest(BaseModel):
+    """Definicje SMART z ekranu /smart.
+
+    Jak przy osiach, profilach i cyklu — walidacją zajmuje się app/smart.py,
+    żeby operator zobaczył komunikat po polsku z nazwą definicji i parametru.
+    """
+
+    definitions: dict[str, dict] = Field(
+        ..., description="nazwa definicji -> {procedure, params, note}"
+    )
 
 
 class CycleStartRequest(BaseModel):
@@ -415,6 +433,49 @@ async def set_active_profile(req: ActiveProfileRequest):
     return {"ok": True, "active": machine.active_profile}
 
 
+# --- definicje SMART ------------------------------------------------------
+
+
+@app.get("/api/smart")
+async def get_smart():
+    """Definicje SMART + rejestr procedur (żeby ekran wiedział, co narysować)."""
+    return {
+        "definitions": smart.to_dict(smart_cfg),
+        "procedures": smart.procedures_to_dict(),
+        "file": str(config.SMART_FILE),
+        "warnings": smart.warnings(smart_cfg, config.MACHINE_MODE),
+    }
+
+
+@app.put("/api/smart")
+async def put_smart(req: SmartRequest):
+    """Zapis definicji SMART: walidacja, plik.
+
+    Zapis odrzucamy w ruchu z tego samego powodu co profile — definicja może
+    być właśnie używana przez wykonywany krok cyklu.
+    """
+    global smart_cfg
+    if machine.status.state in (MachineState.RUNNING, MachineState.HOMING):
+        raise HTTPException(
+            409, "nie można zmieniać definicji SMART w trakcie ruchu maszyny"
+        )
+    try:
+        new_defs = smart.parse_definitions({"definitions": req.definitions})
+    except smart.SmartError as exc:
+        raise HTTPException(422, str(exc))
+
+    try:
+        smart.save(config.SMART_FILE, new_defs)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.SMART_FILE}: {exc}")
+    smart_cfg = new_defs
+    return {
+        "ok": True,
+        "definitions": smart.to_dict(new_defs),
+        "warnings": smart.warnings(new_defs, config.MACHINE_MODE),
+    }
+
+
 # --- cykl maszyny ---------------------------------------------------------
 
 
@@ -583,6 +644,11 @@ async def cycle_page():
 @app.get("/profiles", include_in_schema=False)
 async def profiles_page():
     return FileResponse(STATIC_DIR / "profiles.html")
+
+
+@app.get("/smart", include_in_schema=False)
+async def smart_page():
+    return FileResponse(STATIC_DIR / "smart.html")
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

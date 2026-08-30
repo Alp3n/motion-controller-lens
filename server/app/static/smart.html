@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Funkcje SMART — maszyna do odcinania wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Funkcje SMART — ruch z kontrolą siły</h1>
+    <a href="/">← Panel operatora</a>
+    <a href="/axes">Konfiguracja osi</a>
+    <a href="/profiles">Profile parametrów</a>
+    <a href="/cycle">Cykl maszyny</a>
+    <a href="/editor">Edytor technologa →</a>
+  </header>
+
+  <main>
+    <section class="panel" id="smart-warn-panel" hidden>
+      <h2>Zanim zaczniesz</h2>
+      <p id="smart-warn" class="muted" style="margin:0; white-space:pre-line"></p>
+    </section>
+
+    <div class="grid-2" style="grid-template-columns: 300px 1fr">
+      <section class="panel">
+        <h2>Definicje</h2>
+        <div style="display:flex; gap:8px; margin-bottom:10px">
+          <input id="new-name" placeholder="nazwa, np. SMART-sila" style="flex:1">
+          <button class="small" id="btn-new">Nowa</button>
+        </div>
+        <table>
+          <thead><tr><th>Nazwa</th><th>Procedura</th></tr></thead>
+          <tbody id="def-list"></tbody>
+        </table>
+        <p class="muted" style="margin-top:12px">
+          Definicja to nazwany zestaw parametrów jednej procedury. Program
+          technologa i cykl maszyny wskazują ją po nazwie — zmiana parametrów
+          w jednym miejscu działa wszędzie tam, gdzie jest używana.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Definicja: <span id="edit-name">—</span></h2>
+
+        <div class="field" style="max-width:420px">
+          <label>Procedura (algorytm w sterowniku)</label>
+          <select id="f-procedure"></select>
+        </div>
+        <p id="proc-desc" class="muted" style="margin-top:-4px"></p>
+
+        <div id="param-fields" class="grid-3" style="gap:10px; margin-top:14px"></div>
+
+        <div class="field" style="margin-top:10px">
+          <label>Uwagi</label>
+          <input id="f-note" placeholder="np. do cienkich wlewków w PMMA">
+        </div>
+
+        <div class="btn-row" style="margin-top:12px; max-width:520px">
+          <button id="btn-save">💾 Zapisz</button>
+          <button class="small" id="btn-reload">Przywróć zapisane</button>
+          <button class="small" id="btn-delete">🗑 Usuń</button>
+        </div>
+        <div class="btn-row" style="margin-top:10px; max-width:420px">
+          <input id="save-as-name" placeholder="nowa nazwa definicji" style="flex:1">
+          <button class="small" id="btn-save-as">📄 Zapisz jako</button>
+        </div>
+        <p class="muted" style="margin-top:4px">
+          Kopiuje bieżącą definicję pod nową nazwą — oryginał zostaje bez
+          zmian. Wygodne, gdy chcesz wariant „ten sam nóż, grubszy wlewek”.
+        </p>
+        <p id="smart-msg" class="msg"></p>
+        <p class="muted" id="smart-file"></p>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h2>Jak to działa</h2>
+      <ul class="muted" style="margin:0; padding-left:18px; line-height:1.7">
+        <li><b>Procedura</b> to algorytm w sterowniku, który w trakcie ruchu
+          odczytuje moment silnika i reaguje: zwalnia, cofa, wykrywa kolizję.
+          Pisze ją programista — tutaj tylko dobierasz jej parametry.</li>
+        <li><b>Ruch jest względny</b> — procedura rusza z miejsca, w którym
+          stoi narzędzie. W programie technologa stawiasz najpierw
+          <code>PUNKT</code> nad wlewkiem, a potem operację <code>SMART</code>.</li>
+        <li><b>Próg siły to procent momentu silnika</b>, nie niutony.
+          Przełożenie na realną siłę zależy od sprawności śruby, więc wartość
+          dobiera się doświadczalnie — <b>zacznij od małej i podnoś</b>,
+          na odpadzie, nie na dobrym detalu.</li>
+        <li><b>To nie jest funkcja bezpieczeństwa.</b> Zabezpieczeniem
+          pozostaje limit momentu ustawiony w serwie oraz sprzętowy E-stop
+          i Global Stop. Procedura działa wewnątrz tych granic.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="/static/smart.js"></script>
+</body>
+</html>

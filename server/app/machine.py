@@ -764,53 +764,63 @@ class ClearCoreMachine(Machine):
         # natychmiastowe odbicie w statusie — bez czekania na kolejny STATUS
         await self.poll_status()
 
+    async def _run_program_operations(self, program: Program) -> None:
+        """Tłumaczy operacje programu na sekwencję komend MOVE dla ClearCore.
+
+        Wydzielone z `_run_program` (bez zmiany kolejności/treści komend —
+        to jest ta sama sekwencja, która przeszła test na sprzęcie sesji
+        2026-08-14), żeby krok PROGRAM cyklu maszyny mógł wywołać dokładnie
+        to samo bez kończenia pracy maszyny (jak `_run_operations`
+        w symulatorze).
+        """
+        zs = program.z_safe
+        await self._command(f"SPINDLE 1 {program.spindle_rpm:.0f}")
+        for op in program.operations:
+            self.status.current_op = op.lp
+            if op.op_type == "PAUZA":
+                await self._command("SPINDLE 0")
+                self.status.state = MachineState.PAUSED
+                self._resume_event.clear()
+                await self._resume_event.wait()
+                self.status.state = MachineState.RUNNING
+                await self._command(f"SPINDLE 1 {program.spindle_rpm:.0f}")
+                continue
+            if op.op_type == "WRZECIONO":
+                if op.rpm > 0:
+                    await self._command(f"SPINDLE 1 {op.rpm:.0f}")
+                else:
+                    await self._command("SPINDLE 0")
+                continue
+
+            if op.op_type == "SZYBKI":
+                feed = op.feed or program.feed_travel
+                await self._command(f"MOVEZ {zs:.3f} {program.feed_travel:.0f}")
+                await self._command(f"MOVEXY {op.x:.3f} {op.y:.3f} {feed:.0f}")
+                continue
+
+            feed = op.feed or program.feed_work
+            depths = pass_depths(op)
+            path = cut_path(op)
+            await self._command(f"MOVEZ {zs:.3f} {program.feed_travel:.0f}")
+            await self._command(
+                f"MOVEXY {op.x:.3f} {op.y:.3f} {program.feed_travel:.0f}"
+            )
+            for i, depth in enumerate(depths):
+                await self._command(f"MOVEZ {depth:.3f} {feed:.0f}")
+                for px, py in path:
+                    await self._command(f"MOVEXY {px:.3f} {py:.3f} {feed:.0f}")
+                await self._command(f"MOVEZ {zs:.3f} {program.feed_travel:.0f}")
+                if path and i < len(depths) - 1:
+                    await self._command(
+                        f"MOVEXY {op.x:.3f} {op.y:.3f} {program.feed_travel:.0f}"
+                    )
+        await self._command(f"MOVEXY 0 0 {program.feed_travel:.0f}")
+
     async def _run_program(self) -> None:
-        """Tłumaczy operacje programu na sekwencję komend MOVE dla ClearCore."""
         program = self._program
         assert program is not None
-        zs = program.z_safe
         try:
-            await self._command(f"SPINDLE 1 {program.spindle_rpm:.0f}")
-            for op in program.operations:
-                self.status.current_op = op.lp
-                if op.op_type == "PAUZA":
-                    await self._command("SPINDLE 0")
-                    self.status.state = MachineState.PAUSED
-                    self._resume_event.clear()
-                    await self._resume_event.wait()
-                    self.status.state = MachineState.RUNNING
-                    await self._command(f"SPINDLE 1 {program.spindle_rpm:.0f}")
-                    continue
-                if op.op_type == "WRZECIONO":
-                    if op.rpm > 0:
-                        await self._command(f"SPINDLE 1 {op.rpm:.0f}")
-                    else:
-                        await self._command("SPINDLE 0")
-                    continue
-
-                if op.op_type == "SZYBKI":
-                    feed = op.feed or program.feed_travel
-                    await self._command(f"MOVEZ {zs:.3f} {program.feed_travel:.0f}")
-                    await self._command(f"MOVEXY {op.x:.3f} {op.y:.3f} {feed:.0f}")
-                    continue
-
-                feed = op.feed or program.feed_work
-                depths = pass_depths(op)
-                path = cut_path(op)
-                await self._command(f"MOVEZ {zs:.3f} {program.feed_travel:.0f}")
-                await self._command(
-                    f"MOVEXY {op.x:.3f} {op.y:.3f} {program.feed_travel:.0f}"
-                )
-                for i, depth in enumerate(depths):
-                    await self._command(f"MOVEZ {depth:.3f} {feed:.0f}")
-                    for px, py in path:
-                        await self._command(f"MOVEXY {px:.3f} {py:.3f} {feed:.0f}")
-                    await self._command(f"MOVEZ {zs:.3f} {program.feed_travel:.0f}")
-                    if path and i < len(depths) - 1:
-                        await self._command(
-                            f"MOVEXY {op.x:.3f} {op.y:.3f} {program.feed_travel:.0f}"
-                        )
-            await self._command(f"MOVEXY 0 0 {program.feed_travel:.0f}")
+            await self._run_program_operations(program)
             self.status.current_op = None
             self.status.state = MachineState.READY
         except asyncio.CancelledError:
@@ -824,6 +834,110 @@ class ClearCoreMachine(Machine):
             except MachineError:
                 pass
             self._run_task = None
+
+    # --- cykl maszyny -------------------------------------------------
+    #
+    # UWAGA — napisane analogicznie do `_run_program_operations` (sprawdzonej
+    # na sprzęcie), ale samo NIE BYŁO jeszcze uruchomione na fizycznej
+    # maszynie — do zweryfikowania przy najbliższym uruchomieniu sprzętowym
+    # (temat H). Pokryte testami z podstawionym `_command` (bez sprzętu),
+    # patrz `docs/zmiany/cykl-na-sprzecie.md`.
+
+    async def start_cycle(self, loop: bool = False) -> None:
+        """Jak `SimulatedMachine.start_cycle` — te same reguły i komunikaty."""
+        if self.status.state == MachineState.PAUSED:
+            self.resume()
+            return
+        if self.status.state != MachineState.READY:
+            raise MachineError(
+                f"start cyklu możliwy tylko w stanie READY "
+                f"(obecnie: {self.status.state.value})"
+            )
+        if not self.cycle.steps:
+            raise MachineError("cykl maszyny nie jest zdefiniowany")
+        if self.cycle.uses_program() and not self._program:
+            raise MachineError(
+                "cykl wywołuje program detalu, a żaden nie jest załadowany "
+                "— wybierz zlecenie w MES"
+            )
+        self._require_not_released(["x", "y", "z"])
+        self.status.state = MachineState.RUNNING
+        self.status.alarm_message = ""
+        self.status.cycle_loop = loop
+        self._run_task = asyncio.create_task(self._run_cycle(loop))
+
+    async def _run_cycle(self, loop: bool) -> None:
+        try:
+            while True:
+                for step in self.cycle.steps:
+                    self.status.cycle_step = step.lp
+                    await self._execute_cycle_step(step)
+                    await asyncio.sleep(0)  # patrz komentarz w SimulatedMachine
+                self.status.cycle_step = None
+                self.status.current_op = None
+                if not loop:
+                    break
+            self.status.state = MachineState.READY
+        except asyncio.CancelledError:
+            raise
+        except MachineError as exc:
+            self.status.state = MachineState.ALARM
+            self.status.alarm_message = str(exc)
+        finally:
+            try:
+                await self._command("SPINDLE 0")
+            except MachineError:
+                pass
+            self.status.cycle_loop = False
+            self._run_task = None
+
+    async def _execute_cycle_step(self, step: CycleStep) -> None:
+        """Snapshot/restore profilu — jak w symulatorze, patrz tam po opis."""
+        previous_profile = self.active_profile
+        if step.profile and step.profile in self.profiles:
+            self._set_profile(step.profile)
+        try:
+            await self._run_cycle_step_body(step)
+        finally:
+            self._set_profile(previous_profile)
+
+    async def _run_cycle_step_body(self, step: CycleStep) -> None:
+        if step.kind == STEP_PAUSE:
+            await self._command("SPINDLE 0")
+            self.status.state = MachineState.PAUSED
+            self._resume_event.clear()
+            await self._resume_event.wait()
+            self.status.state = MachineState.RUNNING
+            return
+
+        if step.kind == STEP_OUTPUT:
+            # Jak WYJSCIE w symulatorze: mostek nie ma jeszcze komendy
+            # ustawienia wyjścia (etap 2b/3 tematu B) — stan widać na
+            # ekranie, ale fizycznie nic się nie przełącza.
+            self.status.outputs[step.output] = bool(step.output_on)
+            return
+
+        if step.kind == STEP_PROGRAM:
+            program = self._program
+            if program is None:
+                raise MachineError("krok PROGRAM: nie załadowano programu detalu")
+            await self._run_program_operations(program)
+            self.status.current_op = None
+            return
+
+        # STEP_MOVE — przejazd wskazanych osi; osie pominięte zostają na miejscu
+        target = {"x": self.status.x, "y": self.status.y, "z": self.status.z}
+        for axis, value in step.targets.items():
+            if axis not in target:
+                raise MachineError(
+                    f"krok {step.lp}: oś {axis.upper()} nie jest obsługiwana "
+                    "przez mostek (dziś tylko X/Y/Z)"
+                )
+            self._check_soft_limit(axis, value)
+            target[axis] = value
+        feed = step.feed or 1000.0
+        await self._command(f"MOVEZ {target['z']:.3f} {feed:.0f}")
+        await self._command(f"MOVEXY {target['x']:.3f} {target['y']:.3f} {feed:.0f}")
 
 
 def create_machine(mode: str, host: str, port: int) -> Machine:

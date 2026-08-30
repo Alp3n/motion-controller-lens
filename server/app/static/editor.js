@@ -9,26 +9,29 @@ const $ = (id) => document.getElementById(id);
 /* Definicja pól per rodzaj operacji — jedno źródło prawdy dla renderowania,
    walidacji i czyszczenia nieużywanych kolumn. */
 const OP_SCHEMA = {
-  PUNKT: { uses: ["x", "y", "z", "feed", "passes", "depth_step"], required: ["x", "y", "z"] },
+  PUNKT: {
+    uses: ["x", "y", "z", "feed", "torque_pct", "passes", "depth_step"],
+    required: ["x", "y", "z"],
+  },
   LINIA: {
-    uses: ["x", "y", "z", "x2", "y2", "feed", "passes", "depth_step"],
+    uses: ["x", "y", "z", "x2", "y2", "feed", "torque_pct", "passes", "depth_step"],
     required: ["x", "y", "z", "x2", "y2"],
   },
   PROSTOKAT: {
-    uses: ["x", "y", "z", "x2", "y2", "feed", "passes", "depth_step"],
+    uses: ["x", "y", "z", "x2", "y2", "feed", "torque_pct", "passes", "depth_step"],
     required: ["x", "y", "z", "x2", "y2"],
   },
-  SZYBKI: { uses: ["x", "y", "feed"], required: ["x", "y"] },
+  SZYBKI: { uses: ["x", "y", "feed", "torque_pct"], required: ["x", "y"] },
   WRZECIONO: { uses: ["rpm"], required: ["rpm"] },
   PAUZA: { uses: [], required: [] },
 };
 const OP_TYPES = Object.keys(OP_SCHEMA);
-const FIELDS = ["x", "y", "z", "x2", "y2", "feed", "rpm", "passes", "depth_step"];
-const STEP = { passes: "1", feed: "1", rpm: "100", depth_step: "0.01" };
+const FIELDS = ["x", "y", "z", "x2", "y2", "feed", "rpm", "torque_pct", "passes", "depth_step"];
+const STEP = { passes: "1", feed: "1", rpm: "100", torque_pct: "1", depth_step: "0.01" };
 // nazwy kolumn tak, jak widzi je technolog w tabeli i w pliku .prg
 const LABEL = {
   x: "X", y: "Y", z: "Z", x2: "X2", y2: "Y2",
-  feed: "POSUW", rpm: "OBROTY", passes: "PRZEJSCIA", depth_step: "PRZYROST",
+  feed: "POSUW", rpm: "OBROTY", torque_pct: "MOMENT", passes: "PRZEJSCIA", depth_step: "PRZYROST",
 };
 
 let currentNumber = null;
@@ -216,6 +219,8 @@ function validate(ops) {
     for (const f of ["feed", "depth_step"])
       if (op[f] !== null && op[f] <= 0) mark(op, f, `${LABEL[f]} musi być > 0`);
     if (op.rpm !== null && op.rpm < 0) mark(op, "rpm", "OBROTY nie mogą być ujemne");
+    if (op.torque_pct !== null && !(op.torque_pct > 0 && op.torque_pct <= 100))
+      mark(op, "torque_pct", "MOMENT musi być w przedziale (0, 100] %");
 
     if (!workArea) continue;
     const a = workArea;
@@ -422,7 +427,7 @@ function collectContent() {
   const today = new Date().toISOString().slice(0, 10);
   const lines = [
     "[NAGLOWEK]",
-    "FORMAT;3",
+    "FORMAT;4",
     `PROGRAM;${currentNumber}`,
     `NAZWA;${$("f-name").value.trim()}`,
   ];
@@ -436,7 +441,9 @@ function collectContent() {
     `Z_BEZPIECZNE;${$("f-z-safe").value}`,
     "",
     "[OPERACJE]",
-    "LP;OPERACJA;X;Y;Z;X2;Y2;POSUW;OBROTY;PRZEJSCIA;PRZYROST;UWAGI"
+    // budowany z FIELDS/LABEL, nie wpisany na sztywno — inaczej kolejny
+    // format (jak ten, MOMENT) rozjeżdża się z listą kolumn w wierszach
+    ["LP", "OPERACJA", ...FIELDS.map((f) => LABEL[f]), "UWAGI"].join(";")
   );
   for (const op of readRows()) {
     lines.push(
