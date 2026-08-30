@@ -33,8 +33,9 @@ Ustalenia i analizy:
   załączyć wyjście BRAKE.
 - [funkcje-smart.md](funkcje-smart.md) — ruch z kontrolą siły (temat K):
   odczyt momentu `TrqMeasured` potwierdzony u źródła, dlaczego pętla musi
-  być w mostku a nie w Pythonie, operacja `SMART` w `.prg` i w cyklu,
-  rejestr procedur pisanych przez programistę, etapy i ryzyka.
+  być w mostku a nie w Pythonie, definicje SMART i ekran `/smart`, operacja
+  `SMART` w `.prg` i w cyklu, **ekran `/sila` do kontroli siły i kalibracji**
+  (charakterystyka obciążenia w ruchu), etapy i ryzyka.
 - [model-cyklu-maszyny.md](model-cyklu-maszyny.md) — propozycja modelu
   danych dla tematu B: `Axis`/`ParameterProfile`/`CycleStep`/`PartProgram`,
   snapshot/restore parametrów, podział na etapy.

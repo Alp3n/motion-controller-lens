@@ -169,6 +169,81 @@ sprawdzić, czy obie strony mówią o tym samym; rozjazd (procedura znana
 serwerowi, nieznana mostkowi) musi być **czytelnym ostrzeżeniem**, a nie
 cichym błędem przy starcie cyklu.
 
+## Ekran kontroli siły i kalibracji (`/sila`)
+
+Osobny ekran, **niezależny od samych funkcji SMART**, choć to on daje im
+sensowne liczby. Trzy zadania:
+
+### 1. Podgląd obciążenia na żywo
+
+Moment każdej osi (`TrqMeasured`, % maksimum) jako słupek i wykres
+przewijany w czasie. Działa przy **każdym** ruchu — JOG, program, cykl —
+więc od razu widać, czy nóż się zakleszcza albo czy oś pracuje pod
+nietypowym obciążeniem. Przydatne w codziennej pracy, nie tylko przy
+kalibracji.
+
+### 2. Charakterystyka obciążenia w ruchu — sedno sprawy
+
+**Problem, który to rozwiązuje:** oś obciążona jest zawsze, nawet gdy nic
+nie tnie — tarcie śruby i prowadnic, ciężar zespołu na osi pionowej,
+bezwładność przy rozpędzaniu. Jeśli nie wiesz, ile z tych 30% to samo
+przejechanie w powietrzu, to **próg siły dobierasz na oślep**.
+
+Ekran wykonuje **próbę przejazdu**: przejeżdża wskazaną oś przez zadany
+zakres, z zadaną prędkością, i zapisuje przebieg momentu. Wynik:
+
+- minimum, średnia i maksimum momentu na tym odcinku,
+- **osobno dla obu kierunków** — na osi Z ciężar sprawia, że jazda w dół
+  i w górę to zupełnie inne liczby, a na osiach poziomych asymetria
+  wskazuje na zakleszczanie albo źle napiętą śrubę,
+- przebieg w funkcji pozycji — widać miejsca, gdzie opór rośnie (np. brud,
+  zużycie prowadnicy),
+- to samo przy kilku prędkościach, bo tarcie zależy od prędkości.
+
+To jest **charakterystyka bazowa**. Dopiero z nią próg siły w definicji
+SMART ma sens: „baza + zapas", a nie liczba wzięta z sufitu. I to jest
+odpowiedź na Twoje „pomoże przy przygotowaniu różnych projektów" — dla
+nowej maszyny albo po wymianie mechaniki robisz próbę raz i masz punkt
+odniesienia.
+
+### 3. Kalibracja moment → siła (siłomierzem)
+
+Jedyny uczciwy sposób, żeby dostać niutony zamiast procentów. Dociskasz
+narzędzie do siłomierza, wpisujesz odczyt, ekran zapamiętuje parę
+(moment %, siła N). Kilka par w różnych punktach daje przelicznik
+**zmierzony**, a nie wyliczony ze wzoru pomijającego sprawność śruby
+(ryzyko 2 niżej). Bez siłomierza ekran dalej działa — po prostu zostajesz
+przy procentach.
+
+### 4. Pomiar częstotliwości próbkowania
+
+Przy okazji nagrywania ekran pokazuje, **ile próbek na sekundę faktycznie
+udało się odczytać**. To odpowiedź na ryzyko 3 — nie zakładamy 10 ms,
+tylko mierzymy, ile magistrala SC realnie wyrabia przy trzech osiach.
+
+### Dlaczego to może być w Pythonie, skoro pętla SMART nie może
+
+Bo **rejestrowanie to nie reagowanie**. Charakterystykę nagrywa się po
+fakcie: serwer odpytuje `STATUS` i zapisuje próbki, a jitter łącza wpływa
+tylko na gęstość wykresu, nie na zachowanie maszyny. Reakcja na siłę
+(zatrzymaj, cofnij, zwolnij) musi być w mostku, bo tam liczy się każde
+20 ms — ale sam pomiar nie. Dzięki temu ekran `/sila` to głównie praca
+w Pythonie i JS, na istniejącym pollingu statusu.
+
+### Co zostaje zapisane
+
+Plik `config/kalibracja.json`: charakterystyki bazowe per oś (kierunek,
+prędkość, min/śr/maks) i pary kalibracyjne moment→siła, z datą pomiaru.
+Trwałe, żeby po miesiącu dało się porównać („czy opór osi wzrósł?") i żeby
+kolejny projekt zaczynał od danych, a nie od zera.
+
+### Bezpieczeństwo prób
+
+Próba przejazdu **rusza maszyną**. Dlatego: wykonywana z niskim
+`TrqGlobal`, wyłącznie przy narzędziu odsuniętym od materiału, w granicach
+limitów programowych osi, z tym samym STOP-em co każdy inny ruch. Ekran
+musi to mówić wprost, zanim ktoś kliknie „start próby".
+
 ## Rozszerzenie protokołu mostka
 
 Trzy komendy, wszystkie w istniejącej konwencji (tekst, jedna linia,
@@ -245,26 +320,34 @@ i usuwaniem. **Cały do zrobienia i przetestowania bez sprzętu** — dlatego
 idzie przed pracą w C++. Po nim widać na ekranie, jak funkcja będzie
 wyglądać, zanim cokolwiek pojedzie.
 
-**Etap 2 — `SMART` w programie technologa.** Format 5 `.prg` (kolumna
+**Etap 2 — ekran `/sila`: kontrola siły i kalibracja.** Podgląd obciążenia
+na żywo, próba przejazdu wyznaczająca charakterystykę bazową osi, kalibracja
+siłomierzem, pomiar realnej częstotliwości próbkowania; zapis do
+`config/kalibracja.json`. Interfejs i logika w Pythonie/JS — **sensowne
+liczby dopiero po etapie 0**, bo bez odczytu momentu nie ma czego rysować.
+Ten ekran daje progi siły do definicji SMART; bez niego dobiera się je
+na oślep.
+
+**Etap 3 — `SMART` w programie technologa.** Format 5 `.prg` (kolumna
 `SMART` z nazwą definicji), walidacja w `program.py`, wybór z listy
 w edytorze. Symulator wykonuje `SMART` jako zwykły ruch na zadany dystans,
 z ostrzeżeniem w logu, że siła nie jest kontrolowana. **Bez sprzętu.**
 
-**Etap 3 — `SMART` w cyklu maszyny.** Nowy rodzaj kroku na ekranie `/cycle`,
+**Etap 4 — `SMART` w cyklu maszyny.** Nowy rodzaj kroku na ekranie `/cycle`,
 te same definicje. **Bez sprzętu.**
 
-**Etap 4 — procedura `ciecie_adaptacyjne` w mostku.** Algorytm z materiału
+**Etap 5 — procedura `ciecie_adaptacyjne` w mostku.** Algorytm z materiału
 źródłowego, wpięty w `waitMoves`: `TrqGlobal` jako sufit, próbkowanie,
 adaptacja prędkości, cofnięcie po przekroczeniu progu, wykrycie kolizji.
 Plus komendy `SMART` i `SMARTLIST`. **Wymaga maszyny** — testowane
 na odpadzie, od małych sił w górę. Dopiero tu funkcja zaczyna realnie
 działać.
 
-**Etap 5 — kolejne procedury.** `szukanie_kontaktu`, `miekki_docisk`,
+**Etap 6 — kolejne procedury.** `szukanie_kontaktu`, `miekki_docisk`,
 `detekcja_kolizji` — programista dopisuje w C++, ekran `/smart` podchwytuje
 je z rejestru automatycznie.
 
-**Etap 6 (opcjonalny) — profil siły.** Zapis przebiegu momentu z cyklu
+**Etap 7 (opcjonalny) — profil siły.** Zapis przebiegu momentu z cyklu
 i analiza: ocena jakości cięcia, wykrywanie zużycia noża (siła rośnie
 z cyklu na cykl). W materiale źródłowym opisane jako „podpis siły".
 

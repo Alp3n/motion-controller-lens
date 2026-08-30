@@ -427,16 +427,24 @@ dla programu technologa i cyklu maszyny.
       „zapisz jako", usuwanie, pola rysowane wg rejestru procedur.
       29 nowych testów, 170/170 przechodzi. Szczegóły:
       [`zmiany/ekran-smart.md`](zmiany/ekran-smart.md).
-- [ ] **Etap 2:** operacja `SMART` w programie technologa (format 5 `.prg`,
+- [ ] **Etap 2:** **ekran `/sila` — kontrola siły i kalibracja.** Podgląd
+      obciążenia na żywo, **próba przejazdu wyznaczająca charakterystykę
+      bazową osi** (tarcie, ciężar, osobno dla obu kierunków i kilku
+      prędkości), kalibracja moment→siła siłomierzem, pomiar realnej
+      częstotliwości próbkowania; zapis do `config/kalibracja.json`.
+      Interfejs w Pythonie/JS (rejestrowanie to nie reagowanie — nie musi
+      być w C++), ale **sensowne liczby dopiero po etapie 0**. Ten ekran
+      daje progi siły do definicji SMART; bez niego dobiera się je na oślep.
+- [ ] **Etap 3:** operacja `SMART` w programie technologa (format 5 `.prg`,
       kolumna z nazwą definicji) + wybór z listy w edytorze. **Bez sprzętu.**
-- [ ] **Etap 3:** krok `SMART` w cyklu maszyny (`/cycle`). **Bez sprzętu.**
-- [ ] **Etap 4:** procedura `ciecie_adaptacyjne` w mostku + komendy `SMART`
+- [ ] **Etap 4:** krok `SMART` w cyklu maszyny (`/cycle`). **Bez sprzętu.**
+- [ ] **Etap 5:** procedura `ciecie_adaptacyjne` w mostku + komendy `SMART`
       i `SMARTLIST`. *(C++, wymaga `vendor/` i maszyny — tu funkcja zaczyna
       realnie działać)*
-- [ ] **Etap 5:** kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
+- [ ] **Etap 6:** kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
       `detekcja_kolizji`) — programista dopisuje w C++, ekran `/smart`
       podchwytuje je z rejestru automatycznie.
-- [ ] **Etap 6 (opcjonalny):** profil siły — zapis przebiegu i analiza
+- [ ] **Etap 7 (opcjonalny):** profil siły — zapis przebiegu i analiza
       (jakość cięcia, zużycie noża).
 
 Rejestr procedur istnieje **po obu stronach celowo** — serwer ma własny opis
@@ -452,9 +460,11 @@ czytelnym ostrzeżeniem, nie cichym błędem przy starcie cyklu.
    zastępuje go. Błąd w pętli nie może oznaczać ruchu z pełną siłą.
 2. Wzór `F = 2πM/p` z materiału źródłowego **pomija sprawność śruby** —
    realnie `F = 2πMη/p`. Nastawy procentowe dobieramy doświadczalnie na
-   odpadzie, a nie wyliczamy w niutonach.
+   odpadzie, a nie wyliczamy w niutonach. **Rozwiązuje to etap 2** —
+   kalibracja siłomierzem na ekranie `/sila`.
 3. Częstotliwość próbkowania `TrqMeasured` — **do zmierzenia na maszynie**,
    nie do założenia (materiał zakłada 10 ms, nasza pętla chodzi co 20 ms).
+   **Mierzy to etap 2** — ekran `/sila` pokazuje realną liczbę próbek/s.
 4. Kod C++ powstaje tutaj, ale **kompilacja i testy wyłącznie na mini PC**
    przy maszynie — `vendor/` (SDK Teknica) jest poza repozytorium.
 5. Maszyna przestaje być sterowana wyłącznie pozycją — oś może stanąć

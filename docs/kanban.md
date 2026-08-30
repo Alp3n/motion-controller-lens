@@ -126,14 +126,21 @@ Definicje wspólne dla programu technologa i cyklu maszyny.
       — mały krok, weryfikuje sprzęt i koszt próbkowania *(maszyna)*
 - [x] Etap 1: model definicji + `/api/smart` + **ekran `/smart`** (lista,
       edycja, „zapisz jako", usuwanie) — `zmiany/ekran-smart.md`
-- [ ] Etap 2: operacja `SMART` w `.prg` (format 5) + wybór z listy
+- [ ] Etap 2: **ekran `/sila` — kontrola siły i kalibracja**: podgląd na
+      żywo, próba przejazdu (charakterystyka bazowa osi: tarcie, ciężar,
+      oba kierunki, kilka prędkości), kalibracja siłomierzem, pomiar
+      próbkowania, zapis `config/kalibracja.json`. Kod bez sprzętu,
+      sensowne liczby po etapie 0
+- [ ] Etap 3: operacja `SMART` w `.prg` (format 5) + wybór z listy
       w edytorze **— bez sprzętu**
-- [ ] Etap 3: krok `SMART` w cyklu maszyny (`/cycle`) **— bez sprzętu**
-- [ ] Etap 4: procedura `ciecie_adaptacyjne` + `SMART`/`SMARTLIST` w mostku
+- [ ] Etap 4: krok `SMART` w cyklu maszyny (`/cycle`) **— bez sprzętu**
+- [ ] Etap 5: procedura `ciecie_adaptacyjne` + `SMART`/`SMARTLIST` w mostku
       *(C++, wymaga `vendor/` i maszyny — tu zaczyna realnie działać)*
-- [ ] Etap 5: kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
+- [ ] Etap 6: kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
       `detekcja_kolizji`)
-- [ ] Etap 6 (opcjonalny): profil siły — jakość cięcia, zużycie noża
+- [ ] Etap 7 (opcjonalny): profil siły — jakość cięcia, zużycie noża
+
+Dwa ryzyka domyka etap 2 (ekran `/sila`), zamiast zostawiać je otwarte:
 - [ ] **Do zmierzenia na maszynie:** ile realnie kosztuje odczyt
       `TrqMeasured` i jak gęsto da się próbkować przy trzech osiach
 - [ ] **Do dobrania doświadczalnie:** przełożenie % momentu → siła na nożu
