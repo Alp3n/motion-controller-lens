@@ -31,6 +31,10 @@ Ustalenia i analizy:
   wykorzystujemy z serw (mamy wersję Advanced): limit momentu z API, bazowanie
   do oporu, grupy wyzwalania, zdarzenia; ryzyko: system może przypadkowo
   załączyć wyjście BRAKE.
+- [funkcje-smart.md](funkcje-smart.md) — ruch z kontrolą siły (temat K):
+  odczyt momentu `TrqMeasured` potwierdzony u źródła, dlaczego pętla musi
+  być w mostku a nie w Pythonie, operacja `SMART` w `.prg` i w cyklu,
+  rejestr procedur pisanych przez programistę, etapy i ryzyka.
 - [model-cyklu-maszyny.md](model-cyklu-maszyny.md) — propozycja modelu
   danych dla tematu B: `Axis`/`ParameterProfile`/`CycleStep`/`PartProgram`,
   snapshot/restore parametrów, podział na etapy.

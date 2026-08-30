@@ -112,6 +112,27 @@ Pomiary i testy:
       (temat B, `CycleStep`) — podajnik/wyrzutnik/lampka/błąd, konkretny
       wybór przy budowie tego ekranu; program technologa go nie używa
 
+### K. Funkcje SMART (ruch z kontrolą siły)
+Nowy temat — technolog wstawia „funkcję smart" po punkcie w programie;
+procedurę pisze programista, technolog wybiera ją i podaje parametry.
+Analiza, model danych i ryzyka: [`funkcje-smart.md`](funkcje-smart.md).
+Potwierdzone u źródła: `IMotion::TrqMeasured` daje odczyt momentu (PCT_MAX).
+Pętla musi być w mostku (C++) — Python nie może nic robić w trakcie ruchu.
+- [ ] Etap 0: `STATUS` z odczytem momentu (`TRQX/Y/Z`) + podgląd na panelu
+      — mały krok, weryfikuje sprzęt i koszt próbkowania; zrobić pierwszy
+- [ ] Etap 1: procedura `ciecie_adaptacyjne` + `SMART`/`SMARTLIST` w mostku
+      (C++, wymaga `vendor/` i maszyny)
+- [ ] Etap 2: operacja `SMART` w `.prg` (format 5) + pola w edytorze
+      **— da się zrobić bez sprzętu**
+- [ ] Etap 3: krok `SMART` w cyklu maszyny (`/cycle`)
+- [ ] Etap 4: kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
+      `detekcja_kolizji`)
+- [ ] Etap 5 (opcjonalny): profil siły — jakość cięcia, zużycie noża
+- [ ] **Do zmierzenia na maszynie:** ile realnie kosztuje odczyt
+      `TrqMeasured` i jak gęsto da się próbkować przy trzech osiach
+- [ ] **Do dobrania doświadczalnie:** przełożenie % momentu → siła na nożu
+      (wzór ze źródła pomija sprawność śruby)
+
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`
 - [ ] GRBL/G-code jako alternatywa

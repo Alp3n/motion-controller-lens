@@ -388,6 +388,66 @@ podstawą zakupu sprzętu.
 (cytujące teknic.com/sc4-hub/ i ClearPath-SC User Manual str. 104 —
 niezweryfikowane bezpośrednio, patrz zastrzeżenie wyżej).
 
+## K. Funkcje SMART — ruch z kontrolą siły
+
+Nowy temat (2026-08-30), z materiału [`../zbyszek/kontrola-sily.md`](../zbyszek/kontrola-sily.md).
+Technolog podaje współrzędne wlewków, a **po każdym punkcie może wstawić
+„funkcję smart"** — procedurę reagującą na siłę (wykrycie kontaktu, cięcie
+adaptacyjne, cofnięcie po przekroczeniu progu). Procedurę pisze programista,
+technolog wybiera ją w edytorze i podaje parametry.
+
+Pełna analiza, model danych, protokół i ryzyka:
+[`funkcje-smart.md`](funkcje-smart.md).
+
+**Potwierdzone u źródła** (referencja API w `zbyszek/S-FoundationRef.chm`):
+`sFnd::IMotion::TrqMeasured` daje **odczyt zmierzonego momentu**, domyślnie
+w procentach maksimum (`_trqUnits{PCT_MAX, AMPS}`). To jest brakujący
+klocek — limit `TrqGlobal` znaliśmy z tematu C, ale bez odczytu nie dało
+się na siłę *reagować*. Funkcja jest wykonalna na naszym sprzęcie.
+
+**Ustalenie architektoniczne** (sprawdzone w kodzie, nie założone): mostek
+blokuje się na czas ruchu — `pollDuringMove()` obsługuje wyłącznie `STOP`
+i `STATUS`, reszta komend jest ignorowana. Pętli monitorującej **nie da się
+napisać po stronie Pythona**; musi działać w mostku (C++). Wpina się
+w istniejącą pętlę `waitMoves()`, która już chodzi co 20 ms.
+
+- [ ] **Etap 0:** `STATUS` z odczytem momentu (`TRQX/TRQY/TRQZ`) → panel
+      operatora pokazuje obciążenie osi. Najmniejszy krok weryfikujący całą
+      drogę odczytu na maszynie; pozwala zmierzyć realny koszt próbkowania.
+      Przydatny sam w sobie.
+- [ ] **Etap 1:** procedura `ciecie_adaptacyjne` w mostku + komendy `SMART`
+      i `SMARTLIST`. Wymaga sprzętu (kompilacja przeciw `vendor/`).
+- [ ] **Etap 2:** operacja `SMART` w programie technologa (format 5 `.prg`)
+      + pola w edytorze rysowane wg rejestru procedur. **Da się zrobić bez
+      sprzętu.**
+- [ ] **Etap 3:** krok `SMART` w cyklu maszyny (`/cycle`).
+- [ ] **Etap 4:** kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
+      `detekcja_kolizji`) — programista dopisuje w C++, edytor podchwytuje
+      je z rejestru automatycznie.
+- [ ] **Etap 5 (opcjonalny):** profil siły — zapis przebiegu i analiza
+      (jakość cięcia, zużycie noża).
+
+**Ryzyka, których nie zmiękczam** (pełny opis w dokumencie):
+
+1. Pętla programowa **nie jest funkcją bezpieczeństwa**. `TrqGlobal`
+   ustawiany przed ruchem jako twardy sufit w serwie pozostaje realnym
+   zabezpieczeniem — pętla dopracowuje zachowanie wewnątrz limitu, nie
+   zastępuje go. Błąd w pętli nie może oznaczać ruchu z pełną siłą.
+2. Wzór `F = 2πM/p` z materiału źródłowego **pomija sprawność śruby** —
+   realnie `F = 2πMη/p`. Nastawy procentowe dobieramy doświadczalnie na
+   odpadzie, a nie wyliczamy w niutonach.
+3. Częstotliwość próbkowania `TrqMeasured` — **do zmierzenia na maszynie**,
+   nie do założenia (materiał zakłada 10 ms, nasza pętla chodzi co 20 ms).
+4. Kod C++ powstaje tutaj, ale **kompilacja i testy wyłącznie na mini PC**
+   przy maszynie — `vendor/` (SDK Teknica) jest poza repozytorium.
+5. Maszyna przestaje być sterowana wyłącznie pozycją — oś może stanąć
+   gdzie indziej, niż zapisano w programie. To sens tej funkcji, ale musi
+   być widoczne na panelu, inaczej diagnostyka będzie zgadywanką.
+
+Źródło: `zbyszek/kontrola-sily.md`; referencja API `zbyszek/S-FoundationRef.chm`
+(`sFnd::IMotion`, `sFnd::ILimits`, `sFnd::INode`) — sprawdzona bezpośrednio;
+`bridge/sc4hub_bridge.cpp` (`waitMoves`, `pollDuringMove`).
+
 ## Proponowana kolejność — do potwierdzenia
 
 To jest **propozycja**, nie decyzja — ustalmy razem, czy się zgadzasz:
@@ -405,4 +465,8 @@ To jest **propozycja**, nie decyzja — ustalmy razem, czy się zgadzasz:
 6. **G** (ekrany) — najlepiej równolegle z C–F, w miarę jak funkcje powstają.
 7. **H** — osobny tor, fizyczny, nie blokuje pracy nad softwarem, ale blokuje
    produkcję.
-8. **I** — dopiero jeśli się okaże potrzebne.
+8. **K** (funkcje SMART) — nowy temat, buduje się na C (limit momentu) i B
+   (model cyklu/programu). Etap 0 (odczyt momentu na panelu) warto zrobić
+   **od razu** — jest mały, bezpieczny i weryfikuje sprzęt pod resztę
+   tematu. Reszta etapów wymaga pracy przy maszynie.
+9. **I** — dopiero jeśli się okaże potrzebne.
