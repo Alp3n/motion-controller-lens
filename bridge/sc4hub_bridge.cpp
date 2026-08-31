@@ -437,13 +437,23 @@ static std::string statusLine() {
         if (axisReleased[a]) rel += axes[a].name;
     if (rel.empty()) rel = "-";
 
-    char buf[256];
+    // Obciążenie osi (temat K, etap 0) — % momentu maksimum, TrqUnit(PCT_MAX)
+    // ustawiony raz w openHardware(). Bez portu (np. STATUS przed otwarciem
+    // sprzętu) zera zamiast odczytu z niepodłączonego węzła.
+    double trq[3] = {0.0, 0.0, 0.0};
+    if (port)
+        for (int a = 0; a < 3; a++)
+            trq[a] = nodeOf(a).Motion.TrqMeasured.Value();
+
+    char buf[320];
     snprintf(buf, sizeof(buf),
-             "OK STATE=%s EN=%d X=%.3f Y=%.3f Z=%.3f SP=%d REL=%s OUT=%d%d",
+             "OK STATE=%s EN=%d X=%.3f Y=%.3f Z=%.3f SP=%d REL=%s OUT=%d%d "
+             "TRQX=%.1f TRQY=%.1f TRQZ=%.1f",
              stateName(state), safetyEnabled() ? 1 : 0,
              port ? posMm(0) : 0.0, port ? posMm(1) : 0.0, port ? posMm(2) : 0.0,
              spindleOn ? 1 : 0, rel.c_str(),
-             outputState[0] ? 1 : 0, outputState[1] ? 1 : 0);
+             outputState[0] ? 1 : 0, outputState[1] ? 1 : 0,
+             trq[0], trq[1], trq[2]);
     std::string line = buf;
 
     // Powód alarmu jako ostatnie pole — tekst ze spacjami, więc wszystko po
@@ -758,6 +768,13 @@ static void openHardware() {
             throw std::string("nie znaleziono serwa o numerze seryjnym ") + want +
                   " (" + envNames[a] + ")";
     }
+
+    // Jednostka odczytu momentu — procent maksimum (temat K, etap 0).
+    // Potwierdzone u źródła (S-FoundationRef.chm): domyślną jednostką
+    // TrqMeasured jest PCT_MAX, ale ustawiamy jawnie zamiast polegać na
+    // domyślnej wartości węzła po resecie.
+    for (int a = 0; a < 3; a++)
+        nodeOf(a).TrqUnit(nodeOf(a).PCT_MAX);
 
     printf("SC4-Hub otwarty, węzłów: %d\n", (int)port->NodeCount());
     for (int a = 0; a < 3; a++)

@@ -138,8 +138,12 @@ Definicje wspólne dla programu technologa i cyklu maszyny.
 - [~] Etap 0: `STATUS` z odczytem momentu (`TRQX/Y/Z`) + podgląd na panelu.
       **Serwer i panel gotowe** (`zmiany/symulacja-momentu.md`); symulator
       podstawia wartości ZMYŚLONE, oznaczone w statusie jako „symulacja".
-      **Zostaje C++:** dopisać `TRQ*` do odpowiedzi `STATUS` w mostku
-      i zmierzyć koszt próbkowania *(maszyna)*
+      **Kod C++ w mostku napisany** (`TrqUnit(PCT_MAX)`, `TRQX/Y/Z` w
+      `statusLine()`), ale **nieskompilowany** — na hoście brakuje nagłówków
+      SDK (`inc/inc-pub`), jest tylko biblioteka runtime. Do zrobienia:
+      dostarczyć pakiet SDK trwale na maszynę, skompilować, podmienić
+      binarkę mostka, dopiero wtedy zmierzyć koszt próbkowania. Szczegóły:
+      `zmiany/symulacja-momentu.md`
 - [x] Etap 1: model definicji + `/api/smart` + **ekran `/smart`** (lista,
       edycja, „zapisz jako", usuwanie) — `zmiany/ekran-smart.md`
 - [ ] Etap 2: **ekran `/sila` — kontrola siły i kalibracja**: podgląd na
