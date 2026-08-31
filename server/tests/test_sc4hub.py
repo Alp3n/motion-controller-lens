@@ -174,14 +174,21 @@ def test_cycle_move_step_respects_soft_limits():
 # --- cykl maszyny — WYJSCIE, PAUZA, PROGRAM --------------------------------
 
 
-def test_cycle_output_step_sets_status_without_bridge_command():
-    """WYJSCIE dziś tylko w statusie — mostek nie ma jeszcze tej komendy."""
+def test_cycle_output_step_sends_bridge_command():
+    """WYJSCIE przełącza fizyczne wyjście huba (komenda OUTPUT mostka).
+
+    Wcześniej ten test pilnował odwrotnego stanu rzeczy — że mostek takiej
+    komendy nie ma i krok zmienia tylko status. Komenda została dopisana,
+    patrz docs/zmiany/wyjscia-fizyczne.md.
+    """
     m = _cycle_machine(
         [{"lp": 1, "kind": "WYJSCIE", "output": "wyjscie_0", "output_on": True}]
     )
     asyncio.run(_drive(m))
     assert m.status.outputs["wyjscie_0"] is True
-    assert m.calls == ["SPINDLE 0"]  # bezwarunkowe z finally _run_cycle
+    # "SPINDLE 0" jest bezwarunkowe z finally _run_cycle; wyjście nie gaśnie,
+    # bo domyślna konfiguracja nie ma go oznaczonego do gaszenia przy STOP
+    assert m.calls == ["OUTPUT 0 1", "SPINDLE 0"]
 
 
 def test_cycle_pause_step_sends_spindle_off_and_waits_for_resume():

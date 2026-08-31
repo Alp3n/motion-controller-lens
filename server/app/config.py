@@ -54,6 +54,11 @@ AUDIT_FILE = Path(os.environ.get("AUDIT_LOG", "config/dziennik-zmian.jsonl")).re
 # ważność sesji panelu [s] — liczona od ostatniego użycia, nie od zalogowania
 SESSION_TTL = float(os.environ.get("SESSION_TTL", str(12 * 3600)))
 
+# plik konfiguracji wyjść cyfrowych (przeznaczenie BRAKE_0/BRAKE_1)
+OUTPUTS_FILE = Path(
+    os.environ.get("OUTPUTS_CONFIG", "config/wyjscia.json")
+).resolve()
+
 # plik konfiguracji wrzeciona (kiedy się załącza i kiedy gaśnie)
 SPINDLE_FILE = Path(
     os.environ.get("SPINDLE_CONFIG", "config/spindle.json")

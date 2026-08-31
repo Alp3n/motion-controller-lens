@@ -53,6 +53,7 @@ function applyStatus(st) {
   $("pos-y").textContent = fmt(st.position.y);
   $("pos-z").textContent = fmt(st.position.z);
   $("spindle").textContent = st.spindle_on ? "ZAŁ" : "WYŁ";
+  renderOutputs(st.outputs || {});
 
   /* Obciążenie osi — podstawa funkcji SMART. Źródło pokazujemy zawsze
      i wprost: „symulacja" to liczby wymyślone przez symulator, nie pomiar.
@@ -157,6 +158,40 @@ $("btn-home").onclick = homeAll;
 $("btn-home-xy").onclick = homeAll;
 $("btn-reset").onclick = () =>
   api("POST", "/api/machine/reset").catch((e) => showMsg($("ctrl-msg"), e.message));
+
+/* Wyjścia cyfrowe (podajnik, wyrzutnik, lampka) — operator ma widzieć, co jest
+   załączone. Etykiety z konfiguracji maszyny; dopóki się nie wczytają, pokazujemy
+   nazwy techniczne, zamiast nie pokazywać nic. */
+let outputLabels = {};
+
+function renderOutputs(state) {
+  const el = $("outputs-line");
+  if (!el) return;
+  const entries = Object.entries(state);
+  if (!entries.length) {
+    el.textContent = "";
+    return;
+  }
+  el.innerHTML = entries
+    .map(([name, on]) => {
+      const label = outputLabels[name] || name;
+      return `${label}: <b>${on ? "ZAŁ" : "wył"}</b>`;
+    })
+    .join(" &nbsp; ");
+}
+
+fetch("/api/outputs")
+  .then((r) => (r.ok ? r.json() : null))
+  .then((data) => {
+    if (!data) return;
+    for (const [name, cfg] of Object.entries(data.outputs || {})) {
+      outputLabels[name] =
+        cfg.label || (cfg.purpose !== "nieuzywane" ? cfg.purpose : name);
+    }
+  })
+  .catch(() => {
+    /* brak etykiet nie psuje panelu — zostają nazwy techniczne */
+  });
 
 /* Wrzeciono przy starcie maszyny — przełącznik na ekranie Start/Stop
    (notatki funkcjonalne §4). Pozostałe ustawienia wrzeciona (granice programu

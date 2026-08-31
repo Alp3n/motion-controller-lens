@@ -24,8 +24,10 @@ from .cycle import (
     Cycle,
     CycleStep,
     empty_cycle,
+    output_index,
 )
 from .profiles import PROFILE_GLOBAL, AxisParams, ParameterProfile
+from .outputs import OutputConfig, default_outputs
 from .smart import SmartDefinition
 from .spindle import SpindleConfig
 from .program import Operation, Program, cut_path, pass_depths
@@ -131,6 +133,26 @@ class Machine:
         # programu technologa i cyklu maszyny — celowo jeden zbiór, żeby ta
         # sama nazwa znaczyła to samo w obu miejscach
         self.smart: dict[str, SmartDefinition] = {}
+        # przeznaczenie wyjść cyfrowych i co się z nimi dzieje przy STOP
+        self.outputs: dict[str, OutputConfig] = default_outputs()
+
+    # --- konfiguracja wyjść (wspólna) -------------------------------------
+
+    def apply_output_config(self, cfg: dict[str, OutputConfig]) -> None:
+        self.outputs = dict(cfg)
+
+    def outputs_to_clear(self) -> list[str]:
+        """Wyjścia, które mają zgasnąć na zakończenie pracy maszyny.
+
+        Świadomie NIE gasimy wszystkiego: zdjęcie docisku przy STOP potrafi
+        upuścić detal, co bywa gorsze niż zostawienie wyjścia załączonego.
+        O tym decyduje konfiguracja wyjścia (`off_on_stop`), nie warstwa maszyny.
+        """
+        return [
+            name
+            for name, cfg in self.outputs.items()
+            if cfg.off_on_stop and self.status.outputs.get(name)
+        ]
 
     # --- konfiguracja wrzeciona (wspólna) ---------------------------------
 
@@ -589,6 +611,8 @@ class SimulatedMachine(Machine):
             self._abort(str(exc))
         finally:
             self.status.spindle_on = False
+            for name in self.outputs_to_clear():
+                self.status.outputs[name] = False
             self.status.cycle_loop = False
             self._run_task = None
 
@@ -991,6 +1015,12 @@ class SC4HubMachine(Machine):
         self.status.y = float(fields.get("Y", self.status.y))
         self.status.z = float(fields.get("Z", self.status.z))
         self.status.spindle_on = fields.get("SP") == "1"
+        # OUT=<b0><b1> — stan wyjść huba. Starszy mostek tego pola nie ma,
+        # więc jego brak zostawia ostatnio znany stan zamiast go zerować.
+        out = fields.get("OUT")
+        if out and len(out) == len(OUTPUT_NAMES):
+            for name, ch in zip(OUTPUT_NAMES, out):
+                self.status.outputs[name] = ch == "1"
         rel = fields.get("REL", "-")
         self.status.released_axes = [] if rel == "-" else sorted(c.lower() for c in rel)
 
@@ -1207,6 +1237,14 @@ class SC4HubMachine(Machine):
                 await self._command("SPINDLE 0")
             except MachineError:
                 pass
+            # Wyjścia oznaczone „gaś przy STOP" — osobno od wrzeciona i osobno
+            # od siebie: błąd jednego nie może zablokować gaszenia następnego.
+            for name in self.outputs_to_clear():
+                try:
+                    await self._command(f"OUTPUT {output_index(name)} 0")
+                    self.status.outputs[name] = False
+                except MachineError:
+                    pass
             self.status.cycle_loop = False
             self._run_task = None
 
@@ -1230,10 +1268,13 @@ class SC4HubMachine(Machine):
             return
 
         if step.kind == STEP_OUTPUT:
-            # Jak WYJSCIE w symulatorze: mostek nie ma jeszcze komendy
-            # ustawienia wyjścia (etap 2b/3 tematu B) — stan widać na
-            # ekranie, ale fizycznie nic się nie przełącza.
-            self.status.outputs[step.output] = bool(step.output_on)
+            # Wyjście przełącza się fizycznie: mostek dostał komendę OUTPUT
+            # (BRAKE_0/BRAKE_1 na SC4-Hub). Stan w statusie ustawiamy dopiero
+            # po potwierdzeniu przez mostek — inaczej ekran pokazywałby
+            # załączony podajnik, którego sterownik odmówił.
+            on = bool(step.output_on)
+            await self._command(f"OUTPUT {output_index(step.output)} {1 if on else 0}")
+            self.status.outputs[step.output] = on
             return
 
         if step.kind == STEP_SMART:

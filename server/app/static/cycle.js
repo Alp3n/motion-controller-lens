@@ -112,7 +112,10 @@ function addStepRow(step = {}, after = null) {
 
   const outTd = document.createElement("td");
   outTd.appendChild(
-    selectCell("output", ["", ...outputNames], step.output || "", { "": "—" })
+    selectCell("output", ["", ...outputNames], step.output || "", {
+      "": "—",
+      ...Object.fromEntries(outputNames.map((n) => [n, outputLabel(n)])),
+    })
   );
 
   const stateTd = document.createElement("td");
@@ -383,6 +386,10 @@ async function pollState() {
       st.cycle_step == null
         ? "—"
         : `${st.cycle_step} / ${st.total_cycle_steps}`;
+    for (const [name, on] of Object.entries(st.outputs || {})) {
+      const cell = $(`o-${name}-state`);
+      if (cell) cell.textContent = on ? "ZAŁ" : "wył";
+    }
     const outs = Object.entries(st.outputs || {})
       .map(([k, v]) => `${k}=${v ? "ON" : "off"}`)
       .join("  ");
@@ -400,6 +407,89 @@ async function pollState() {
 }
 
 // --- start ----------------------------------------------------------------
+
+/* Wyjścia cyfrowe — do czego służą i co się z nimi dzieje przy STOP.
+   Etykiety stąd trafiają też do listy wyboru w kroku WYJSCIE, żeby admin
+   wybierał „wyrzutnik", a nie „wyjscie_1". */
+let outputsCfg = null;
+let spindleOutput = null; // wyjście zajęte przez wrzeciono, albo null
+
+function outputLabel(name) {
+  const cfg = outputsCfg && outputsCfg[name];
+  if (!cfg) return name;
+  const opis = cfg.label || (cfg.purpose !== "nieuzywane" ? cfg.purpose : "");
+  return opis ? `${name} — ${opis}` : name;
+}
+
+function applyOutputs(data) {
+  outputsCfg = data.outputs;
+  spindleOutput = data.spindle_output || null;
+  const tbody = $("outputs-rows");
+  tbody.innerHTML = "";
+  for (const [name, cfg] of Object.entries(outputsCfg)) {
+    const zajete = name === spindleOutput;
+    const opcje = (data.purposes || [])
+      .map((p) => `<option value="${p}">${p}</option>`)
+      .join("");
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td><b>${name}</b>${
+        zajete
+          ? ' <span class="axis-extra-badge" title="Mostek ma to wyjście' +
+            ' przypisane do wrzeciona (SPINDLE_OUTPUT) — krok WYJSCIE zostanie' +
+            ' odrzucony.">wrzeciono</span>'
+          : ""
+      }</td>` +
+      `<td><select id="o-${name}-purpose" ${zajete ? "disabled" : ""}>${opcje}</select></td>` +
+      `<td><input id="o-${name}-label" ${zajete ? "disabled" : ""}></td>` +
+      `<td><input type="checkbox" id="o-${name}-off" style="width:auto" ${
+        zajete ? "disabled" : ""
+      }></td>` +
+      `<td class="muted" id="o-${name}-state">—</td>`;
+    tbody.appendChild(tr);
+    $(`o-${name}-purpose`).value = cfg.purpose;
+    $(`o-${name}-label`).value = cfg.label;
+    $(`o-${name}-off`).checked = cfg.off_on_stop;
+    /* Zmiana przeznaczenia podpowiada sensowne gaszenie przy STOP — te same
+       wartości co DEFAULT_OFF_ON_STOP w app/outputs.py. Podpowiedź, nie
+       przymus: admin może odznaczyć. Docisku i podajnika celowo nie gasimy,
+       bo zdjęcie docisku przy STOP potrafi upuścić detal. */
+    $(`o-${name}-purpose`).addEventListener("change", (ev) => {
+      $(`o-${name}-off`).checked = ev.target.value === "wyrzutnik";
+    });
+  }
+  if (data.warnings && data.warnings.length) {
+    showMsg($("outputs-msg"), "Uwaga:\n" + data.warnings.join("\n"));
+    $("outputs-msg").style.whiteSpace = "pre-line";
+  } else {
+    $("outputs-msg").className = "msg";
+  }
+  // etykiety wyjść wchodzą do listy wyboru w kroku WYJSCIE — trzeba przerysować
+  onEdit();
+}
+
+async function saveOutputs() {
+  const payload = { outputs: {} };
+  for (const name of Object.keys(outputsCfg || {})) {
+    if (name === spindleOutput) continue; // sterowane komendą SPINDLE, nie stąd
+    payload.outputs[name] = {
+      purpose: $(`o-${name}-purpose`).value,
+      label: $(`o-${name}-label`).value,
+      off_on_stop: $(`o-${name}-off`).checked,
+    };
+  }
+  try {
+    const data = await api("PUT", "/api/outputs", payload);
+    applyOutputs(data);
+    if (!(data.warnings && data.warnings.length)) {
+      showMsg($("outputs-msg"), "zapisano przeznaczenie wyjść", true);
+    }
+  } catch (e) {
+    showMsg($("outputs-msg"), e.message);
+  }
+}
+
+$("btn-outputs-save").onclick = saveOutputs;
 
 /* Wrzeciono — dwie opcje granic programu technologa i obroty domyślne.
    Zapis jest częściowy: przełącznik „rusza razem z maszyną" żyje na panelu
@@ -446,6 +536,12 @@ $("btn-reload").onclick = () =>
 $("btn-start").onclick = () => startCycle(false);
 $("btn-start-loop").onclick = () => startCycle(true);
 $("btn-stop").onclick = stopMachine;
+
+api("GET", "/api/outputs")
+  .then(applyOutputs)
+  .catch((e) =>
+    showMsg($("outputs-msg"), "nie udało się wczytać konfiguracji wyjść: " + e.message)
+  );
 
 api("GET", "/api/spindle")
   .then(applySpindle)

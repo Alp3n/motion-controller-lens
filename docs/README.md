@@ -107,6 +107,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   dostaje `start_cycle` (brakowało go od etapu 4 tematu B — `/cycle` nie
   działał na sprzęcie). Pierwsze testy automatyczne dla tej klasy. Nie
   zweryfikowane na fizycznym sterowniku.
+- [zmiany/wyjscia-fizyczne.md](zmiany/wyjscia-fizyczne.md) — wyjścia
+  `BRAKE_0`/`BRAKE_1` podpięte do aplikacji: komenda `OUTPUT` w mostku, krok
+  `WYJSCIE` przełącza fizyczne wyjście, przeznaczenie i gaszenie przy STOP.
 - [zmiany/role-i-logowanie.md](zmiany/role-i-logowanie.md) — osobne konta
   (admin/technolog/operator), ekran logowania, dziennik zmian „kto co zmienił"
   i ekran diagnostyczny `/diagnostics`; co z tego NIE jest zabezpieczeniem.

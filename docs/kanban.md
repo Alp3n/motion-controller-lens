@@ -99,6 +99,7 @@ Pomiary i testy:
 - [ ] Zmierzyć domyślny watchdog sieciowy (czy w ogóle działa)
 - [ ] Test: utrata zezwolenia w ruchu
 - [ ] Test: komunikacja przy E-stopie
+- [ ] Sprawdzić komendę `OUTPUT` mostka na sprzęcie (napisana, nieskompilowana)
 - [ ] Test: czy USB re-enumeracja załącza `BRAKE_x` (bez wrzeciona!)
 - [ ] Reguła udev — instalacja i weryfikacja
 - [x] Obciążalność wyjść `BRAKE_0`/`BRAKE_1` — 500 mA / 24 VDC
@@ -110,6 +111,9 @@ Pomiary i testy:
       obwód osłon** (system może przypadkowo załączyć wyjście)
 - [ ] Osobne zasilanie 24 V do płytki SC4-HUB (warunek działania wyjść)
 - [ ] Wybór konkretnego modelu zewnętrznego regulatora PWM do wrzeciona
+- [x] **Wyjścia podpięte fizycznie** — komenda `OUTPUT` w mostku, krok
+      `WYJSCIE` przełącza `BRAKE_0`/`BRAKE_1`; kod mostka nieskompilowany
+      (brak SDK), do sprawdzenia na sprzęcie
 - [x] Przeznaczenie drugiego wyjścia: definiowane w konfiguracji maszyny
       (temat B, `CycleStep`) — podajnik/wyrzutnik/lampka/błąd, konkretny
       wybór przy budowie tego ekranu; program technologa go nie używa

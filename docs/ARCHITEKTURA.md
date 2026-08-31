@@ -195,12 +195,13 @@ Pythona a sprzętem. Same nazwy w serwerze są już neutralne
 
 ```
 PING                      -> OK PONG
-STATUS                    -> OK STATE=READY EN=1 X=12.500 Y=-3.000 Z=10.000 SP=0 REL=-
+STATUS                    -> OK STATE=READY EN=1 X=12.500 Y=-3.000 Z=10.000 SP=0 REL=- OUT=01
 HOME                      -> bazowanie osi (dziś: zerowanie programowe, patrz uwaga niżej)
 MOVEXY <x> <y> <posuw>    -> interpolowany ruch XY [mm, mm/min]
 MOVEZ <z> <posuw>         -> ruch osi Z
 JOG <X/Y/Z> <dyst> <posuw>-> ruch ręczny
 SPINDLE <0/1> [obr/min]   -> wrzeciono wył/zał
+OUTPUT <0|1> <0|1>        -> wyjście huba (BRAKE_0/BRAKE_1) wył/zał
 STOP                      -> zatrzymanie natychmiastowe
 RESET                     -> kasowanie alarmu
 RELEASE <X/Y/Z/ALL>       -> zdjęcie momentu (ruch ręczny osią)
@@ -209,9 +210,14 @@ AXCFG <X|Y|Z> MMREV=<mm/obr> [SOFTMIN=<mm> SOFTMAX=<mm>] [LEN=<mm>] [HOME=<minus
                           -> konfiguracja osi (limity, przełożenie) — patrz konfiguracja-osi.md
 ```
 
-`STATUS` zawiera pole `REL=` z literami zluzowanych osi (albo `-`). W stanie
-`ALARM` na końcu linii dochodzi `MSG=<powód>` — pole jest zawsze ostatnie,
-bo tekst zawiera spacje.
+`STATUS` zawiera pole `REL=` z literami zluzowanych osi (albo `-`) oraz `OUT=`
+ze stanem obu wyjść huba. W stanie `ALARM` na końcu linii dochodzi
+`MSG=<powód>` — pole jest zawsze ostatnie, bo tekst zawiera spacje.
+
+`OUTPUT` odrzuca wyjście przypisane wrzecionu (`SPINDLE_OUTPUT`) — tym steruje
+`SPINDLE`. Mostek zeruje oba wyjścia po otwarciu portu, żeby stan po ponownej
+enumeracji USB był znany, a nie odziedziczony. Szczegóły i ograniczenia:
+[zmiany/wyjscia-fizyczne.md](zmiany/wyjscia-fizyczne.md).
 
 **Świadome uproszczenia mostka** (stan na 2026-08-14, patrz
 [zmiany/mostek-sc4hub.md](zmiany/mostek-sc4hub.md) po szczegóły):
@@ -221,8 +227,12 @@ bo tekst zawiera spacje.
   (Windows), jeszcze nie zrobionej.
 - Interpolacja XY jest przybliżona (prędkości osi dobrane, by skończyły
   jednocześnie) — dla operacji `LINIA` wymaga weryfikacji pomiarowej toru.
-- Wrzeciono tylko śledzone (`SPINDLE_OUTPUT=none` domyślnie) — sterowanie
-  PWM nie jest zrobione.
+- Wrzeciono: włącz/wyłącz na wyjściu huba (`SPINDLE_OUTPUT`, domyślnie `none`
+  = tylko śledzenie stanu). Sterowania prędkością nie ma i nie będzie bez
+  zewnętrznego regulatora PWM — SC4-Hub nie ma wyjścia PWM ani analogowego
+  (temat J).
+- Komenda `OUTPUT` jest **napisana, ale nie uruchomiona na sprzęcie** — sesja,
+  w której powstała, nie miała SDK Teknica do kompilacji mostka.
 
 Serwer maszyny sam tłumaczy operacje programu (`.prg`) na sekwencję tych
 komend — mostek nie zna formatu programów i pozostaje prosty.

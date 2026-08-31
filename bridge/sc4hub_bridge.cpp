@@ -118,6 +118,10 @@ static bool axisEnabled[3] = {false, false, false};
 // Komendy ruchu takiej osi są odrzucane aż do ponownego zaciśnięcia (HOLD).
 static bool axisReleased[3] = {false, false, false};
 static bool spindleOn = false;
+/* Stan obu wyjść huba (BRAKE_0, BRAKE_1). Płytka nie pozwala ich odczytać,
+   więc trzymamy to, co sami ustawiliśmy — i dlatego zerujemy je przy starcie
+   (patrz resetOutputs), zamiast zgadywać, w jakim stanie zostały. */
+static bool outputState[2] = {false, false};
 static std::string alarmMsg;
 
 // Ustawiane, gdy STOP przyszedł w trakcie ruchu — wtedy odpowiedź na komendę
@@ -381,11 +385,45 @@ static void doHome(int fd, std::string &pending) {
     state = State::READY;
 }
 
+/* Numer wyjścia zajętego przez wrzeciono, albo -1 gdy SPINDLE_OUTPUT=none. */
+static int spindleOutputIndex() {
+    if (cfg.spindleOutput == "brake0") return 0;
+    if (cfg.spindleOutput == "brake1") return 1;
+    return -1;
+}
+
+/* Ustawia wyjście huba. Wyjścia są nominalnie hamulcowe (BrakeControl), ale
+   przy silnikach bez hamulców to zwykłe wyjścia 24 VDC / 500 mA — używamy ich
+   do wrzeciona, podajnika, wyrzutnika i sygnalizacji.
+
+   UWAGA (obciążalność): 500 mA na wyjście. Stycznika nie wolno podłączać
+   bezpośrednio — tylko przez przekaźnik pośredniczący. Instrukcja
+   ClearPath-SC rev. 1.45, str. 47; patrz docs/plan-rozwoju.md, temat J. */
+static void setOutput(int idx, bool on) {
+    if (idx < 0 || idx > 1) return;
+    if (port) port->BrakeControl.BrakeSetting(idx, on ? GPO_ON : GPO_OFF);
+    outputState[idx] = on;
+}
+
+/* Oba wyjścia w stan wyłączony — wołane raz, zaraz po otwarciu portu.
+
+   Powód nie jest kosmetyczny: producent ostrzega, że system operacyjny może
+   przypadkowo załączyć wyjście, gdy aplikacja nie trzyma portu, a u nas ten
+   scenariusz realnie występuje (cdc_acm przejmuje hub przy każdej ponownej
+   enumeracji USB — ryzyko A w docs/mozliwosci-clearpath-sc.md). Start mostka
+   ma więc ustalić znany stan, a nie go odziedziczyć.
+
+   To NIE zastępuje obwodu bezpieczeństwa: sygnał do regulatora wrzeciona i tak
+   musi iść szeregowo przez styk osłon. */
+static void resetOutputs() {
+    setOutput(0, false);
+    setOutput(1, false);
+    spindleOn = false;
+}
+
 static void setSpindle(bool on) {
-    if (cfg.spindleOutput == "brake0")
-        port->BrakeControl.BrakeSetting(0, on ? GPO_ON : GPO_OFF);
-    else if (cfg.spindleOutput == "brake1")
-        port->BrakeControl.BrakeSetting(1, on ? GPO_ON : GPO_OFF);
+    const int idx = spindleOutputIndex();
+    if (idx >= 0) setOutput(idx, on);
     // "none": brak podłączonego wyjścia — śledzimy tylko stan
     spindleOn = on;
 }
@@ -400,10 +438,12 @@ static std::string statusLine() {
     if (rel.empty()) rel = "-";
 
     char buf[256];
-    snprintf(buf, sizeof(buf), "OK STATE=%s EN=%d X=%.3f Y=%.3f Z=%.3f SP=%d REL=%s",
+    snprintf(buf, sizeof(buf),
+             "OK STATE=%s EN=%d X=%.3f Y=%.3f Z=%.3f SP=%d REL=%s OUT=%d%d",
              stateName(state), safetyEnabled() ? 1 : 0,
              port ? posMm(0) : 0.0, port ? posMm(1) : 0.0, port ? posMm(2) : 0.0,
-             spindleOn ? 1 : 0, rel.c_str());
+             spindleOn ? 1 : 0, rel.c_str(),
+             outputState[0] ? 1 : 0, outputState[1] ? 1 : 0);
     std::string line = buf;
 
     // Powód alarmu jako ostatnie pole — tekst ze spacjami, więc wszystko po
@@ -549,6 +589,26 @@ static std::string handle(const std::string &line, int fd, std::string &pending)
             sscanf(line.c_str(), "%*s %d %lf", &on, &rpm);
             if (on) requireEnable();
             setSpindle(on != 0);
+            return "OK";
+        }
+        if (c == "OUTPUT") {
+            // OUTPUT <0|1> <0|1> — wyjście huba (podajnik, wyrzutnik, lampka).
+            // Celowo obsługiwane tak samo jak SPINDLE, czyli TAKŻE w stanie
+            // ALARM: wyłączenie wyjścia musi być możliwe wtedy, gdy najbardziej
+            // się przydaje. Załączenie dalej wymaga zezwolenia.
+            int idx = -1, on = -1;
+            if (sscanf(line.c_str(), "%*s %d %d", &idx, &on) != 2)
+                return "ERR zła składnia: OUTPUT <0|1> <0|1>";
+            if (idx != 0 && idx != 1)
+                return "ERR OUTPUT: numer wyjścia to 0 albo 1";
+            if (on != 0 && on != 1)
+                return "ERR OUTPUT: stan to 0 (wyłącz) albo 1 (załącz)";
+            if (idx == spindleOutputIndex())
+                return "ERR OUTPUT: wyjście " + std::to_string(idx) +
+                       " jest zajęte przez wrzeciono (SPINDLE_OUTPUT=" +
+                       cfg.spindleOutput + ") — steruj nim komendą SPINDLE";
+            if (on) requireEnable();
+            setOutput(idx, on != 0);
             return "OK";
         }
 
@@ -710,7 +770,15 @@ static void openHardware() {
                axCfg[a].limits ? "z serwera" : "BRAK (czekam na AXCFG)");
     printf("  limit obrotów: %.0f obr/min, przysp.: %.0f obr/min/s\n", cfg.maxRpm,
            cfg.accRpmPerSec);
+    // znany stan wyjść zamiast odziedziczonego — powód w resetOutputs()
+    resetOutputs();
     printf("  wyjście wrzeciona: %s\n", cfg.spindleOutput.c_str());
+    {
+        const int si = spindleOutputIndex();
+        printf("  wyjścia huba: BRAKE_0 %s, BRAKE_1 %s (wyzerowane przy starcie)\n",
+               si == 0 ? "= wrzeciono" : "wolne (komenda OUTPUT)",
+               si == 1 ? "= wrzeciono" : "wolne (komenda OUTPUT)");
+    }
     printf("  zezwolenie (Global Stop): %s\n", safetyEnabled() ? "aktywne" : "BRAK");
     state = State::NOT_HOMED;
 }

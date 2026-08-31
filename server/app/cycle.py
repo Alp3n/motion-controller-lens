@@ -49,6 +49,31 @@ STEP_KINDS = (STEP_MOVE, STEP_PROGRAM, STEP_OUTPUT, STEP_SMART, STEP_PAUSE)
 # zapisana w docs/plan-rozwoju.md, temat J).
 OUTPUT_NAMES = ("wyjscie_0", "wyjscie_1")
 
+# Nazwa logiczna -> numer wyjścia huba w komendzie OUTPUT mostka. BRAKE_0/BRAKE_1
+# są nominalnie wyjściami hamulcowymi, ale przy silnikach bez hamulców to zwykłe
+# wyjścia 24 VDC / 500 mA i używamy ich do funkcji maszyny (podajnik, wyrzutnik,
+# lampka). Patrz docs/zmiany/wyjscia-fizyczne.md.
+OUTPUT_INDEX = {"wyjscie_0": 0, "wyjscie_1": 1}
+
+
+def outputs_used(cycle) -> set[str]:
+    """Nazwy wyjść, którymi steruje ten cykl — do ostrzeżeń o konfiguracji."""
+    return {
+        step.output
+        for step in cycle.steps
+        if step.kind == STEP_OUTPUT and step.output
+    }
+
+
+def output_index(name: str) -> int:
+    """Numer fizycznego wyjścia dla nazwy logicznej kroku WYJSCIE."""
+    try:
+        return OUTPUT_INDEX[name]
+    except KeyError:
+        raise CycleError(
+            f"nieznane wyjście '{name}' — dozwolone: " + ", ".join(OUTPUT_NAMES)
+        )
+
 _NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 

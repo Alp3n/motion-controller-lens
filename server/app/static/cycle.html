@@ -86,6 +86,40 @@
     </section>
 
     <section class="panel">
+      <h2>Wyjścia cyfrowe</h2>
+      <p class="muted" style="margin-top:-6px">
+        SC4-Hub ma dwa wyjścia (<code>BRAKE_0</code>, <code>BRAKE_1</code>).
+        Przy silnikach <b>bez hamulców</b> to zwykłe wyjścia 24 VDC / 500 mA
+        i można ich użyć do funkcji maszyny. Krok <b>WYJSCIE</b> cyklu je
+        przełącza; program technologa z nich nie korzysta.
+      </p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Wyjście</th>
+            <th>Przeznaczenie</th>
+            <th title="nazwa pokazywana operatorowi">Etykieta</th>
+            <th title="czy zgasić przy STOP, błędzie i na końcu cyklu">Gaś przy STOP</th>
+            <th>Stan</th>
+          </tr></thead>
+          <tbody id="outputs-rows"></tbody>
+        </table>
+      </div>
+      <div class="btn-row" style="margin-top:12px; max-width:380px">
+        <button class="small" id="btn-outputs-save">💾 Zapisz wyjścia</button>
+      </div>
+      <p id="outputs-msg" class="msg"></p>
+      <p class="muted" style="margin-top:6px">
+        <b>Uwaga montażowa.</b> Wyjścia wymagają osobnego zasilania 24 V
+        doprowadzonego do płytki huba; obciążalność to <b>500 mA</b> — stycznik
+        tylko przez przekaźnik pośredniczący. <b>To nie jest obwód
+        bezpieczeństwa:</b> system może przypadkowo załączyć wyjście przy
+        ponownej enumeracji USB, więc wszystko, co może zranić, musi iść
+        szeregowo przez styk obwodu osłon.
+      </p>
+    </section>
+
+    <section class="panel">
       <h2>Wrzeciono</h2>
       <p class="muted" style="margin-top:-6px">
         Co robi wrzeciono na granicach programu technologa. Przełącznik
@@ -139,17 +173,12 @@
       </ul>
       <p class="muted" style="margin-top:12px">
         <b>Czego jeszcze nie ma:</b> kroku „czekaj na wejście" (maszyna nie ma
-        dziś czytelnych wejść poza Global Stop) oraz ruchu osi innych niż
-        X/Y/Z. Sterowanie wyjściami działa na razie wyłącznie w symulatorze —
-        protokół mostka nie ma jeszcze komendy ustawiania wyjścia.
-        <b>Uwaga:</b> uruchomienie cyklu na sprzęcie jest już zaimplementowane
-        (<code>SC4HubMachine.start_cycle</code>), ale <b>nie zostało
-        zweryfikowane na fizycznym sterowniku</b> — patrz
-
+        dziś czytelnych wejść poza Global Stop) oraz ruchu osi innych niż X/Y/Z.
         <b>Uwaga:</b> uruchomienie cyklu na sprzęcie jest napisane (kroki
-        RUCH/PROGRAM/PAUZA jadą istniejącymi komendami mostka), ale
+        RUCH/PROGRAM/WYJSCIE/PAUZA jadą istniejącymi komendami mostka), ale
         <b>nie zostało jeszcze sprawdzone na fizycznej maszynie</b> — patrz
-        <code>docs/zmiany/cykl-na-sprzecie.md</code>.
+        <code>docs/zmiany/cykl-na-sprzecie.md</code>
+        i <code>docs/zmiany/wyjscia-fizyczne.md</code>.
       </p>
     </section>
   </main>

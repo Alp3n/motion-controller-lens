@@ -327,6 +327,9 @@ Pomiary i testy:
 - [ ] Test: utrata zezwolenia (Global Stop) w trakcie ruchu.
 - [ ] Test: zachowanie komunikacji przy wciśniętym E-stopie (czy odcina
       magistralę DC, czy mostek to odróżnia od awarii łącza).
+- [ ] **Sprawdzić komendę `OUTPUT` na sprzęcie** — napisana, nieskompilowana
+      (brak SDK w sesji). Przy okazji: czy oba wyjścia faktycznie przełączają
+      się przy podłączonym zasilaniu 24 V płytki huba.
 - [ ] Test: czy wyjście `BRAKE_x` faktycznie da się przypadkowo załączyć przy
       ponownej enumeracji USB (ryzyko A w
       [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md)) —
@@ -397,6 +400,13 @@ Zaplanowane funkcje, które nie mają dziś gdzie się podłączyć:
       temat B) jako dowolne przeznaczenie: podajnik, wyrzutnik, lampka,
       sygnał błędu. **Program technologa (`.prg`) z tego wyjścia nie
       korzysta** — to wyłącznie poziom cyklu maszyny.
+- [x] **Zrobione:** silniki nie mają hamulców, więc oba wyjścia poszły do
+      funkcji maszyny. Mostek dostał komendę `OUTPUT`, krok `WYJSCIE` cyklu
+      przełącza fizyczne wyjście, a ekran cyklu pozwala nadać wyjściu
+      przeznaczenie i zdecydować, czy gasi się przy STOP. **Kod mostka nie
+      został skompilowany** (brak SDK Teknica w sesji) — do sprawdzenia na
+      sprzęcie. Szczegóły:
+      [`zmiany/wyjscia-fizyczne.md`](zmiany/wyjscia-fizyczne.md).
 
 **Zastrzeżenie co do źródła:** `teknic.com` i lustro instrukcji na
 `manualslib.com` są zablokowane siecowo w tej sesji (polityka egress) — ustalenia

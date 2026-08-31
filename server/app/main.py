@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import audit, axes, config, cycle, profiles, smart, spindle, users
+from . import audit, axes, config, cycle, outputs, profiles, smart, spindle, users
 from .machine import (
     MachineError,
     MachineState,
@@ -78,6 +78,11 @@ machine.apply_smart(smart_cfg)
 # nie zostanie zdefiniowany; błędny plik przerywa start (powód w app/cycle.py).
 cycle_cfg = cycle.load(config.CYCLE_FILE)
 machine.apply_cycle(cycle_cfg)
+
+# Wyjścia cyfrowe (BRAKE_0/BRAKE_1) — do czego służą i co się z nimi dzieje
+# przy STOP. Błędny plik przerywa start; powód w app/outputs.py.
+outputs_cfg = outputs.load(config.OUTPUTS_FILE)
+machine.apply_output_config(outputs_cfg)
 
 # Wrzeciono — kiedy się załącza i kiedy gaśnie. Błędny plik przerywa start
 # tak samo jak reszta konfiguracji; powód w app/spindle.py.
@@ -227,6 +232,16 @@ class AxesRequest(BaseModel):
 class LoginRequest(BaseModel):
     login: str = Field(..., max_length=64)
     password: str = Field(..., max_length=256)
+
+
+class OutputsRequest(BaseModel):
+    """Przeznaczenie wyjść cyfrowych z ekranu cyklu maszyny.
+
+    Jak przy osiach i profilach — walidacją zajmuje się app/outputs.py, żeby
+    admin zobaczył komunikat po polsku zamiast błędu schematu.
+    """
+
+    outputs: dict[str, dict] = Field(..., description="wyjscie_0 / wyjscie_1")
 
 
 class SpindleRequest(BaseModel):
@@ -585,6 +600,62 @@ async def put_axes(req: AxesRequest, user=Depends(require_admin)):
     return {"ok": True, "axes": axes.to_dict(new_axes), "warnings": warnings}
 
 
+# --- wyjścia cyfrowe ------------------------------------------------------
+
+
+def _outputs_payload(current: dict) -> dict:
+    return {
+        "outputs": outputs.to_dict(current),
+        "purposes": list(outputs.PURPOSES),
+        # które wyjście zabiera wrzeciono — ekran ma to pokazać, zanim ktoś
+        # zdefiniuje na nim podajnik i zdziwi się odmową sterownika
+        "spindle_output": outputs.spindle_output_name(config.SPINDLE_OUTPUT),
+        "file": str(config.OUTPUTS_FILE),
+        "warnings": outputs.warnings(
+            current,
+            cycle.outputs_used(cycle_cfg),
+            config.MACHINE_MODE != "sim",
+            config.SPINDLE_OUTPUT,
+        ),
+    }
+
+
+@app.get("/api/outputs")
+async def get_outputs(user=Depends(require_operator)):
+    """Przeznaczenie wyjść cyfrowych — etykiety dla panelu i ekranu cyklu."""
+    return _outputs_payload(outputs_cfg)
+
+
+@app.put("/api/outputs")
+async def put_outputs(req: OutputsRequest, user=Depends(require_admin)):
+    """Zapis przeznaczenia wyjść.
+
+    Odrzucamy w ruchu z tego samego powodu co resztę konfiguracji: trwający
+    cykl przełącza właśnie te wyjścia.
+    """
+    global outputs_cfg
+    if machine.status.state in (MachineState.RUNNING, MachineState.HOMING):
+        raise HTTPException(
+            409, "nie można zmieniać konfiguracji wyjść w trakcie ruchu maszyny"
+        )
+    try:
+        new_cfg = outputs.parse_outputs(req.outputs)
+    except outputs.OutputConfigError as exc:
+        raise HTTPException(422, str(exc))
+    try:
+        outputs.save(config.OUTPUTS_FILE, new_cfg)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.OUTPUTS_FILE}: {exc}")
+    outputs_cfg = new_cfg
+    machine.apply_output_config(new_cfg)
+    _log(
+        user,
+        "zapis przeznaczenia wyjść",
+        ", ".join(f"{n}={c.purpose}" for n, c in sorted(new_cfg.items())),
+    )
+    return {"ok": True, **_outputs_payload(new_cfg)}
+
+
 # --- wrzeciono ------------------------------------------------------------
 
 
@@ -830,6 +901,14 @@ async def put_cycle(req: CycleRequest, user=Depends(require_admin)):
         raise HTTPException(500, f"nie udało się zapisać {config.CYCLE_FILE}: {exc}")
     cycle_cfg = new_cycle
     machine.apply_cycle(new_cycle)
+    # zmiana kroków WYJSCIE może osierocić opis wyjścia albo wejść w konflikt
+    # z wyjściem wrzeciona — admin ma to zobaczyć teraz, nie przy starcie cyklu
+    result = result + outputs.warnings(
+        outputs_cfg,
+        cycle.outputs_used(new_cycle),
+        config.MACHINE_MODE != "sim",
+        config.SPINDLE_OUTPUT,
+    )
     _log(user, "zapis cyklu maszyny", f"{len(new_cycle.steps)} kroków")
     return {"ok": True, "cycle": new_cycle.to_dict(), "warnings": result}
 
@@ -968,6 +1047,7 @@ async def get_diagnostics(user=Depends(require_admin)):
                 cycle_cfg, profiles_cfg.keys(), axes_cfg.keys()
             ),
             "spindle": _spindle_payload(spindle_cfg),
+            "outputs": _outputs_payload(outputs_cfg),
         },
         "auth": {
             "enabled": auth_enabled(),
