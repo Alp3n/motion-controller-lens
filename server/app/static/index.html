@@ -12,6 +12,7 @@
          onerror="this.remove()">
     <h1>Maszyna — odcinanie wlewków płytek optyki</h1>
     <a href="/axes">Konfiguracja osi →</a>
+    <a href="/homing">Bazowanie →</a>
     <a href="/profiles">Profile parametrów →</a>
     <a href="/editor">Edytor technologa →</a>
     <a href="/cycle">Cykl maszyny →</a>
@@ -94,7 +95,8 @@
           <div class="jog-grid">
             <span></span><button class="small jog" data-axis="y" data-dir="1">Y+</button><span></span>
             <button class="small jog" data-axis="x" data-dir="-1">X−</button>
-            <span style="text-align:center; align-self:center" class="muted">XY</span>
+            <button class="small home-all" id="btn-home-xy"
+                    title="dojazd do HOME wszystkich osi — kolejność ustawia ekran bazowania">⌂</button>
             <button class="small jog" data-axis="x" data-dir="1">X+</button>
             <span></span><button class="small jog" data-axis="y" data-dir="-1">Y−</button><span></span>
           </div>

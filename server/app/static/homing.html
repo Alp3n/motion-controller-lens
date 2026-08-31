@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Konfiguracja bazowania — maszyna do odcinania wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Konfiguracja bazowania osi</h1>
+    <a href="/">← Panel operatora</a>
+    <a href="/axes">Konfiguracja osi</a>
+    <a href="/profiles">Profile parametrów</a>
+    <a href="/cycle">Cykl maszyny</a>
+    <a href="/editor">Edytor technologa →</a>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Kolejność i sposób bazowania</h2>
+      <p class="muted" style="margin-top:-6px">
+        Maszyna nie ma wyłączników krańcowych — bazowanie realizuje wbudowana
+        funkcja serwa ClearPath-SC: dojazd do mechanicznego ogranicznika
+        z ograniczonym momentem (<b>HardStop</b>). Osie z tym samym numerem
+        kolejności bazują się razem, grupy — jedna po drugiej.
+        <b>Kolejność 0</b> oznacza oś, której nie bazujemy.
+      </p>
+
+      <div class="table-scroll">
+        <table id="homing-table">
+          <thead>
+            <tr>
+              <th>Oś</th>
+              <th title="osie z tym samym numerem bazują się razem; 0 = nie bazuj">Kolejność</th>
+              <th title="hardstop = dojazd do oporu z limitem momentu (ustawienie w ClearView); programowe = bieżąca pozycja staje się zerem">Sposób</th>
+              <th title="Homing Torque Limit — wartość ustawiana w ClearView; serwer jej nie wysyła">Limit momentu [%]</th>
+              <th title="Offset Move — przesunięcie od ogranicznika do zera osi; ustawienie w ClearView">Offset [mm]</th>
+              <th title="prędkość dojazdu przy bazowaniu — działa w symulatorze">Prędkość [mm/min]</th>
+              <th title="gdzie po bazowaniu leży zero osi — zmienia się na ekranie konfiguracji osi">Punkt bazowania</th>
+            </tr>
+          </thead>
+          <tbody id="homing-rows"></tbody>
+        </table>
+      </div>
+
+      <div class="btn-row" style="margin-top:14px; max-width:420px">
+        <button id="btn-save">💾 Zapisz bazowanie</button>
+        <button class="small" id="btn-reload">Przywróć zapisane</button>
+      </div>
+      <p id="homing-msg" class="msg"></p>
+      <p class="muted" id="homing-file"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Kolejność, jaka z tego wychodzi</h2>
+      <p class="muted" style="margin-top:-6px">
+        Zanim ruszy cokolwiek w płaszczyźnie XY, oś Z odjeżdża w górę na
+        wysokość bezpieczną — niezależnie od ustawionej tu kolejności.
+      </p>
+      <ol id="homing-plan" class="homing-plan"></ol>
+    </section>
+
+    <section class="panel">
+      <h2>Czego ten ekran <b>nie</b> robi</h2>
+      <ul class="muted" style="margin:0; padding-left:18px; line-height:1.7">
+        <li><b>Nie konfiguruje serwa.</b> Tryb HardStop, <i>Homing Torque Limit</i>
+          i <i>Offset Move</i> ustawia się wyłącznie w programie <b>ClearView</b>
+          na komputerze z Windows. Wpisane tu liczby to <b>zapis tego, co ma być
+          w serwie</b> — dokumentacja dla osoby, która siada do ClearView. Serwer
+          ich nigdzie nie wysyła i sam ich nie egzekwuje.</li>
+        <li><b>Nie jest funkcją bezpieczeństwa.</b> Ograniczenie momentu przy
+          bazowaniu chroni mechanikę, a nie ludzi — za to odpowiada niezależny
+          obwód E-stop / Global Stop.</li>
+        <li><b>Na sprzęcie kolejność z tego ekranu nie działa.</b> Mostek dostaje
+          jedną komendę <code>HOME</code> i całą sekwencję wykonuje serwo wg
+          własnej konfiguracji. Kolejność, prędkość i offset zmieniają dziś
+          zachowanie <b>tylko w symulatorze</b>.</li>
+        <li><b>Osie inne niż X/Y/Z nie pojadą</b>, nawet z ustawioną kolejnością —
+          protokół mostka nie ma dla nich komend ruchu (temat C planu rozwoju).</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="/static/homing.js"></script>
+</body>
+</html>

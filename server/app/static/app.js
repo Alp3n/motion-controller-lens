@@ -120,8 +120,14 @@ $("btn-start").onclick = () =>
   api("POST", "/api/machine/start").catch((e) => showMsg($("ctrl-msg"), e.message));
 $("btn-stop").onclick = () =>
   api("POST", "/api/machine/stop").catch((e) => showMsg($("ctrl-msg"), e.message));
-$("btn-home").onclick = () =>
+/* Bazowanie wszystkich osi. Dwa przyciski, jedna akcja: „Bazowanie" przy
+   START/STOP i „⌂" na środku strzałek XY (wymóg z notatek funkcjonalnych §1).
+   Kolejność osi ustawia ekran /homing — serwer wykonuje ją w symulatorze,
+   na sprzęcie całą sekwencję robi serwo po komendzie HOME. */
+const homeAll = () =>
   api("POST", "/api/machine/home").catch((e) => showMsg($("ctrl-msg"), e.message));
+$("btn-home").onclick = homeAll;
+$("btn-home-xy").onclick = homeAll;
 $("btn-reset").onclick = () =>
   api("POST", "/api/machine/reset").catch((e) => showMsg($("ctrl-msg"), e.message));
 

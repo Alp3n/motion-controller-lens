@@ -124,11 +124,15 @@ cyklu (temat F), ruch osi innych niż X/Y/Z (temat C).
 - [ ] **Pozostaje najważniejsze:** rozszerzyć protokół mostka (`AXCFG` i
       komendy ruchu dla liter osi spoza X/Y/Z), żeby dodana oś faktycznie
       jeździła — dziś zapisuje się tylko w konfiguracji. Wymaga C++ i sprzętu.
-- [ ] Bazowanie bez wyłączników krańcowych: tryb **HardStop** z parametrem
-      *Homing Torque Limit*, plus *Offset Move* odwzorowujący nasz „punkt
-      bazowania"; przycisk „dojazd do HOME wszystkich osi"; oddzielny ekran
-      konfiguracji bazowania. **Uwaga:** parametrów bazowania nie da się
-      ustawić z kodu — wyłącznie w ClearView (temat H).
+- [x] Bazowanie: ekran `/homing` (kolejność osi, tryb **HardStop** vs
+      programowe zerowanie, *Homing Torque Limit*, *Offset Move*, prędkość
+      dojazdu) + przycisk „dojazd do HOME wszystkich osi" na środku strzałek XY.
+      **Ograniczenia, których to nie zmienia:** parametrów HardStop nie da się
+      ustawić z kodu — ekran je tylko zapisuje jako dokumentację tego, co ma
+      być w ClearView (temat H); na sprzęcie całą sekwencję wykonuje serwo po
+      jednej komendzie `HOME`, więc kolejność i prędkość z ekranu działają
+      **tylko w symulatorze**. Szczegóły:
+      [`zmiany/ekran-bazowania.md`](zmiany/ekran-bazowania.md).
 - [x] Konfiguracja siły — **trzy poziomy**: globalna (domyślnie 20%), ruch
       podczas cyklu maszyny (per zdefiniowany ruch, domyślnie 15%), ruch
       podczas programu technologa (domyślnie 10%). Mechanizm (`ILimits.TrqGlobal`

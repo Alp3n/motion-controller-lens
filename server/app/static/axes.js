@@ -17,11 +17,14 @@ const HOME_LABELS = {
   plus: "plus — zero na końcu +",
   srodek: "środek osi",
 };
-// te same liczby co DEFAULT_VEL_JOG/DEFAULT_VEL_HOME w app/axes.py — awaryjny
-// fallback, gdyby odpowiedź serwera nie miała tych pól (np. stary proces
-// serwera sprzed tego pola, nieprzeładowany po git pull)
+/* Ta sama liczba co DEFAULT_VEL_JOG w app/axes.py — awaryjny fallback, gdyby
+   odpowiedź serwera nie miała tego pola (np. stary proces serwera sprzed tego
+   pola, nieprzeładowany po git pull).
+   Prędkości bazowania tu nie ma — przeniesiona na ekran /homing. Pola, których
+   ten ekran nie wysyła, serwer bierze z zapisanej konfiguracji
+   (`with_current_values` w app/axes.py), więc zapis stąd nie kasuje ustawień
+   bazowania. */
 const FALLBACK_VEL_JOG = 500;
-const FALLBACK_VEL_HOME = 1000;
 
 let saved = null; // ostatnia konfiguracja potwierdzona przez serwer
 let machineBusy = false; // RUNNING/HOMING — zapis odrzucany przez serwer
@@ -74,7 +77,6 @@ function readAxis(axis) {
     soft_max: num($(`f-${axis}-max`).value),
     mm_per_rev: num($(`f-${axis}-mmrev`).value),
     vel_jog: num($(`f-${axis}-veljog`).value),
-    vel_home: num($(`f-${axis}-velhome`).value),
   };
 }
 
@@ -85,7 +87,6 @@ function writeAxis(axis, cfg) {
   $(`f-${axis}-max`).value = cfg.soft_max;
   $(`f-${axis}-mmrev`).value = cfg.mm_per_rev;
   $(`f-${axis}-veljog`).value = cfg.vel_jog ?? FALLBACK_VEL_JOG;
-  $(`f-${axis}-velhome`).value = cfg.vel_home ?? FALLBACK_VEL_HOME;
 }
 
 // --- budowa tabeli --------------------------------------------------------
@@ -119,7 +120,6 @@ function addAxisRow(axis, extra) {
     `<td><input id="f-${axis}-max" type="number" step="0.1"></td>` +
     `<td><input id="f-${axis}-mmrev" type="number" step="0.001" min="0"></td>` +
     `<td><input id="f-${axis}-veljog" type="number" step="1" min="0"></td>` +
-    `<td><input id="f-${axis}-velhome" type="number" step="1" min="0"></td>` +
     `<td class="row-actions">${actions}</td>`;
   tbody.appendChild(tr);
   tr.querySelectorAll("input, select").forEach((el) => {
@@ -163,7 +163,6 @@ function addNewAxis() {
     soft_max: 50,
     mm_per_rev: 5,
     vel_jog: FALLBACK_VEL_JOG,
-    vel_home: FALLBACK_VEL_HOME,
   });
   input.value = "";
   msg.className = "msg";
@@ -183,9 +182,6 @@ function validateAxis(axis, cfg) {
   }
   if (!(cfg.vel_jog > 0)) {
     bad.push([`f-${axis}-veljog`, `${label}: prędkość JOG musi być większa od zera`]);
-  }
-  if (!(cfg.vel_home > 0)) {
-    bad.push([`f-${axis}-velhome`, `${label}: prędkość bazowania musi być większa od zera`]);
   }
   if (Number.isNaN(cfg.soft_min)) bad.push([`f-${axis}-min`, `${label}: podaj limit MIN`]);
   if (Number.isNaN(cfg.soft_max)) bad.push([`f-${axis}-max`, `${label}: podaj limit MAX`]);

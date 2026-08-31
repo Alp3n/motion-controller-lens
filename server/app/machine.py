@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from .axes import REQUIRED_AXES, AxisConfig
+from .axes import home_groups as axis_home_groups
 from .cycle import (
     OUTPUT_NAMES,
     STEP_MOVE,
@@ -178,6 +179,23 @@ class Machine:
         cfg = self.axes.get(axis)
         return cfg.vel_jog if cfg is not None else 500.0
 
+    def home_groups(self) -> list[list[str]]:
+        """Osie do zbazowania w kolejności z konfiguracji (ekran /homing).
+
+        Zwraca tylko osie, którymi symulator umie ruszyć (X/Y/Z) — oś dodatkowa
+        z ustawioną kolejnością jest pomijana, bo nie ma dla niej komendy ruchu.
+        Bez wczytanej konfiguracji osi wracamy do dawnej sekwencji na sztywno:
+        najpierw X i Y, potem Z.
+        """
+        if not self.axes:
+            return [["x", "y"], ["z"]]
+        groups = []
+        for group in axis_home_groups(self.axes):
+            movable = [axis for axis in group if axis in REQUIRED_AXES]
+            if movable:
+                groups.append(movable)
+        return groups
+
     def _home_feed(self, axes: list[str]) -> float:
         """Prędkość bazowania — najwolniejsza spośród skonfigurowanych osi.
 
@@ -308,20 +326,42 @@ class SimulatedMachine(Machine):
         """
         if self.status.state in (MachineState.RUNNING, MachineState.HOMING):
             raise MachineError("maszyna jest w ruchu")
+        groups = self.home_groups()
+        if not groups:
+            raise MachineError(
+                "żadna oś nie ma ustawionej kolejności bazowania — ustaw ją na "
+                "ekranie konfiguracji bazowania"
+            )
         self._require_not_released(["x", "y", "z"])
         self._require_enable()
         self.status.state = MachineState.HOMING
-        self._run_task = asyncio.create_task(self._do_home())
+        self._run_task = asyncio.create_task(self._do_home(groups))
 
-    async def _do_home(self) -> None:
+    async def _do_home(self, groups: list[list[str]]) -> None:
+        """Symulacja bazowania: odjazd w górę, potem grupy osi po kolei.
+
+        Zero osi to jej punkt bazowy, więc „zbazowanie" sprowadza się do
+        dojechania do zera. `Offset Move` z ekranu bazowania nie ma tu nic do
+        roboty — w prawdziwym serwie offset przesuwa punkt, w którym zapada
+        zero, a nie pozycję po bazowaniu; patrz docs/zmiany/ekran-bazowania.md.
+        """
         try:
-            # symulacja bazowania: odjazd w górę i zjazd do punktu bazowego,
-            # czyli do zera osi — odjazd ograniczony limitem programowym Z
+            # Odjazd w górę przed jakimkolwiek ruchem w płaszczyźnie XY,
+            # niezależnie od skonfigurowanej kolejności — bez tego oś Z mogłaby
+            # jechać nad detalem na roboczej wysokości. Odjazd ograniczony
+            # limitem programowym Z.
             z_cfg = self.axes.get("z")
             lift = 40.0 if z_cfg is None else min(40.0, z_cfg.soft_max)
-            home_feed = self._home_feed(["x", "y", "z"])
-            await self._move_to(0.0, 0.0, lift, feed=home_feed)
-            await self._move_to(0.0, 0.0, 0.0, feed=home_feed)
+            await self._move_to(
+                self.status.x, self.status.y, lift, feed=self._home_feed(["z"])
+            )
+            for group in groups:
+                target = {"x": self.status.x, "y": self.status.y, "z": self.status.z}
+                for axis in group:
+                    target[axis] = 0.0
+                await self._move_to(
+                    target["x"], target["y"], target["z"], feed=self._home_feed(group)
+                )
         except asyncio.CancelledError:
             return
         finally:

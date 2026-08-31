@@ -102,6 +102,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   dostaje `start_cycle` (brakowało go od etapu 4 tematu B — `/cycle` nie
   działał na sprzęcie). Pierwsze testy automatyczne dla tej klasy. Nie
   zweryfikowane na fizycznym sterowniku.
+- [zmiany/ekran-bazowania.md](zmiany/ekran-bazowania.md) — ekran `/homing`
+  (kolejność osi, HardStop, limit momentu, offset) i przycisk „HOME wszystkich
+  osi"; parametry HardStop to zapis dla ClearView, nie konfiguracja serwa.
 - [zmiany/nazewnictwo-sc4hub.md](zmiany/nazewnictwo-sc4hub.md) — nazwy w kodzie
   z „ClearCore" na „SC4-Hub" (`SC4HubMachine`, `MACHINE_MODE=sc4hub`,
   `BRIDGE_HOST`); stare nazwy dalej przyjmowane, host produkcyjny bez zmian.

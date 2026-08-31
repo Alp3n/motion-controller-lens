@@ -52,9 +52,15 @@ Aplikacja webowa w Pythonie (FastAPI) uruchamiana na komputerze przemysłowym
   tabeli, bez programowania; zapis do pliku w formacie opisanym w
   [FORMAT_PROGRAMU.md](FORMAT_PROGRAMU.md).
 - **Konfiguracja osi** (`/axes`) — długość fizyczna, punkt bazowania, limity
-  programowe, przełożenie posuwu oraz prędkości JOG/bazowania każdej osi;
-  limity są obszarem roboczym przy walidacji programów i granicą ruchu
-  ręcznego. Model: [konfiguracja-osi.md](konfiguracja-osi.md).
+  programowe, przełożenie posuwu oraz prędkość JOG każdej osi; limity są
+  obszarem roboczym przy walidacji programów i granicą ruchu ręcznego.
+  Model: [konfiguracja-osi.md](konfiguracja-osi.md).
+- **Konfiguracja bazowania** (`/homing`) — kolejność bazowania osi, sposób
+  (HardStop / programowe zerowanie), limit momentu, offset i prędkość dojazdu.
+  Parametry HardStop to **zapis tego, co ma być ustawione w ClearView** —
+  serwer ich nie wysyła; na sprzęcie sekwencję wykonuje serwo po jednej
+  komendzie `HOME`. Szczegóły:
+  [zmiany/ekran-bazowania.md](zmiany/ekran-bazowania.md).
 - **Profile parametrów** (`/profiles`) — trzy poziomy siły i prędkości
   (globalny/cykl/program technologa), edycja i przełączanie aktywnego
   profilu. Limit momentu dziś tylko w symulatorze — protokół mostka nie ma

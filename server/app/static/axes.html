@@ -10,6 +10,7 @@
   <header>
     <h1>Konfiguracja osi maszyny</h1>
     <a href="/">← Panel operatora</a>
+    <a href="/homing">Bazowanie</a>
     <a href="/cycle">Cykl maszyny</a>
     <a href="/profiles">Profile parametrów</a>
     <a href="/editor">Edytor technologa →</a>
@@ -38,7 +39,6 @@
               <th title="górny limit programowy">Limit MAX [mm]</th>
               <th title="ile milimetrów przejeżdża oś na jeden obrót silnika">mm / obrót</th>
               <th title="prędkość ruchu ręcznego z panelu operatora">JOG [mm/min]</th>
-              <th title="prędkość dojazdu przy bazowaniu — tylko symulator, na sprzęcie bazowaniem steruje ClearView">Bazowanie [mm/min]</th>
               <th></th>
             </tr>
           </thead>
@@ -94,9 +94,9 @@
           kontrolnym na wolnym posuwie.</li>
         <li><b>Prędkość JOG</b> ogranicza ruch ręczny z panelu operatora dla danej
           osi — działa zarówno w symulatorze, jak i na sprzęcie.</li>
-        <li><b>Prędkość bazowania</b> działa dziś tylko w symulatorze. Na
-          prawdziwej maszynie bazowaniem steruje serwo — sposób najazdu i jego
-          prędkość konfiguruje się w ClearView, nie tutaj.</li>
+        <li><b>Bazowanie</b> — kolejność osi, sposób (HardStop / programowe),
+          limit momentu, offset i prędkość dojazdu są na osobnym ekranie:
+          <a href="/homing">Konfiguracja bazowania</a>.</li>
         <li><b>Punkt bazowania</b> określa, gdzie leży zero układu współrzędnych.
           Samą procedurę bazowania (czujniki, kierunek najazdu) konfiguruje się
           w serwie — w programie ClearView. Ten ekran nie zastępuje tamtej

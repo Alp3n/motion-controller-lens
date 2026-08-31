@@ -128,6 +128,17 @@ class AxesRequest(BaseModel):
     axes: dict[str, dict] = Field(..., description="osie x, y, z")
 
 
+class HomingRequest(BaseModel):
+    """Konfiguracja bazowania z ekranu /homing.
+
+    Celowo tylko pola bazowania — długości, limity i przełożenia zostają
+    nietknięte, żeby pomyłka na tym ekranie nie skasowała limitów programowych
+    (walidacja i scalanie: app/axes.py, `merge_homing`).
+    """
+
+    axes: dict[str, dict] = Field(..., description="oś -> pola bazowania")
+
+
 class ProfilesRequest(BaseModel):
     """Profile parametrów ruchu z ekranu konfiguracji.
 
@@ -325,6 +336,7 @@ async def get_axes():
     return {
         "axes": axes.to_dict(axes_cfg),
         "home_points": list(axes.HOME_POINTS),
+        "home_modes": list(axes.HOME_MODES),
         "file": str(config.AXES_FILE),
         "warnings": _axis_warnings(axes_cfg),
     }
@@ -343,7 +355,9 @@ async def put_axes(req: AxesRequest):
             409, "nie można zmieniać konfiguracji osi w trakcie ruchu maszyny"
         )
     try:
-        new_axes = axes.parse_axes(req.axes)
+        # pola, których ten ekran nie edytuje (bazowanie), biorą wartości
+        # z obecnej konfiguracji — inaczej zapis skasowałby ustawienia /homing
+        new_axes = axes.parse_axes(axes.with_current_values(req.axes, axes_cfg))
     except axes.AxisConfigError as exc:
         raise HTTPException(422, str(exc))
 
@@ -355,6 +369,50 @@ async def put_axes(req: AxesRequest):
     axes_cfg = new_axes
     machine.apply_axis_config(new_axes)
     return {"ok": True, "axes": axes.to_dict(new_axes), "warnings": warnings}
+
+
+# --- bazowanie ------------------------------------------------------------
+
+
+def _homing_payload(current: dict) -> dict:
+    return {
+        "axes": {
+            name: {key: cfg.to_dict()[key] for key in axes.HOMING_FIELDS}
+            for name, cfg in current.items()
+        },
+        "groups": axes.home_groups(current),
+        "modes": list(axes.HOME_MODES),
+        "required_axes": list(axes.REQUIRED_AXES),
+        "file": str(config.AXES_FILE),
+        "warnings": axes.homing_warnings(current, config.MACHINE_MODE != "sim"),
+    }
+
+
+@app.get("/api/homing")
+async def get_homing():
+    """Konfiguracja bazowania — kolejność, tryb, parametry dla ClearView."""
+    return _homing_payload(axes_cfg)
+
+
+@app.put("/api/homing")
+async def put_homing(req: HomingRequest):
+    """Zapis konfiguracji bazowania; reszta parametrów osi zostaje bez zmian."""
+    global axes_cfg
+    if machine.status.state in (MachineState.RUNNING, MachineState.HOMING):
+        raise HTTPException(
+            409, "nie można zmieniać konfiguracji bazowania w trakcie ruchu maszyny"
+        )
+    try:
+        new_axes = axes.merge_homing(axes_cfg, req.axes)
+    except axes.AxisConfigError as exc:
+        raise HTTPException(422, str(exc))
+    try:
+        axes.save(config.AXES_FILE, new_axes)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.AXES_FILE}: {exc}")
+    axes_cfg = new_axes
+    machine.apply_axis_config(new_axes)
+    return {"ok": True, **_homing_payload(new_axes)}
 
 
 # --- profile parametrów ruchu --------------------------------------------
@@ -583,6 +641,11 @@ async def cycle_page():
 @app.get("/profiles", include_in_schema=False)
 async def profiles_page():
     return FileResponse(STATIC_DIR / "profiles.html")
+
+
+@app.get("/homing", include_in_schema=False)
+async def homing_page():
+    return FileResponse(STATIC_DIR / "homing.html")
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

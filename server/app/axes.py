@@ -38,6 +38,18 @@ HOME_PLUS = "plus"
 HOME_CENTER = "srodek"
 HOME_POINTS = (HOME_MINUS, HOME_PLUS, HOME_CENTER)
 
+# Sposób bazowania osi (ekran /homing).
+#   hardstop  — dojazd do mechanicznego ogranicznika z limitem momentu, czyli
+#               wbudowana funkcja bazowania serwa ClearPath-SC. Same parametry
+#               (Homing Torque Limit, Offset Move) ustawia się WYŁĄCZNIE
+#               w ClearView — serwer ich nie wysyła, trzyma je jako zapis tego,
+#               co ma być w serwie.
+#   programowe — brak fizycznego bazowania: bieżąca pozycja staje się zerem.
+#               To jest dzisiejsze zachowanie symulatora i osi bez ogranicznika.
+HOME_MODE_HARDSTOP = "hardstop"
+HOME_MODE_SOFT = "programowe"
+HOME_MODES = (HOME_MODE_HARDSTOP, HOME_MODE_SOFT)
+
 # tolerancja porównań [mm] — chroni przed odrzuceniem limitu równego granicy
 # zakresu tylko dlatego, że 300/2 zapisało się jako 149.99999999999997
 EPS = 1e-6
@@ -46,6 +58,13 @@ EPS = 1e-6
 # liczby, które wcześniej były wpisane na sztywno w main.py i machine.py
 DEFAULT_VEL_JOG = 500.0     # mm/min
 DEFAULT_VEL_HOME = 1000.0   # mm/min
+
+# Kolejność bazowania dla plików sprzed ekranu /homing — odtwarza sekwencję,
+# którą symulator wykonywał wcześniej na sztywno: najpierw X i Y na wysokości
+# bezpiecznej, dopiero potem Z w dół. Osie dodatkowe (podajnik, docisk) domyślnie
+# nie są bazowane — symulator i mostek i tak nimi nie ruszają.
+DEFAULT_HOME_ORDER = {"x": 1, "y": 1, "z": 2}
+DEFAULT_HOME_TORQUE = 20.0  # % momentu — tyle, ile domyślna siła globalna
 
 
 class AxisConfigError(Exception):
@@ -75,6 +94,11 @@ class AxisConfig:
     vel_jog: float = DEFAULT_VEL_JOG    # prędkość ruchu ręcznego (JOG) [mm/min]
     vel_home: float = DEFAULT_VEL_HOME  # prędkość bazowania [mm/min] — tylko symulator,
                                          # na sprzęcie bazowaniem steruje ClearView
+    # --- bazowanie (ekran /homing) ---
+    home_order: int = 1                 # kolejność bazowania; 0 = oś nie jest bazowana
+    home_mode: str = HOME_MODE_SOFT     # hardstop | programowe
+    home_torque: float = DEFAULT_HOME_TORQUE  # Homing Torque Limit [%] — zapis dla ClearView
+    home_offset: float = 0.0            # Offset Move [mm] — zapis dla ClearView
 
     # --- zakres fizyczny (wynika z długości i punktu bazowego) -------------
 
@@ -97,6 +121,10 @@ class AxisConfig:
             "mm_per_rev": round(self.mm_per_rev, 6),
             "vel_jog": round(self.vel_jog, 4),
             "vel_home": round(self.vel_home, 4),
+            "home_order": int(self.home_order),
+            "home_mode": self.home_mode,
+            "home_torque": round(self.home_torque, 3),
+            "home_offset": round(self.home_offset, 4),
             # pola wyliczane — tylko do odczytu, dla panelu i dokumentacji
             "phys_min": round(lo, 4),
             "phys_max": round(hi, 4),
@@ -132,6 +160,28 @@ class AxisConfig:
                 if "vel_home" in data
                 else DEFAULT_VEL_HOME
             ),
+            # pola bazowania — jak wyżej, plik sprzed ekranu /homing dostaje
+            # wartości odtwarzające dotychczasową sekwencję zamiast błędu
+            home_order=(
+                int(_num(data["home_order"], f"{label}: kolejność bazowania"))
+                if "home_order" in data
+                else DEFAULT_HOME_ORDER.get(axis, 0)
+            ),
+            home_mode=(
+                str(data["home_mode"]).strip().lower()
+                if "home_mode" in data
+                else HOME_MODE_SOFT
+            ),
+            home_torque=(
+                _num(data["home_torque"], f"{label}: limit momentu przy bazowaniu")
+                if "home_torque" in data
+                else DEFAULT_HOME_TORQUE
+            ),
+            home_offset=(
+                _num(data["home_offset"], f"{label}: offset po bazowaniu")
+                if "home_offset" in data
+                else 0.0
+            ),
         )
         cfg.validate(axis)
         return cfg
@@ -155,6 +205,19 @@ class AxisConfig:
             raise AxisConfigError(f"{label}: prędkość JOG musi być większa od zera")
         if self.vel_home <= 0:
             raise AxisConfigError(f"{label}: prędkość bazowania musi być większa od zera")
+        if self.home_order < 0:
+            raise AxisConfigError(
+                f"{label}: kolejność bazowania nie może być ujemna (0 = oś nie jest bazowana)"
+            )
+        if self.home_mode not in HOME_MODES:
+            raise AxisConfigError(
+                f"{label}: nieznany tryb bazowania '{self.home_mode}' — dozwolone: "
+                + ", ".join(HOME_MODES)
+            )
+        if not (0.0 < self.home_torque <= 100.0):
+            raise AxisConfigError(
+                f"{label}: limit momentu przy bazowaniu musi być w zakresie (0, 100] %"
+            )
         if self.soft_max - self.soft_min <= EPS:
             raise AxisConfigError(
                 f"{label}: limit programowy MIN ({_mm(self.soft_min)}) musi być "
@@ -199,6 +262,7 @@ def default_axes(work_area: dict) -> dict[str, AxisConfig]:
             soft_min=lo,
             soft_max=hi,
             mm_per_rev=float(os.environ.get("MM_PER_REV", "5.0")),
+            home_order=DEFAULT_HOME_ORDER.get(axis, 0),
         )
         axes[axis].validate(axis)
     return axes
@@ -269,3 +333,137 @@ def work_area(axes: dict[str, AxisConfig]) -> dict:
 
 def to_dict(axes: dict[str, AxisConfig]) -> dict:
     return {name: cfg.to_dict() for name, cfg in axes.items()}
+
+
+# --- bazowanie -------------------------------------------------------------
+
+
+HOMING_FIELDS = ("home_order", "home_mode", "home_torque", "home_offset", "vel_home")
+
+# Pola opcjonalne w pliku konfiguracji: brak któregoś oznacza wartość domyślną.
+# Dla zapisu z ekranu to za mało — ekran, który danego pola nie edytuje, wcale
+# go nie przysyła, a wtedy „domyślna" skasowałaby ustawienie z innego ekranu.
+OPTIONAL_FIELDS = ("vel_jog",) + HOMING_FIELDS
+
+
+def with_current_values(data: dict, current: dict[str, AxisConfig]) -> dict:
+    """Uzupełnia brakujące pola opcjonalne wartościami z obecnej konfiguracji.
+
+    Ekran konfiguracji osi nie edytuje parametrów bazowania (i odwrotnie).
+    Bez tego zapis z jednego ekranu po cichu resetowałby ustawienia z drugiego —
+    dokładnie ten błąd zdarzył się już przy prędkościach JOG/bazowania, patrz
+    `docs/zmiany/predkosci-jog-bazowanie.md`.
+    """
+    if not isinstance(data, dict):
+        return data
+    merged = {}
+    for name, fields in data.items():
+        if not isinstance(fields, dict) or name not in current:
+            merged[name] = fields
+            continue
+        known = current[name].to_dict()
+        filled = dict(fields)
+        for key in OPTIONAL_FIELDS:
+            filled.setdefault(key, known[key])
+        merged[name] = filled
+    return merged
+
+
+def home_groups(axes: dict[str, AxisConfig]) -> list[list[str]]:
+    """Osie do zbazowania, pogrupowane po `home_order` i uszeregowane rosnąco.
+
+    Osie z tym samym numerem bazują się razem (jednym ruchem), grupy —
+    jedna po drugiej. `home_order == 0` znaczy „nie bazuj tej osi".
+    """
+    groups: dict[int, list[str]] = {}
+    for name, cfg in axes.items():
+        if cfg.home_order > 0:
+            groups.setdefault(cfg.home_order, []).append(name)
+    return [sorted(groups[order]) for order in sorted(groups)]
+
+
+def merge_homing(axes: dict[str, AxisConfig], data: dict) -> dict[str, AxisConfig]:
+    """Nakłada pola bazowania z ekranu /homing na istniejącą konfigurację osi.
+
+    Ekran bazowania nie zna długości, limitów ani przełożeń — gdyby wysyłał
+    całą konfigurację, pomyłka w nim mogłaby skasować limity programowe.
+    Dlatego przyjmuje wyłącznie `HOMING_FIELDS`, a reszta zostaje nietknięta.
+    """
+    if not isinstance(data, dict):
+        raise AxisConfigError("oczekiwano obiektu z osiami")
+    unknown = [name for name in data if name not in axes]
+    if unknown:
+        raise AxisConfigError(
+            "nieznane osie: "
+            + ", ".join(a.upper() for a in sorted(unknown))
+            + " — dodaj je najpierw na ekranie konfiguracji osi"
+        )
+    merged = {}
+    for name, cfg in axes.items():
+        fields = data.get(name)
+        if fields is None:
+            merged[name] = cfg
+            continue
+        if not isinstance(fields, dict):
+            raise AxisConfigError(f"oś {name.upper()}: oczekiwano obiektu z parametrami")
+        payload = cfg.to_dict()
+        for key in HOMING_FIELDS:
+            if key in fields:
+                payload[key] = fields[key]
+        merged[name] = AxisConfig.from_dict(name, payload)
+    return merged
+
+
+def homing_warnings(axes: dict[str, AxisConfig], hardware: bool) -> list[str]:
+    """Ostrzeżenia o konfiguracji bazowania, która jest poprawna, ale myli.
+
+    Główne z nich: parametry trybu HardStop żyją w serwie (ClearView), a nie
+    w tym pliku — serwer ich nigdzie nie wysyła.
+    """
+    result: list[str] = []
+    groups = home_groups(axes)
+    if not groups:
+        result.append(
+            "żadna oś nie ma ustawionej kolejności bazowania — przycisk "
+            "„BAZUJ wszystkie osie” nie ruszy niczym"
+        )
+    not_homed = sorted(
+        name for name in REQUIRED_AXES if axes.get(name) and axes[name].home_order == 0
+    )
+    if not_homed:
+        result.append(
+            "osie "
+            + ", ".join(a.upper() for a in not_homed)
+            + " nie są bazowane (kolejność 0), a geometria programów jest w nich "
+            "zdefiniowana — po starcie maszyny ich zero będzie przypadkowe"
+        )
+    hardstop = sorted(
+        name for name, cfg in axes.items() if cfg.home_mode == HOME_MODE_HARDSTOP
+    )
+    if hardstop:
+        result.append(
+            "tryb HardStop dla osi "
+            + ", ".join(a.upper() for a in hardstop)
+            + ": limit momentu i offset z tego ekranu to ZAPIS tego, co ma być "
+            "ustawione w ClearView — serwer ich nigdzie nie wysyła i sam ich "
+            "nie egzekwuje"
+        )
+    extra = sorted(
+        name
+        for name, cfg in axes.items()
+        if cfg.home_order > 0 and name not in REQUIRED_AXES
+    )
+    if extra:
+        result.append(
+            "osie "
+            + ", ".join(a.upper() for a in extra)
+            + " mają ustawioną kolejność bazowania, ale nie pojadą — symulator "
+            "i mostek obsługują ruch tylko dla X/Y/Z (temat C planu rozwoju)"
+        )
+    if hardware:
+        result.append(
+            "na sprzęcie bazowanie wykonuje komenda HOME mostka wg ustawień serwa — "
+            "kolejność, prędkość i offset z tego ekranu działają dziś tylko "
+            "w symulatorze"
+        )
+    return result

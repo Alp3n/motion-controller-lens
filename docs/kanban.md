@@ -33,8 +33,10 @@ mam to założyć.
 ### C. Osie i konfiguracja ruchu
 - [x] Dodatkowe osie w `/axes` (dodawanie/usuwanie, odznaka „tylko konfiguracja”)
 - [ ] Rozszerzyć protokół mostka, żeby dodana oś faktycznie jeździła (C++, sprzęt)
-- [ ] Bazowanie HardStop + Offset Move + przycisk „HOME wszystkich osi"
-      + ekran bazowania
+- [x] Ekran bazowania `/homing` (kolejność osi, HardStop/programowe, limit
+      momentu, offset, prędkość) + przycisk „HOME wszystkich osi" na środku
+      strzałek XY. Parametry HardStop dalej tylko zapis dla ClearView;
+      kolejność działa tylko w symulatorze (na sprzęcie sekwencję robi serwo)
 - [x] Siła trzypoziomowa (globalna / cykl / program technologa) — mechanizm
       i API gotowe od etapu 2 tematu B, teraz ekran `/profiles`. Limit
       momentu dalej tylko w symulatorze (protokół mostka bez komendy
