@@ -33,11 +33,22 @@
       "phys_min": -50.0,
       "phys_max": 50.0
     },
+    "d": {
+      "length": 100.0,
+      "home": "minus",
+      "soft_min": 10.0,
+      "soft_max": 90.0,
+      "mm_per_rev": 5.0,
+      "vel_jog": 500.0,
+      "vel_home": 1000.0,
+      "phys_min": 0.0,
+      "phys_max": 100.0
+    },
     "u": {
       "length": 2000.0,
       "home": "plus",
-      "soft_min": -2000.0,
-      "soft_max": 0.0,
+      "soft_min": -1800.0,
+      "soft_max": -200.0,
       "mm_per_rev": 5.0,
       "vel_jog": 500.0,
       "vel_home": 1000.0,
@@ -47,24 +58,13 @@
     "w": {
       "length": 100.0,
       "home": "srodek",
-      "soft_min": -50.0,
-      "soft_max": 50.0,
+      "soft_min": -40.0,
+      "soft_max": 40.0,
       "mm_per_rev": 5.0,
       "vel_jog": 500.0,
       "vel_home": 1000.0,
       "phys_min": -50.0,
       "phys_max": 50.0
-    },
-    "d": {
-      "length": 100.0,
-      "home": "minus",
-      "soft_min": 0.0,
-      "soft_max": 90.0,
-      "mm_per_rev": 5.0,
-      "vel_jog": 500.0,
-      "vel_home": 1000.0,
-      "phys_min": 0.0,
-      "phys_max": 100.0
     }
   }
 }
