@@ -325,6 +325,83 @@ def test_go_to_zero_z_pustej_kolejnosci_jest_odrzucony():
     assert m.calls == []
 
 
+# --- limit momentu do sprzętu (etap 2b tematu B) ---------------------------
+#
+# `_machine()` podstawia _command w całości (fake_command), więc pomija
+# logikę _axes_pending/_profile_pending — testy niżej zamiast tego podstawiają
+# tylko _exchange (niższy poziom, bez sieci), żeby przetestować REALNY
+# `_command` z jego mechanizmem "wypchnij, gdy coś się zmieniło".
+
+
+class _FakeWriter:
+    def is_closing(self) -> bool:
+        return False
+
+
+def _connected_machine(axes_cfg=None):
+    m = SC4HubMachine("127.0.0.1", 8500)
+    m._writer = _FakeWriter()
+    m._reader = object()
+    calls = []
+
+    async def fake_exchange(command: str) -> str:
+        calls.append(command)
+        return "OK"
+
+    m._exchange = fake_exchange
+    m.calls = calls
+    if axes_cfg is not None:
+        m.apply_axis_config(axes_cfg)
+    return m
+
+
+def test_trqlimit_wyslany_przed_pierwsza_komenda():
+    m = _connected_machine()
+    m.apply_profiles(default_profiles(["x", "y", "z"]), "globalny")
+
+    asyncio.run(m._command("STATUS"))
+
+    assert m.calls == ["TRQLIMIT X 20.00", "TRQLIMIT Y 20.00", "TRQLIMIT Z 20.00", "STATUS"]
+
+
+def test_trqlimit_nie_wysylany_ponownie_bez_zmiany():
+    m = _connected_machine()
+    m.apply_profiles(default_profiles(["x", "y", "z"]), "globalny")
+
+    asyncio.run(m._command("STATUS"))
+    asyncio.run(m._command("STATUS"))
+
+    assert m.calls.count("STATUS") == 2
+    assert sum(1 for c in m.calls if c.startswith("TRQLIMIT")) == 3
+
+
+def test_trqlimit_wyslany_ponownie_po_zmianie_profilu():
+    m = _connected_machine()
+    m.apply_profiles(default_profiles(["x", "y", "z"]), "globalny")
+    asyncio.run(m._command("STATUS"))
+
+    m.set_active_profile("program")
+    asyncio.run(m._command("STATUS"))
+
+    assert m.calls[-4:] == [
+        "TRQLIMIT X 10.00",
+        "TRQLIMIT Y 10.00",
+        "TRQLIMIT Z 10.00",
+        "STATUS",
+    ]
+
+
+def test_trqlimit_pomija_os_bez_wpisu_w_profilu():
+    m = _connected_machine()
+    m.apply_profiles(default_profiles(["x", "y"]), "globalny")  # brak Z
+
+    asyncio.run(m._command("STATUS"))
+
+    assert "TRQLIMIT X 20.00" in m.calls
+    assert "TRQLIMIT Y 20.00" in m.calls
+    assert not any(c.startswith("TRQLIMIT Z") for c in m.calls)
+
+
 def test_go_to_zero_respects_soft_limits():
     axes_cfg = axes_mod.parse_axes(
         {

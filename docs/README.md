@@ -148,5 +148,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/token-mes.md](zmiany/token-mes.md) — opcjonalny token
   (`X-MES-Token`) dla `POST /api/mes/select-order`; domyślnie wyłączony,
   nie zmienia istniejącego zachowania dopóki nie ustawi się `MES_TOKEN`.
+- [zmiany/limit-momentu-sprzet.md](zmiany/limit-momentu-sprzet.md) — limit
+  momentu profilu dociera do serw (`TRQLIMIT`, `ILimits.TrqGlobal`, etap 2b
+  tematu B). Napisane i skompilowane osobno, **niewdrożone** — ważna
+  kolejność wdrożenia (mostek przed Pythonem), inaczej zrywa połączenie.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

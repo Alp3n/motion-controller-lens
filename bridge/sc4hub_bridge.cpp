@@ -594,6 +594,27 @@ static std::string handle(const std::string &line, int fd, std::string &pending)
                    nc.home.c_str());
             return "OK";
         }
+        /* TRQLIMIT celowo przed bramką ALARM, jak AXCFG — to konfiguracja
+           obowiązująca przy KOLEJNYM ruchu, nie ruch sam w sobie. Serwer
+           wysyła ją po każdym połączeniu i po każdej zmianie aktywnego
+           profilu (etap 2b tematu B). Twardy sufit w samym serwie
+           (ILimits.TrqGlobal) jest jedynym realnym zabezpieczeniem — pętla
+           programowa (funkcje SMART) go tylko dopracowuje, nigdy nie
+           zastępuje (docs/funkcje-smart.md, ryzyko 1). */
+        if (c == "TRQLIMIT") {
+            std::vector<std::string> tk = tokens(line);
+            if (tk.size() != 3)
+                return "ERR zła składnia: TRQLIMIT <X/Y/Z> <procent>";
+            int a = axisByName(tk[1]);
+            if (a < 0) return "ERR nieznana oś: " + tk[1];
+            char *end = nullptr;
+            double pct = strtod(tk[2].c_str(), &end);
+            if (end == tk[2].c_str() || pct <= 0 || pct > 100)
+                return "ERR TRQLIMIT: procent poza zakresem (0,100]";
+            nodeOf(a).Limits.TrqGlobal = pct;
+            printf("oś %s: limit momentu %.1f%%\n", axes[a].name, pct);
+            return "OK";
+        }
         if (c == "SPINDLE") {
             int on = 0; double rpm = 0;
             sscanf(line.c_str(), "%*s %d %lf", &on, &rpm);

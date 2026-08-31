@@ -946,10 +946,36 @@ class SC4HubMachine(Machine):
         # konfiguracja osi żyje w pamięci mostka — po każdym (ponownym)
         # połączeniu i po każdej zmianie trzeba ją wysłać jeszcze raz
         self._axes_pending = True
+        # to samo dla limitu momentu aktywnego profilu (etap 2b tematu B) —
+        # żyje jako TrqGlobal w samym serwie, nie w mostku, ale ten sam
+        # problem: świeże połączenie/nowy profil trzeba wypchnąć na nowo
+        self._profile_pending = True
 
     def apply_axis_config(self, axes: dict[str, AxisConfig]) -> None:
         super().apply_axis_config(axes)
         self._axes_pending = True
+
+    def _set_profile(self, name: str) -> None:
+        """Jeden punkt wywoływany przez `apply_profiles` i `set_active_profile`
+        (dziedziczone) — wystarczy nadpisać tu, żeby złapać obie ścieżki."""
+        super()._set_profile(name)
+        self._profile_pending = True
+
+    async def _push_profile_limits(self) -> None:
+        """Wysyła limit momentu aktywnego profilu do serw (`TRQLIMIT`, etap 2b).
+
+        Twardy sufit w samym serwie (`ILimits.TrqGlobal`) — jedyne realne
+        zabezpieczenie; pętla programowa (funkcje SMART) tylko dopracowuje
+        zachowanie WEWNĄTRZ tego limitu, nigdy go nie zastępuje
+        (`docs/funkcje-smart.md`, ryzyko 1). Oś bez opisu w aktywnym profilu
+        zostaje pominięta — dostaje ostatnio wysłany limit, nie zeruje się.
+        """
+        self._profile_pending = False
+        for axis in REQUIRED_AXES:
+            params = self.axis_params(axis)
+            if params is None:
+                continue
+            await self._exchange(f"TRQLIMIT {axis.upper()} {params.torque_pct:.2f}")
 
     async def _push_axis_config(self) -> None:
         """Wysyła limity i przełożenia osi do mostka (wołane spod zamka).
@@ -988,10 +1014,13 @@ class SC4HubMachine(Machine):
                         f"({self.host}:{self.port})"
                     )
                 # świeże połączenie może być połączeniem z nowo uruchomionym
-                # mostkiem, który nie zna jeszcze limitów osi
+                # mostkiem, który nie zna jeszcze limitów osi ani momentu
                 self._axes_pending = True
+                self._profile_pending = True
             if self._axes_pending:
                 await self._push_axis_config()
+            if self._profile_pending:
+                await self._push_profile_limits()
             return await self._exchange(command)
 
     async def _exchange(self, command: str) -> str:
