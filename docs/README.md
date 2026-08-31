@@ -98,10 +98,13 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/sila-per-operacja.md](zmiany/sila-per-operacja.md) — kolumna
   MOMENT w programie technologa (format 4 pliku `.prg`), limit siły tylko
   dla jednej operacji; dziś wyłącznie zapis w pliku, jak w profilach.
-- [zmiany/cykl-na-sprzecie.md](zmiany/cykl-na-sprzecie.md) — `ClearCoreMachine`
+- [zmiany/cykl-na-sprzecie.md](zmiany/cykl-na-sprzecie.md) — `SC4HubMachine`
   dostaje `start_cycle` (brakowało go od etapu 4 tematu B — `/cycle` nie
   działał na sprzęcie). Pierwsze testy automatyczne dla tej klasy. Nie
   zweryfikowane na fizycznym sterowniku.
+- [zmiany/nazewnictwo-sc4hub.md](zmiany/nazewnictwo-sc4hub.md) — nazwy w kodzie
+  z „ClearCore" na „SC4-Hub" (`SC4HubMachine`, `MACHINE_MODE=sc4hub`,
+  `BRIDGE_HOST`); stare nazwy dalej przyjmowane, host produkcyjny bez zmian.
 - [zmiany/skill-uruchom-projekt.md](zmiany/skill-uruchom-projekt.md) — skill
   Claude Code uruchamiający panel serwera jednym poleceniem, bezpiecznie na
   hoście produkcyjnym i na checkoucie deweloperskim.

@@ -12,7 +12,7 @@ w [`docs/model-cyklu-maszyny.md`](../model-cyklu-maszyny.md).
   zawsze); `parse_axes`/`save`/`to_dict` iterują po kluczach przekazanego
   słownika zamiast po sztywnej krotce, więc dodatkowe osie przechodzą przez
   cały łańcuch; nowa walidacja nazwy osi (małe litery/cyfry/podkreślenie).
-- `server/app/machine.py` — `ClearCoreMachine._push_axis_config` dalej
+- `server/app/machine.py` — `SC4HubMachine._push_axis_config` dalej
   wysyła `AXCFG` tylko dla `REQUIRED_AXES` — protokół mostka nie zna innych
   liter osi.
 - `server/tests/test_axes.py` — 4 nowe testy: zachowanie osi dodatkowej przy

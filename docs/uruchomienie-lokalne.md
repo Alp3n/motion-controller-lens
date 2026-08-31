@@ -69,7 +69,8 @@ sudo apt install -y git
 
 ## Nietestowane (stan na 2026-08-14)
 
-- Tryb sprzętowy `MACHINE_MODE=clearcore` — brak ClearCore. Sprzęt na maszynie
+- Tryb sprzętowy `MACHINE_MODE=sc4hub` (dawniej `clearcore`) — brak sprzętu
+  w tym środowisku. Sprzęt na maszynie
   to SC4-Hub, patrz [`sterownik-sc4-hub.md`](sterownik-sc4-hub.md).
 
 > **Korekta.** Tryb sprzętowy przetestowano później na SC4-Hub przez mostek

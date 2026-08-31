@@ -44,7 +44,7 @@ człowiek" — ruch JOG tylko przy przytrzymanym przycisku).
   faktycznie stanie — przy większym kroku i dużej prędkości JOG to
   opóźnienie jest zauważalne; do precyzyjnej pracy warto ustawić mały krok.
 - **Cykl (jeden przebieg i automatyczny) działa dziś wyłącznie
-  w symulatorze** — `ClearCoreMachine` nie ma jeszcze implementacji
+  w symulatorze** — `SC4HubMachine` nie ma jeszcze implementacji
   `start_cycle`/wykonania kroków przez mostek. To nie jest regresja tego
   kroku — `/cycle` nie działał na sprzęcie już od etapu 4 tematu B, po
   prostu nikt wcześniej tego nie sprawdził i nie zapisał. Ekran `/cycle`

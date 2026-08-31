@@ -18,7 +18,7 @@ systemctl is-active motion-controller-lens.service 2>/dev/null
 
 - **`active`** — usługa już działa. **Nic nie uruchamiaj ponownie** — drugi
   proces nie podniesie się na zajętym porcie 8000, a poza tym to na hoście
-  produkcyjnym bywa `MACHINE_MODE=clearcore` (prawdziwy sprzęt), więc nie ma
+  produkcyjnym bywa `MACHINE_MODE=sc4hub` (prawdziwy sprzęt), więc nie ma
   powodu dublować procesu. Zamiast tego zgłoś użytkownikowi bieżący tryb i
   URL-e:
 
@@ -30,8 +30,8 @@ systemctl is-active motion-controller-lens.service 2>/dev/null
 - **`inactive`/`failed`, ale jednostka `/etc/systemd/system/motion-controller-lens.service`
   istnieje** — to host, gdzie usługa normalnie powinna działać, a nie
   działa. **Zapytaj użytkownika, zanim ją wystartujesz** — jeśli tryb to
-  `clearcore`, start zaczyna przyjmować komendy ruchu z panelu do
-  prawdziwego sprzętu.
+  `sc4hub` (albo jego dawna nazwa `clearcore`), start zaczyna przyjmować
+  komendy ruchu z panelu do prawdziwego sprzętu.
 
 - **Jednostka w ogóle nie istnieje** — to zwykły checkout deweloperski,
   przejdź do kroku 2.
@@ -62,13 +62,13 @@ Jeśli `tools/uruchom-maszyne.sh` nie istnieje w tej wersji repo, użyj
 
 Zgłoś użytkownikowi:
 - URL panelu operatora (`/`), edytora (`/editor`), konfiguracji osi (`/axes`).
-- Tryb (`sim` czy `clearcore`) — **jeśli `clearcore`, powiedz to wprost**,
-  to oznacza realny sprzęt.
+- Tryb (`sim` czy `sc4hub`) — **jeśli `sc4hub`, powiedz to wprost**,
+  to oznacza realny sprzęt. `clearcore` to ta sama rzecz pod dawną nazwą.
 
 ## Czego nie robić
 
 - Nie startuj drugiej instancji serwera, gdy `motion-controller-lens.service`
   jest już `active`.
-- Nie wymuszaj `MACHINE_MODE=clearcore` ani trybu `maszyna` w
+- Nie wymuszaj `MACHINE_MODE=sc4hub` ani trybu `maszyna` w
   `uruchom-maszyne.sh` bez wyraźnej prośby — auto-detekcja skryptu robi to
   bezpiecznie sama (sprawdza, czy mostek faktycznie odpowiada).

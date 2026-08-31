@@ -26,5 +26,5 @@ serwer w trybie symulacji odpowiada 200 na `/`, `/axes`, `/editor`, `/docs`.
 - `.venv/` jest już w `.gitignore` — środowisko trzeba utworzyć lokalnie
   (zadanie „Środowisko: utwórz venv i zainstaluj zależności” w VS Code albo
   `./start.sh`).
-- Nietestowane: tryb sprzętowy `MACHINE_MODE=clearcore`/SC4-Hub oraz firmware
+- Nietestowane: tryb sprzętowy `MACHINE_MODE=sc4hub` (dawniej `clearcore`)/SC4-Hub oraz firmware
   — jak dotąd, bo tu nie ma sprzętu.

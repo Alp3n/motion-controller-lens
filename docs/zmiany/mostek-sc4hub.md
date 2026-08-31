@@ -2,7 +2,9 @@
 
 Demon C++ na sFoundation, który wystawia na TCP ten sam protokół tekstowy co
 firmware ClearCore. Serwer maszyny działa na serwach ClearPath-SC bez zmian
-w logice — wystarczy `MACHINE_MODE=clearcore CLEARCORE_HOST=127.0.0.1`.
+w logice — wystarczy `MACHINE_MODE=sc4hub BRIDGE_HOST=127.0.0.1`
+(w chwili pisania: `MACHINE_MODE=clearcore CLEARCORE_HOST=...`, nazwy
+zmienione w `nazewnictwo-sc4hub.md`; stare dalej działają).
 
 Przejechany na sprzęcie: pełny cykl programu `583912004711` na trzech serwach.
 

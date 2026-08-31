@@ -88,17 +88,17 @@ Global Stop.
 ### Tryb sprzętowy (SC4-Hub, przez mostek `bridge/`)
 
 ```bash
-MACHINE_MODE=clearcore CLEARCORE_HOST=127.0.0.1 \
+MACHINE_MODE=sc4hub BRIDGE_HOST=127.0.0.1 \
 PROGRAMS_DIR=/mnt/programy uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 Wymaga uruchomionego mostka `bridge/sc4hub_bridge` widzącego SC4-Hub po USB —
 budowanie i konfiguracja: [docs/zmiany/mostek-sc4hub.md](docs/zmiany/mostek-sc4hub.md).
-Nazwy `MACHINE_MODE=clearcore`/`CLEARCORE_HOST` to dziedzictwo pierwotnej
-architektury (miał być sterownik ClearCore — odrzucony, patrz
-[docs/sterownik-sc4-hub.md](docs/sterownik-sc4-hub.md)); zmiana na neutralną
-nazwę jest zaplanowana, ale jeszcze nie zrobiona —
-[docs/plan-rozwoju.md](docs/plan-rozwoju.md).
+Dawne nazwy `MACHINE_MODE=clearcore`, `CLEARCORE_HOST` i `CLEARCORE_PORT`
+**dalej działają** (pochodzą z odrzuconej koncepcji sterownika ClearCore —
+patrz [docs/sterownik-sc4-hub.md](docs/sterownik-sc4-hub.md)); nowe wdrożenia
+używaj nazw `sc4hub`/`BRIDGE_*` —
+[docs/zmiany/nazewnictwo-sc4hub.md](docs/zmiany/nazewnictwo-sc4hub.md).
 
 ## API dla MES
 

@@ -17,9 +17,9 @@ from pydantic import BaseModel, Field
 
 from . import axes, config, cycle, profiles
 from .machine import (
-    ClearCoreMachine,
     MachineError,
     MachineState,
+    SC4HubMachine,
     SimulatedMachine,
     create_machine,
 )
@@ -35,7 +35,7 @@ from .program import (
 async def lifespan(_app: FastAPI):
     """Uruchamia i zatrzymuje jedyny poller statusu sterownika."""
     task = None
-    if isinstance(machine, ClearCoreMachine):
+    if isinstance(machine, SC4HubMachine):
         task = asyncio.create_task(_poll_loop())
     yield
     if task:
@@ -49,7 +49,7 @@ app = FastAPI(
 )
 
 machine = create_machine(
-    config.MACHINE_MODE, config.CLEARCORE_HOST, config.CLEARCORE_PORT
+    config.MACHINE_MODE, config.BRIDGE_HOST, config.BRIDGE_PORT
 )
 
 # Konfiguracja osi (długości, limity, przełożenia, punkty bazowania) — jedno
@@ -534,7 +534,7 @@ async def sim_safety_enable(req: SimEnableRequest):
     """Tylko symulator: przełączenie sygnału zezwolenia do testów.
 
     W trybie sprzętowym sygnał pochodzi z niezależnego systemu bezpieczeństwa
-    i jest czytany przez ClearCore — nie da się go ustawić z oprogramowania.
+    (Global Stop na SC4-Hub) — nie da się go ustawić z oprogramowania.
     """
     if not isinstance(machine, SimulatedMachine):
         raise HTTPException(409, "dostępne tylko w trybie symulacji (MACHINE_MODE=sim)")

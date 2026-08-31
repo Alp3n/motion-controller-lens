@@ -1,11 +1,11 @@
-"""Testy ClearCoreMachine — tłumaczenie programu i cyklu na komendy mostka.
+"""Testy SC4HubMachine — tłumaczenie programu i cyklu na komendy mostka.
 
-ClearCoreMachine nie miał wcześniej żadnych testów automatycznych — jedyną
+SC4HubMachine nie miał wcześniej żadnych testów automatycznych — jedyną
 weryfikacją było uruchomienie na prawdziwym sprzęcie (sesja 2026-08-14,
 `docs/zmiany/mostek-sc4hub.md`). Tu podstawiamy `_command` (bez TCP), więc
 testy sprawdzają WYŁĄCZNIE logikę tłumaczenia Operation/CycleStep na tekst
 komend — nie protokół sieciowy ani samo połączenie. Cykl maszyny na
-ClearCoreMachine (`start_cycle`/`_run_cycle`) jest nowy w tej sesji i **nie
+SC4HubMachine (`start_cycle`/`_run_cycle`) jest nowy w tej sesji i **nie
 był uruchomiony na fizycznym sterowniku** — patrz `docs/zmiany/cykl-na-sprzecie.md`.
 """
 
@@ -21,13 +21,13 @@ import pytest  # noqa: E402
 
 from app import axes as axes_mod  # noqa: E402
 from app import cycle  # noqa: E402
-from app.machine import ClearCoreMachine, MachineError, MachineState  # noqa: E402
+from app.machine import SC4HubMachine, MachineError, MachineState  # noqa: E402
 from app.profiles import default_profiles  # noqa: E402
 from app.program import Program  # noqa: E402
 
 
 def _machine(axes_cfg=None):
-    m = ClearCoreMachine("127.0.0.1", 8500)
+    m = SC4HubMachine("127.0.0.1", 8500)
     calls = []
 
     async def fake_command(command: str) -> str:

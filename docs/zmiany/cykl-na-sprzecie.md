@@ -1,6 +1,6 @@
-# Cykl maszyny na prawdziwym sterowniku (ClearCoreMachine)
+# Cykl maszyny na prawdziwym sterowniku (SC4HubMachine)
 
-Znalezisko z pracy nad tematem F: `ClearCoreMachine` nie miał w ogóle
+Znalezisko z pracy nad tematem F: `SC4HubMachine` nie miał w ogóle
 `start_cycle` — `/cycle` (jeden przebieg i tryb automatyczny) na prawdziwym
 sterowniku zwracał niezłapany błąd. Nie była to regresja tamtej zmiany —
 `/cycle` nie działał na sprzęcie już od etapu 4 tematu B, po prostu nikt
@@ -9,7 +9,7 @@ wcześniej tego nie sprawdził ani nie zapisał (`docs/zmiany/tryby-pracy.md`).
 ## Co zrobione
 
 Dopisane `start_cycle`/`_run_cycle`/`_execute_cycle_step`/
-`_run_cycle_step_body` w `ClearCoreMachine`, analogicznie do już działającej
+`_run_cycle_step_body` w `SC4HubMachine`, analogicznie do już działającej
 implementacji w `SimulatedMachine`:
 
 - **RUCH** → `MOVEZ` + `MOVEXY` komendami mostka, z tą samą walidacją osi
@@ -28,11 +28,11 @@ implementacji w `SimulatedMachine`:
 
 ## Pliki
 
-- `server/app/machine.py` — `ClearCoreMachine._run_program_operations`
+- `server/app/machine.py` — `SC4HubMachine._run_program_operations`
   (wydzielone z `_run_program`), `start_cycle`, `_run_cycle`,
   `_execute_cycle_step`, `_run_cycle_step_body`.
 - `server/tests/test_clearcore.py` — **nowy plik**, pierwsze testy
-  automatyczne dla `ClearCoreMachine` w ogóle (wcześniej klasa nie miała
+  automatyczne dla `SC4HubMachine` w ogóle (wcześniej klasa nie miała
   żadnych — jedyną weryfikacją był prawdziwy sprzęt). `_command` jest
   podstawiane (bez TCP), więc testy sprawdzają wyłącznie tłumaczenie
   `Operation`/`CycleStep` na tekst komend, nie protokół sieciowy.
@@ -44,7 +44,7 @@ implementacji w `SimulatedMachine`:
 nie wywala — nie zastępują realnego uruchomienia. Sekwencja komend dla
 ścieżki PROGRAM jest identyczna z już sprawdzoną na sprzęcie (czysta
 refaktoryzacja, bez zmiany treści), ale ścieżki RUCH/WYJSCIE/PAUZA
-w kroku cyklu i tryb automatyczny na ClearCoreMachine — **do zweryfikowania
+w kroku cyklu i tryb automatyczny na SC4HubMachine — **do zweryfikowania
 przy najbliższym uruchomieniu sprzętowym** (temat H). W szczególności do
 sprawdzenia w praniu:
 

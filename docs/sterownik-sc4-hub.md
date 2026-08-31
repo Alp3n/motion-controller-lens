@@ -45,8 +45,10 @@ Wejścia/wyjścia huba:
 
 - **`firmware/clearcore/` jest bezużyteczne** — nie ma czego flashować. Cała
   logika ruchu musi przenieść się na PC.
-- **`ClearCoreMachine` nie zadziała w obecnej formie** — łączy się po TCP do
-  `CLEARCORE_HOST:8500` (`server/app/machine.py`).
+- **Klasa sprzętowa nie zadziała w obecnej formie** — łączy się po TCP do
+  `CLEARCORE_HOST:8500` (`server/app/machine.py`). *(Nazwy z tamtego czasu;
+  dziś to `SC4HubMachine` i `BRIDGE_HOST` —
+  [`zmiany/nazewnictwo-sc4hub.md`](zmiany/nazewnictwo-sc4hub.md).)*
 - Serwa **muszą być serii SC**. ClearPath MC/SD (step & direction) SC4-Hub nie
   obsługuje. *Potwierdzone: na maszynie są serwa ClearPath-SC.*
 
@@ -56,7 +58,8 @@ technologa, API MES, parser i walidator `.prg`.
 ## Proponowana architektura: mostek sFoundation
 
 Serwer rozmawia z maszyną wyłącznie przez klasę `Machine`
-(`server/app/machine.py`), a `ClearCoreMachine` tłumaczy program na **prosty
+(`server/app/machine.py`), a klasa sprzętowa (dziś `SC4HubMachine`)
+tłumaczy program na **prosty
 protokół tekstowy** (`PING`, `STATUS`, `HOME`, `MOVEXY`, `MOVEZ`, `JOG`,
 `SPINDLE`, `STOP`, `RESET` — opis w `firmware/clearcore/README.md`; mostek
 dokłada `RELEASE`/`HOLD` i `AXCFG`).
@@ -651,6 +654,12 @@ sFoundation ↔ sprzęt jest połączony.
 **Stan na koniec sesji (2026-08-30): `MACHINE_MODE=clearcore` jest aktywny w
 produkcji.** Panel WWW od teraz wysyła realne komendy do prawdziwego
 sprzętu.
+
+> **Uwaga do nazw (temat A, zrobione później).** Tryb nazywa się dziś
+> `sc4hub`, a adres mostka `BRIDGE_HOST`/`BRIDGE_PORT`. Wpisy `clearcore`
+> i `CLEARCORE_*` w usłudze systemd **nie wymagają zmiany** — serwer
+> przyjmuje je nadal jako nazwy historyczne. Szczegóły:
+> [`zmiany/nazewnictwo-sc4hub.md`](zmiany/nazewnictwo-sc4hub.md).
 
 > **Korekta (2026-08-30, sesja późniejsza).** Powyższe „czeka na
 > potwierdzenie” już nieaktualne — w logu serwera widać udane

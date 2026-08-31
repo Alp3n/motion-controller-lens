@@ -38,11 +38,16 @@ nie w głównych plikach.
       wgrania). Protokół, który opisywał, przeniesiony do
       `docs/ARCHITEKTURA.md` (sekcja „Protokół mostka"), zaktualizowany o
       `AXCFG` i realny stan implementacji w `bridge/`.
-- [ ] Przejrzeć `server/app/machine.py` i inne pliki pod kątem nazw
-      `ClearCoreMachine`, `MACHINE_MODE=clearcore`, `CLEARCORE_HOST` —
-      **odłożone świadomie** (decyzja): zostają jako nazwa historyczna, do
-      zmiany osobnym krokiem później, żeby nie mieszać z porządkami
-      w dokumentacji.
+- [x] Nazwy w kodzie zmienione: `ClearCoreMachine` → `SC4HubMachine`,
+      `MACHINE_MODE=clearcore` → `sc4hub`, `CLEARCORE_HOST`/`CLEARCORE_PORT`
+      → `BRIDGE_HOST`/`BRIDGE_PORT`. **Stare nazwy dalej działają** (host
+      produkcyjny ma je w usłudze systemd — aktualizacja serwera nie mogła
+      go po cichu przestawić w symulację); 11 testów pilnuje aliasów.
+      Zmiana zachowania: domyślny adres mostka to `127.0.0.1`, nie
+      `192.168.0.50` (adres z odrzuconej koncepcji ClearCore po Ethernecie).
+      Szczegóły: [`zmiany/nazewnictwo-sc4hub.md`](zmiany/nazewnictwo-sc4hub.md).
+
+**Temat A zamknięty.**
 
 Źródło: `zbyszek/DECYZJE_2026-08-25.md` §1, §6; `docs/sterownik-sc4-hub.md`
 „Do zrobienia".
@@ -229,10 +234,10 @@ niżej; rozstrzygnąć **przed** rozpoczęciem tego tematu.
       zawieszenia mroziła **cały serwer**, nie tylko cykl.
       Szczegóły: [`zmiany/tryby-pracy.md`](zmiany/tryby-pracy.md).
 
-**Domknięte:** `ClearCoreMachine.start_cycle` dopisany — RUCH/PROGRAM/PAUZA
+**Domknięte:** `SC4HubMachine.start_cycle` dopisany — RUCH/PROGRAM/PAUZA
 przez istniejące komendy mostka (nie trzeba było C++ — MOVEZ/MOVEXY/SPINDLE
 już tam są), WYJSCIE dalej tylko w statusie (protokół nie ma tej komendy).
-Pierwsze testy automatyczne dla `ClearCoreMachine` w ogóle (wcześniej klasa
+Pierwsze testy automatyczne dla `SC4HubMachine` w ogóle (wcześniej klasa
 nie miała żadnych). **Nie zweryfikowane na fizycznym sterowniku** — do
 potwierdzenia przy najbliższym uruchomieniu sprzętowym (temat H). Szczegóły:
 [`zmiany/cykl-na-sprzecie.md`](zmiany/cykl-na-sprzecie.md).
@@ -289,7 +294,7 @@ jako **jedno wejście**, nie kilka osobnych:
 
 Pomiary i testy:
 
-- [ ] Zweryfikować `ClearCoreMachine.start_cycle` (jeden przebieg i tryb
+- [ ] Zweryfikować `SC4HubMachine.start_cycle` (jeden przebieg i tryb
       automatyczny, temat F) na fizycznym sterowniku — napisane i pokryte
       testami z podstawionym `_command`, ale nigdy nie uruchomione na
       sprzęcie. Szczegóły: [`zmiany/cykl-na-sprzecie.md`](zmiany/cykl-na-sprzecie.md).
@@ -392,7 +397,7 @@ niezweryfikowane bezpośrednio, patrz zastrzeżenie wyżej).
 
 To jest **propozycja**, nie decyzja — ustalmy razem, czy się zgadzasz:
 
-1. **A** (nazewnictwo) — ✅ zrobione poza zmianą nazw w kodzie.
+1. **A** (nazewnictwo) — ✅ zrobione w całości.
 2. **B** (model danych cyklu/programu) — fundament pod C–G, największe ryzyko
    architektoniczne, więc warto to rozstrzygnąć najpierw. Wzorce warte
    podpatrzenia (tablica pozycji, podprogramy, przerwania) opisane

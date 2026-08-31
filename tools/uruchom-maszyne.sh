@@ -68,7 +68,7 @@ fi
 
 if port_otwarty "$BRIDGE_PORT"; then
   info "Mostek SC4-Hub już działa na porcie $BRIDGE_PORT — używam go."
-  MODE="clearcore"
+  MODE="sc4hub"
 elif [ "$TRYB" != "sim" ] && [ -x bridge/sc4hub_bridge ]; then
   info "Uruchamiam mostek SC4-Hub..."
   (
@@ -81,7 +81,7 @@ elif [ "$TRYB" != "sim" ] && [ -x bridge/sc4hub_bridge ]; then
   ) &
   BRIDGE_PID=$!
   if czekaj_na_port "$BRIDGE_PORT" 10; then
-    MODE="clearcore"
+    MODE="sc4hub"
   else
     kill "$BRIDGE_PID" 2>/dev/null
     wait "$BRIDGE_PID" 2>/dev/null
@@ -118,8 +118,8 @@ fi
   export PROGRAMS_DIR=../programs
   export AXES_CONFIG=../config/axes.json
   export MACHINE_MODE="$MODE"
-  export CLEARCORE_HOST=127.0.0.1
-  export CLEARCORE_PORT="$BRIDGE_PORT"
+  export BRIDGE_HOST=127.0.0.1
+  export BRIDGE_PORT="$BRIDGE_PORT"
   exec .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port "$SERVER_PORT"
 ) &
 SERVER_PID=$!

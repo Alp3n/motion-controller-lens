@@ -8,12 +8,25 @@ from pathlib import Path
 # katalog z plikami programów (docelowo zasób sieciowy współdzielony z MES)
 PROGRAMS_DIR = Path(os.environ.get("PROGRAMS_DIR", "programs")).resolve()
 
-# tryb warstwy maszyny: "sim" (symulator) lub "clearcore" (sprzęt)
-MACHINE_MODE = os.environ.get("MACHINE_MODE", "sim")
+# Tryb warstwy maszyny: "sim" (symulator) albo "sc4hub" (sprzęt przez mostek
+# `bridge/`). "clearcore" zostaje przyjmowane jako nazwa historyczna — hosty
+# produkcyjne mają ją w `bridge/machine.env` i w usłudze systemd, a cicha
+# zamiana sprzętu na symulator po aktualizacji byłaby groźna.
+MACHINE_MODE_ALIASES = {"clearcore": "sc4hub"}
+_mode = os.environ.get("MACHINE_MODE", "sim").strip().lower()
+MACHINE_MODE = MACHINE_MODE_ALIASES.get(_mode, _mode)
 
-# adres sterownika ClearCore (tryb "clearcore")
-CLEARCORE_HOST = os.environ.get("CLEARCORE_HOST", "192.168.0.50")
-CLEARCORE_PORT = int(os.environ.get("CLEARCORE_PORT", "8500"))
+# Adres mostka SC4-Hub (tryb "sc4hub"). Mostek działa na tym samym komputerze
+# co serwer i słucha na 8500 — stąd 127.0.0.1. Poprzedni domyślny adres
+# 192.168.0.50 pochodził z odrzuconej koncepcji ClearCore (sterownik po
+# Ethernecie) i nie odpowiadał żadnemu istniejącemu urządzeniu.
+# CLEARCORE_HOST/CLEARCORE_PORT dalej działają jako nazwy historyczne.
+BRIDGE_HOST = os.environ.get("BRIDGE_HOST") or os.environ.get(
+    "CLEARCORE_HOST", "127.0.0.1"
+)
+BRIDGE_PORT = int(
+    os.environ.get("BRIDGE_PORT") or os.environ.get("CLEARCORE_PORT", "8500")
+)
 
 # plik konfiguracji osi (długości, limity, przełożenia, punkty bazowania).
 # Zapisywany z ekranu „Konfiguracja osi"; po jego utworzeniu to on, a nie

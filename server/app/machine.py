@@ -1,8 +1,8 @@
-"""Warstwa maszyny: wspólny interfejs, symulator oraz łącze do ClearCore.
+"""Warstwa maszyny: wspólny interfejs, symulator oraz łącze do mostka SC4-Hub.
 
 Serwer rozmawia z maszyną wyłącznie przez klasę bazową Machine, więc panel,
 API i integracja MES działają identycznie na symulatorze (MACHINE_MODE=sim)
-i na sprzęcie (MACHINE_MODE=clearcore).
+i na sprzęcie (MACHINE_MODE=sc4hub).
 """
 
 from __future__ import annotations
@@ -182,7 +182,7 @@ class Machine:
         """Prędkość bazowania — najwolniejsza spośród skonfigurowanych osi.
 
         Dotyczy tylko symulatora: na sprzęcie bazowaniem steruje serwo wg
-        ustawień w ClearView, więc `ClearCoreMachine` tej wartości nie używa.
+        ustawień w ClearView, więc `SC4HubMachine` tej wartości nie używa.
         """
         values = [self.axes[a].vel_home for a in axes if a in self.axes]
         return min(values) if values else 1000.0
@@ -274,7 +274,7 @@ class SimulatedMachine(Machine):
 
     Pozwala rozwijać i testować panel, API oraz integrację MES bez sprzętu.
     Sygnał zezwolenia można przełączać z panelu (w trybie sprzętowym jest
-    tylko do odczytu — pochodzi z wejścia ClearCore).
+    tylko do odczytu — pochodzi z wejścia Global Stop na SC4-Hub).
     """
 
     def __init__(self) -> None:
@@ -593,14 +593,14 @@ class SimulatedMachine(Machine):
             await asyncio.sleep(duration / steps)
 
 
-class ClearCoreMachine(Machine):
-    """Łącze TCP do sterownika ClearCore (protokół tekstowy, port 8500).
+class SC4HubMachine(Machine):
+    """Łącze TCP do mostka SC4-Hub (protokół tekstowy, port 8500).
 
     Serwer wysyła komendy wysokopoziomowe (HOME, MOVE, SPINDLE, STOP),
-    a interpolację i obsługę serw ClearPath wykonuje firmware
-    (firmware/clearcore/). Sygnał zezwolenia jest czytany wyłącznie przez
-    ClearCore z dedykowanego wejścia i raportowany w STATUS — z poziomu
-    serwera jest tylko do odczytu.
+    a interpolację i obsługę serw ClearPath-SC wykonuje mostek `bridge/`
+    (sFoundation, USB do SC4-Hub) — protokół opisuje `docs/ARCHITEKTURA.md`.
+    Sygnał zezwolenia (Global Stop) czyta wyłącznie sprzęt i raportuje go
+    w STATUS — z poziomu serwera jest tylko do odczytu.
     """
 
     def __init__(self, host: str, port: int) -> None:
@@ -652,7 +652,7 @@ class ClearCoreMachine(Machine):
                     )
                 except (OSError, asyncio.TimeoutError):
                     raise MachineError(
-                        f"brak połączenia ze sterownikiem ClearCore "
+                        f"brak połączenia z mostkiem SC4-Hub "
                         f"({self.host}:{self.port})"
                     )
                 # świeże połączenie może być połączeniem z nowo uruchomionym
@@ -665,7 +665,7 @@ class ClearCoreMachine(Machine):
     async def _exchange(self, command: str) -> str:
         """Jedna wymiana po otwartym już łączu — bez zamka i bez łączenia."""
         if self._writer is None or self._reader is None:
-            raise MachineError("brak połączenia ze sterownikiem ClearCore")
+            raise MachineError("brak połączenia z mostkiem SC4-Hub")
         try:
             self._writer.write((command + "\n").encode())
             await self._writer.drain()
@@ -674,15 +674,15 @@ class ClearCoreMachine(Machine):
             # RuntimeError: transport zamknięty pod spodem (uvloop)
             self._writer = None
             self._reader = None
-            raise MachineError("utracono połączenie ze sterownikiem ClearCore")
+            raise MachineError("utracono połączenie z mostkiem SC4-Hub")
         if not line:
             # koniec strumienia — bez tego pusta odpowiedź uchodziłaby za OK
             self._writer = None
             self._reader = None
-            raise MachineError("sterownik zamknął połączenie")
+            raise MachineError("mostek SC4-Hub zamknął połączenie")
         reply = line.decode().strip()
         if reply.startswith("ERR"):
-            raise MachineError(f"sterownik odrzucił komendę: {reply}")
+            raise MachineError(f"mostek SC4-Hub odrzucił komendę: {reply}")
         return reply
 
     async def poll_status(self) -> None:
@@ -765,7 +765,7 @@ class ClearCoreMachine(Machine):
         await self.poll_status()
 
     async def _run_program_operations(self, program: Program) -> None:
-        """Tłumaczy operacje programu na sekwencję komend MOVE dla ClearCore.
+        """Tłumaczy operacje programu na sekwencję komend MOVE dla mostka.
 
         Wydzielone z `_run_program` (bez zmiany kolejności/treści komend —
         to jest ta sama sekwencja, która przeszła test na sprzęcie sesji
@@ -941,6 +941,13 @@ class ClearCoreMachine(Machine):
 
 
 def create_machine(mode: str, host: str, port: int) -> Machine:
-    if mode == "clearcore":
-        return ClearCoreMachine(host, port)
+    """Warstwa maszyny wg trybu: "sc4hub" = sprzęt przez mostek, reszta = symulator.
+
+    "clearcore" jest przyjmowane jako nazwa historyczna (patrz app/config.py) —
+    tryb jest już znormalizowany przez konfigurację, ale sprawdzamy obie nazwy,
+    żeby wywołanie `create_machine("clearcore", ...)` z testu albo skryptu
+    nie uruchomiło po cichu symulatora na maszynie.
+    """
+    if mode in ("sc4hub", "clearcore"):
+        return SC4HubMachine(host, port)
     return SimulatedMachine()

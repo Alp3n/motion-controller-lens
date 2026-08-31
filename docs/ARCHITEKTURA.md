@@ -73,10 +73,11 @@ Aplikacja webowa w Pythonie (FastAPI) uruchamiana na komputerze przemysłowym
 - **Warstwa maszyny** (`app/machine.py`) — dwa tryby (zmienna środowiskowa
   `MACHINE_MODE`):
   - `sim` — pełny symulator (rozwój i testy bez sprzętu),
-  - `clearcore` — połączenie TCP z mostkiem `bridge/` (SC4-Hub). Nazwa
-    `clearcore`/`CLEARCORE_HOST` to dziedzictwo pierwotnej architektury
-    (patrz niżej) — zmiana na neutralną nazwę jest zaplanowana, ale jeszcze
-    nie zrobiona: [`plan-rozwoju.md`, temat A](plan-rozwoju.md#a-uporządkowanie-nazewnictwa-sprzętu-clearcore--sc4-hub).
+  - `sc4hub` — połączenie TCP z mostkiem `bridge/` (SC4-Hub), adres
+    z `BRIDGE_HOST`/`BRIDGE_PORT`. Dawne nazwy `clearcore`,
+    `CLEARCORE_HOST` i `CLEARCORE_PORT` **dalej są przyjmowane** (hosty
+    produkcyjne mają je w usłudze systemd) —
+    [`zmiany/nazewnictwo-sc4hub.md`](zmiany/nazewnictwo-sc4hub.md).
 
 ### 2. Mostek do SC4-Hub (`bridge/`)
 
@@ -167,9 +168,10 @@ INIT ──► NOT_HOMED ──(bazowanie)──► READY ──(START)──►
 
 Komendy tekstowe, jedna na linię; odpowiedź `OK ...` lub `ERR <opis>`.
 Zaimplementowane w `bridge/sc4hub_bridge.cpp` — pierwotnie zdefiniowane pod
-firmware ClearCore (stąd nazwy `CLEARCORE_HOST`/`MACHINE_MODE=clearcore` w
-serwerze), zachowane bez zmian jako gotowy szew między warstwą Pythona
-a sprzętem.
+firmware ClearCore, zachowane bez zmian jako gotowy szew między warstwą
+Pythona a sprzętem. Same nazwy w serwerze są już neutralne
+(`MACHINE_MODE=sc4hub`, `BRIDGE_HOST`) — patrz
+[`zmiany/nazewnictwo-sc4hub.md`](zmiany/nazewnictwo-sc4hub.md).
 
 ```
 PING                      -> OK PONG

@@ -12,10 +12,6 @@ mam to założyć.
 
 ## Do zrobienia
 
-### A. Nazewnictwo (ClearCore → SC4-Hub)
-- [ ] Przejrzeć kod pod kątem `ClearCoreMachine`/`MACHINE_MODE=clearcore`
-      (świadomie odłożone — osobny krok później)
-
 ### B. Model cyklu maszyny i programu detalu
 - [x] Zaprojektować model — propozycja w `model-cyklu-maszyny.md`, do przeglądu
 - [x] Etap 1: `AXIS_NAMES` → `REQUIRED_AXES` w `axes.py`, dowolne osie ponad
@@ -28,7 +24,7 @@ mam to założyć.
       (wraca przy błędzie i przy STOP; `WYJSCIE` na razie tylko w symulatorze)
 - [x] Etap 4: ekran `/cycle` — tabela kroków, walidacja, uruchomienie
       i podgląd na żywo; krok PROGRAM = skok do podprogramu technologa
-- [x] `ClearCoreMachine.start_cycle` dopisany — RUCH/PROGRAM/PAUZA przez
+- [x] `SC4HubMachine.start_cycle` dopisany — RUCH/PROGRAM/PAUZA przez
       istniejące komendy mostka (MOVEZ/MOVEXY/SPINDLE), WYJSCIE dalej tylko
       w statusie (brak komendy w protokole). **Nie zweryfikowane na
       fizycznym sterowniku** — do potwierdzenia przy uruchomieniu
@@ -92,7 +88,7 @@ Jedna sesja w ClearView (Windows) domyka pierwsze pięć pozycji:
 - [ ] Sprawdzić dostępność g-Stop (tłumienie drgań)
 
 Pomiary i testy:
-- [ ] Zweryfikować cykl maszyny (`ClearCoreMachine.start_cycle`) na sprzęcie
+- [ ] Zweryfikować cykl maszyny (`SC4HubMachine.start_cycle`) na sprzęcie
 - [ ] Weryfikacja pomiarowa toru `LINIA` + próba grup wyzwalania
 - [ ] Zmierzyć domyślny watchdog sieciowy (czy w ogóle działa)
 - [ ] Test: utrata zezwolenia w ruchu
@@ -124,6 +120,9 @@ Pomiary i testy:
 
 Skrót — pełne opisy w [`README.md`](README.md) i [`zmiany/`](zmiany/):
 
+- [x] **Temat A zamknięty** — nazwy w kodzie: `SC4HubMachine`,
+      `MACHINE_MODE=sc4hub`, `BRIDGE_HOST`/`BRIDGE_PORT` (stare nazwy
+      dalej działają)
 - [x] Format `.prg` — operacje grupy A (`PROSTOKAT`, `SZYBKI`, `WRZECIONO`)
 - [x] Parametry operacji: `POSUW`, `PRZEJSCIA`, `PRZYROST` (format 2)
 - [x] Mostek `bridge/` (SC4-Hub przez sFoundation) — pełny cykl na sprzęcie
