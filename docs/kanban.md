@@ -54,8 +54,9 @@ mam to założyć.
       świadomie niezaimplementowane bez ustalenia z Tobą
 
 ### D. Wrzeciono
-- [ ] Włączenie przy starcie maszyny (przełącznik)
-- [ ] Włączenie przy starcie programu (dwie opcje konfigurowalne)
+- [x] Włączenie przy starcie maszyny — przełącznik na panelu operatora
+- [x] Włączenie/wyłączenie na granicach programu technologa — dwie opcje
+      na ekranie `/cycle` (do potwierdzenia, czy o te dwie chodziło)
 - [ ] Sterowanie prędkością przez zewnętrzny regulator PWM, załączany
       wyjściem `BRAKE_0`/`BRAKE_1` (decyzja: patrz temat J)
 - [ ] Konfiguracja rozpędzania/hamowania na regulatorze PWM

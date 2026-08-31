@@ -42,6 +42,17 @@ PROFILES_FILE = Path(
 # plik definicji cyklu maszyny (kroki poziomu admina wokół programu detalu)
 CYCLE_FILE = Path(os.environ.get("CYCLE_CONFIG", "config/cycle.json")).resolve()
 
+# plik konfiguracji wrzeciona (kiedy się załącza i kiedy gaśnie)
+SPINDLE_FILE = Path(
+    os.environ.get("SPINDLE_CONFIG", "config/spindle.json")
+).resolve()
+
+# Wyjście huba sterujące wrzecionem — ustawienie MOSTKA (bridge/machine.env),
+# nie serwera. Czytamy je tylko po to, żeby panel mógł ostrzec, że przy
+# wartości "none" komendy wrzeciona nic fizycznie nie przełączają. None
+# oznacza „serwer nie wie" (zmienna nie jest wyeksportowana do jego procesu).
+SPINDLE_OUTPUT = os.environ.get("SPINDLE_OUTPUT")
+
 # wartości startowe obszaru roboczego [mm] — używane tylko, dopóki nie ma
 # pliku konfiguracji osi
 WORK_AREA = {

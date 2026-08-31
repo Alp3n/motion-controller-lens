@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import axes, config, cycle, profiles
+from . import axes, config, cycle, profiles, spindle
 from .machine import (
     MachineError,
     MachineState,
@@ -68,6 +68,11 @@ machine.apply_profiles(profiles_cfg, active_profile)
 # nie zostanie zdefiniowany; błędny plik przerywa start (powód w app/cycle.py).
 cycle_cfg = cycle.load(config.CYCLE_FILE)
 machine.apply_cycle(cycle_cfg)
+
+# Wrzeciono — kiedy się załącza i kiedy gaśnie. Błędny plik przerywa start
+# tak samo jak reszta konfiguracji; powód w app/spindle.py.
+spindle_cfg = spindle.load(config.SPINDLE_FILE)
+machine.apply_spindle_config(spindle_cfg)
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -126,6 +131,20 @@ class AxesRequest(BaseModel):
     """
 
     axes: dict[str, dict] = Field(..., description="osie x, y, z")
+
+
+class SpindleRequest(BaseModel):
+    """Ustawienia wrzeciona — zapis częściowy.
+
+    Panel operatora wysyła sam przełącznik „przy starcie maszyny", ekran cyklu
+    tylko opcje granic programu; brakujące pola zostają bez zmian
+    (`SpindleConfig.merged` w app/spindle.py).
+    """
+
+    start_with_machine: bool | None = None
+    start_with_program: bool | None = None
+    stop_after_program: bool | None = None
+    default_rpm: float | None = None
 
 
 class HomingRequest(BaseModel):
@@ -369,6 +388,54 @@ async def put_axes(req: AxesRequest):
     axes_cfg = new_axes
     machine.apply_axis_config(new_axes)
     return {"ok": True, "axes": axes.to_dict(new_axes), "warnings": warnings}
+
+
+# --- wrzeciono ------------------------------------------------------------
+
+
+def _spindle_payload(cfg) -> dict:
+    return {
+        "spindle": cfg.to_dict(),
+        "file": str(config.SPINDLE_FILE),
+        "warnings": spindle.warnings(
+            cfg, config.MACHINE_MODE != "sim", config.SPINDLE_OUTPUT
+        ),
+    }
+
+
+@app.get("/api/spindle")
+async def get_spindle():
+    """Konfiguracja wrzeciona: kiedy się załącza i kiedy gaśnie."""
+    return _spindle_payload(spindle_cfg)
+
+
+@app.put("/api/spindle")
+async def put_spindle(req: SpindleRequest):
+    """Zapis ustawień wrzeciona; pominięte pola zostają bez zmian.
+
+    Zmiana w trakcie ruchu jest odrzucana — przełączenie „wrzeciono rusza
+    z maszyną" w środku cyklu i tak nie zadziałałoby wstecz, a sugerowałoby,
+    że coś się zmieniło.
+    """
+    global spindle_cfg
+    if machine.status.state in (MachineState.RUNNING, MachineState.HOMING):
+        raise HTTPException(
+            409, "nie można zmieniać ustawień wrzeciona w trakcie ruchu maszyny"
+        )
+    changes = {k: v for k, v in req.model_dump().items() if v is not None}
+    if not changes:
+        raise HTTPException(422, "nie podano żadnego ustawienia do zmiany")
+    try:
+        new_cfg = spindle_cfg.merged(changes)
+    except spindle.SpindleConfigError as exc:
+        raise HTTPException(422, str(exc))
+    try:
+        spindle.save(config.SPINDLE_FILE, new_cfg)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.SPINDLE_FILE}: {exc}")
+    spindle_cfg = new_cfg
+    machine.apply_spindle_config(new_cfg)
+    return {"ok": True, **_spindle_payload(new_cfg)}
 
 
 # --- bazowanie ------------------------------------------------------------

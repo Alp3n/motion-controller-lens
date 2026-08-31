@@ -131,6 +131,45 @@ $("btn-home-xy").onclick = homeAll;
 $("btn-reset").onclick = () =>
   api("POST", "/api/machine/reset").catch((e) => showMsg($("ctrl-msg"), e.message));
 
+/* Wrzeciono przy starcie maszyny — przełącznik na ekranie Start/Stop
+   (notatki funkcjonalne §4). Pozostałe ustawienia wrzeciona (granice programu
+   technologa) są na ekranie cyklu maszyny; zapis jest częściowy, więc te dwa
+   ekrany sobie nie kasują ustawień. */
+async function loadSpindle() {
+  try {
+    const data = await api("GET", "/api/spindle");
+    $("spindle-with-machine").checked = data.spindle.start_with_machine;
+    if (data.warnings && data.warnings.length) {
+      showMsg($("spindle-msg"), "Uwaga: " + data.warnings.join(" • "));
+    } else {
+      $("spindle-msg").className = "msg";
+    }
+  } catch (e) {
+    showMsg($("spindle-msg"), "nie udało się wczytać ustawień wrzeciona: " + e.message);
+  }
+}
+
+$("spindle-with-machine").addEventListener("change", async (ev) => {
+  const enabled = ev.target.checked;
+  try {
+    const data = await api("PUT", "/api/spindle", { start_with_machine: enabled });
+    const extra =
+      data.warnings && data.warnings.length ? " Uwaga: " + data.warnings.join(" • ") : "";
+    showMsg(
+      $("spindle-msg"),
+      (enabled
+        ? "wrzeciono ruszy razem z maszyną"
+        : "wrzeciono nie rusza razem z maszyną") + extra,
+      !enabled
+    );
+  } catch (e) {
+    ev.target.checked = !enabled; // serwer odmówił — przełącznik wraca
+    showMsg($("spindle-msg"), e.message);
+  }
+});
+
+loadSpindle();
+
 document.querySelectorAll(".rel").forEach((btn) => {
   btn.addEventListener("click", () => {
     // stan docelowy to odwrotność bieżącego, odczytanego ze statusu

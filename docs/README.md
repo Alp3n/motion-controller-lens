@@ -102,6 +102,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   dostaje `start_cycle` (brakowało go od etapu 4 tematu B — `/cycle` nie
   działał na sprzęcie). Pierwsze testy automatyczne dla tej klasy. Nie
   zweryfikowane na fizycznym sterowniku.
+- [zmiany/wrzeciono-start.md](zmiany/wrzeciono-start.md) — kiedy wrzeciono się
+  załącza (start maszyny, start programu) i kiedy gaśnie; obroty dalej bez
+  wpływu na sprzęt (brak PWM w SC4-Hub).
 - [zmiany/ekran-bazowania.md](zmiany/ekran-bazowania.md) — ekran `/homing`
   (kolejność osi, HardStop, limit momentu, offset) i przycisk „HOME wszystkich
   osi"; parametry HardStop to zapis dla ClearView, nie konfiguracja serwa.

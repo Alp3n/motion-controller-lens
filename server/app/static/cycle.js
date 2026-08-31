@@ -378,6 +378,44 @@ async function pollState() {
 
 // --- start ----------------------------------------------------------------
 
+/* Wrzeciono — dwie opcje granic programu technologa i obroty domyślne.
+   Zapis jest częściowy: przełącznik „rusza razem z maszyną" żyje na panelu
+   operatora i ten ekran go nie nadpisuje. */
+function applySpindle(data) {
+  $("sp-start-program").checked = data.spindle.start_with_program;
+  $("sp-stop-program").checked = data.spindle.stop_after_program;
+  $("sp-rpm").value = data.spindle.default_rpm;
+  if (data.warnings && data.warnings.length) {
+    showMsg($("spindle-msg"), "Uwaga:\n" + data.warnings.join("\n"));
+    $("spindle-msg").style.whiteSpace = "pre-line";
+  } else {
+    $("spindle-msg").className = "msg";
+  }
+}
+
+async function saveSpindle() {
+  const rpm = Number(String($("sp-rpm").value).trim().replace(",", "."));
+  if (!(rpm >= 0)) {
+    showMsg($("spindle-msg"), "obroty domyślne: podaj liczbę nieujemną");
+    return;
+  }
+  try {
+    const data = await api("PUT", "/api/spindle", {
+      start_with_program: $("sp-start-program").checked,
+      stop_after_program: $("sp-stop-program").checked,
+      default_rpm: rpm,
+    });
+    applySpindle(data);
+    if (!(data.warnings && data.warnings.length)) {
+      showMsg($("spindle-msg"), "zapisano ustawienia wrzeciona", true);
+    }
+  } catch (e) {
+    showMsg($("spindle-msg"), e.message);
+  }
+}
+
+$("btn-spindle-save").onclick = saveSpindle;
+
 $("btn-add").onclick = () => addStepRow();
 $("btn-save").onclick = save;
 $("btn-reload").onclick = () =>
@@ -385,6 +423,12 @@ $("btn-reload").onclick = () =>
 $("btn-start").onclick = () => startCycle(false);
 $("btn-start-loop").onclick = () => startCycle(true);
 $("btn-stop").onclick = stopMachine;
+
+api("GET", "/api/spindle")
+  .then(applySpindle)
+  .catch((e) =>
+    showMsg($("spindle-msg"), "nie udało się wczytać ustawień wrzeciona: " + e.message)
+  );
 
 Promise.all([
   api("GET", "/api/cycle"),

@@ -171,10 +171,13 @@ cyklu (temat F), ruch osi innych niż X/Y/Z (temat C).
 
 ## D. Wrzeciono
 
-- [ ] Włączenie wrzeciona przy starcie maszyny — przełącznik na ekranie
-      Start/Stop.
-- [ ] Włączenie wrzeciona przy starcie programu — dwie opcje konfigurowalne
-      w konfiguracji maszyny.
+- [x] Włączenie wrzeciona przy starcie maszyny — przełącznik na panelu
+      operatora przy START/STOP (`start_with_machine`).
+- [x] Włączenie wrzeciona przy starcie programu — dwie opcje w konfiguracji
+      maszyny (ekran `/cycle`): `start_with_program` i `stop_after_program`.
+      **Do potwierdzenia z Tobą:** notatka mówi tylko „dwie opcje", nie mówi
+      które — przyjąłem parę „załącz na starcie" + „wyłącz po zakończeniu".
+      Szczegóły: [`zmiany/wrzeciono-start.md`](zmiany/wrzeciono-start.md).
 - [ ] Sterowanie prędkością wrzeciona przez wyjście PWM.
 - [ ] Włącz/wyłącz wrzeciona jako osobny port cyfrowy I/O.
 - [ ] Konfiguracja rozpędzania i hamowania wrzeciona dla sterowania PWM.

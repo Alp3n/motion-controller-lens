@@ -25,6 +25,7 @@ from .cycle import (
     empty_cycle,
 )
 from .profiles import PROFILE_GLOBAL, AxisParams, ParameterProfile
+from .spindle import SpindleConfig
 from .program import Operation, Program, cut_path, pass_depths
 
 
@@ -108,6 +109,14 @@ class Machine:
         self.status.active_profile = PROFILE_GLOBAL
         # cykl maszyny (poziom admina) — pusty, dopóki nie zostanie zdefiniowany
         self.cycle: Cycle = empty_cycle()
+        # wrzeciono: kiedy się załącza i kiedy gaśnie (app/spindle.py).
+        # Wartości domyślne odtwarzają zachowanie sprzed tej konfiguracji.
+        self.spindle: SpindleConfig = SpindleConfig()
+
+    # --- konfiguracja wrzeciona (wspólna) ---------------------------------
+
+    def apply_spindle_config(self, cfg: SpindleConfig) -> None:
+        self.spindle = cfg
 
     # --- konfiguracja osi (wspólna) ---------------------------------------
 
@@ -382,6 +391,8 @@ class SimulatedMachine(Machine):
         self._require_enable()
         self.status.state = MachineState.RUNNING
         self.status.alarm_message = ""
+        if self.spindle.start_with_machine:
+            self.status.spindle_on = True
         self._run_task = asyncio.create_task(self._run_program())
 
     async def stop(self) -> None:
@@ -447,12 +458,25 @@ class SimulatedMachine(Machine):
         dokładnie to samo, ale nie kończy pracy maszyny — po nim idą kolejne
         kroki cyklu.
         """
+        # Załączenie wrzeciona na starcie programu — jedno miejsce, tak jak
+        # w SC4HubMachine (komenda SPINDLE przed pierwszą operacją). Wcześniej
+        # robiła to każda operacja skrawająca z osobna, przez co ustawienie
+        # „program nie załącza wrzeciona" nie miało jak zadziałać.
+        if self.spindle.start_with_program:
+            self.status.spindle_on = True
         for op in program.operations:
             self.status.current_op = op.lp
             await self._execute_operation(program, op)
         # odjazd na Z bezpieczne i powrót do bazy
-        await self._move_to(self.status.x, self.status.y, program.z_safe, program.feed_travel)
+        await self._move_to(
+            self.status.x, self.status.y, program.z_safe, program.feed_travel
+        )
         await self._move_to(0.0, 0.0, program.z_safe, program.feed_travel)
+        # Wyłączenie po programie dotyczy granicy programu detalu, nie końca
+        # pracy maszyny — ten drugi gasi wrzeciono zawsze i bezwarunkowo,
+        # w `finally` _run_program/_run_cycle, także przy błędzie i STOP.
+        if self.spindle.stop_after_program:
+            self.status.spindle_on = False
 
     # --- cykl maszyny -----------------------------------------------------
 
@@ -483,6 +507,8 @@ class SimulatedMachine(Machine):
         self.status.state = MachineState.RUNNING
         self.status.alarm_message = ""
         self.status.cycle_loop = loop
+        if self.spindle.start_with_machine:
+            self.status.spindle_on = True
         self._run_task = asyncio.create_task(self._run_cycle(loop))
 
     async def _run_cycle(self, loop: bool) -> None:
@@ -530,11 +556,13 @@ class SimulatedMachine(Machine):
 
     async def _run_cycle_step_body(self, step: CycleStep) -> None:
         if step.kind == STEP_PAUSE:
+            was_on = self.status.spindle_on  # jak przy operacji PAUZA programu
             self.status.spindle_on = False
             self.status.state = MachineState.PAUSED
             self._resume_event.clear()
             await self._resume_event.wait()
             self.status.state = MachineState.RUNNING
+            self.status.spindle_on = was_on
             return
 
         if step.kind == STEP_OUTPUT:
@@ -564,11 +592,16 @@ class SimulatedMachine(Machine):
 
     async def _execute_operation(self, program: Program, op: Operation) -> None:
         if op.op_type == "PAUZA":
+            # wrzeciono gaśnie na czas pauzy i wraca do stanu sprzed niej —
+            # dotąd symulator zostawiał je wyłączone do końca programu, choć
+            # SC4HubMachine wysyłał po wznowieniu ponowne SPINDLE 1
+            was_on = self.status.spindle_on
             self.status.spindle_on = False
             self.status.state = MachineState.PAUSED
             self._resume_event.clear()
             await self._resume_event.wait()
             self.status.state = MachineState.RUNNING
+            self.status.spindle_on = was_on
             return
 
         if op.op_type == "WRZECIONO":
@@ -588,7 +621,6 @@ class SimulatedMachine(Machine):
         depths = pass_depths(op)
         path = cut_path(op)
 
-        self.status.spindle_on = True
         # dojazd nad punkt na wysokości bezpiecznej
         await self._move_to(self.status.x, self.status.y, program.z_safe, program.feed_travel)
         await self._move_to(op.x, op.y, program.z_safe, program.feed_travel)
@@ -774,6 +806,7 @@ class SC4HubMachine(Machine):
             )
         self.status.state = MachineState.RUNNING
         self.status.alarm_message = ""
+        await self._start_spindle_with_machine()
         self._run_task = asyncio.create_task(self._run_program())
 
     async def stop(self) -> None:
@@ -804,6 +837,15 @@ class SC4HubMachine(Machine):
         # natychmiastowe odbicie w statusie — bez czekania na kolejny STATUS
         await self.poll_status()
 
+    async def _start_spindle_with_machine(self) -> None:
+        """Wrzeciono rusza razem z maszyną, jeśli tak ustawiono (app/spindle.py).
+
+        Obroty w komendzie są informacyjne — SC4-Hub ma tylko wyjście
+        włącz/wyłącz, prędkość ustawia zewnętrzny regulator (temat J).
+        """
+        if self.spindle.start_with_machine:
+            await self._command(f"SPINDLE 1 {self.spindle.default_rpm:.0f}")
+
     async def _run_program_operations(self, program: Program) -> None:
         """Tłumaczy operacje programu na sekwencję komend MOVE dla mostka.
 
@@ -814,7 +856,12 @@ class SC4HubMachine(Machine):
         w symulatorze).
         """
         zs = program.z_safe
-        await self._command(f"SPINDLE 1 {program.spindle_rpm:.0f}")
+        # Wrzeciono na starcie programu — konfigurowalne (app/spindle.py).
+        # `spindle_running` pamięta, czy program je zapalił: po PAUZA wracamy
+        # do tego stanu, zamiast zapalać je bezwarunkowo jak wcześniej.
+        spindle_running = self.spindle.start_with_program
+        if spindle_running:
+            await self._command(f"SPINDLE 1 {program.spindle_rpm:.0f}")
         for op in program.operations:
             self.status.current_op = op.lp
             if op.op_type == "PAUZA":
@@ -823,13 +870,16 @@ class SC4HubMachine(Machine):
                 self._resume_event.clear()
                 await self._resume_event.wait()
                 self.status.state = MachineState.RUNNING
-                await self._command(f"SPINDLE 1 {program.spindle_rpm:.0f}")
+                if spindle_running:
+                    await self._command(f"SPINDLE 1 {program.spindle_rpm:.0f}")
                 continue
             if op.op_type == "WRZECIONO":
                 if op.rpm > 0:
                     await self._command(f"SPINDLE 1 {op.rpm:.0f}")
+                    spindle_running = True
                 else:
                     await self._command("SPINDLE 0")
+                    spindle_running = False
                 continue
 
             if op.op_type == "SZYBKI":
@@ -855,6 +905,9 @@ class SC4HubMachine(Machine):
                         f"MOVEXY {op.x:.3f} {op.y:.3f} {program.feed_travel:.0f}"
                     )
         await self._command(f"MOVEXY 0 0 {program.feed_travel:.0f}")
+        # jak w symulatorze: granica programu detalu, nie koniec pracy maszyny
+        if self.spindle.stop_after_program:
+            await self._command("SPINDLE 0")
 
     async def _run_program(self) -> None:
         program = self._program
@@ -904,6 +957,7 @@ class SC4HubMachine(Machine):
         self.status.state = MachineState.RUNNING
         self.status.alarm_message = ""
         self.status.cycle_loop = loop
+        await self._start_spindle_with_machine()
         self._run_task = asyncio.create_task(self._run_cycle(loop))
 
     async def _run_cycle(self, loop: bool) -> None:

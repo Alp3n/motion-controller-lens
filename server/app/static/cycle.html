@@ -84,6 +84,38 @@
     </section>
 
     <section class="panel">
+      <h2>Wrzeciono</h2>
+      <p class="muted" style="margin-top:-6px">
+        Co robi wrzeciono na granicach programu technologa. Przełącznik
+        „wrzeciono rusza razem z maszyną" jest na
+        <a href="/">panelu operatora</a>, przy START/STOP.
+      </p>
+      <label class="check-row">
+        <input type="checkbox" id="sp-start-program">
+        Załącz wrzeciono na starcie programu technologa
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="sp-stop-program">
+        Wyłącz wrzeciono po zakończeniu programu technologa
+      </label>
+      <div class="field" style="max-width:260px; margin-top:10px">
+        <label>Obroty domyślne [obr/min]</label>
+        <input id="sp-rpm" type="number" step="100" min="0">
+      </div>
+      <div class="btn-row" style="margin-top:12px; max-width:380px">
+        <button class="small" id="btn-spindle-save">💾 Zapisz wrzeciono</button>
+      </div>
+      <p id="spindle-msg" class="msg"></p>
+      <p class="muted" style="margin-top:6px">
+        <b>Obroty są informacyjne.</b> SC4-Hub ma tylko wyjście włącz/wyłącz —
+        prędkość ustawia zewnętrzny regulator PWM, nie ten ekran
+        (<code>docs/plan-rozwoju.md</code>, temat J). Na zakończenie pracy
+        maszyny — koniec cyklu, błąd, STOP — wrzeciono gaśnie zawsze,
+        niezależnie od tych ustawień.
+      </p>
+    </section>
+
+    <section class="panel">
       <h2>Rodzaje kroków</h2>
       <ul class="muted" style="margin:0; padding-left:18px; line-height:1.7">
         <li><b>RUCH</b> — przejazd wskazanych osi do zadanych pozycji. Osie
@@ -102,10 +134,10 @@
         dziś czytelnych wejść poza Global Stop) oraz ruchu osi innych niż
         X/Y/Z. Sterowanie wyjściami działa na razie wyłącznie w symulatorze —
         protokół mostka nie ma jeszcze komendy ustawiania wyjścia.
-        <b>Uwaga:</b> uruchomienie cyklu (jeden przebieg i tryb automatyczny)
-        działa dziś wyłącznie w symulatorze — na sprzęcie mostek nie ma
-        jeszcze obsługi cyklu (patrz <code>docs/plan-rozwoju.md</code>,
-        temat B).
+        <b>Uwaga:</b> uruchomienie cyklu na sprzęcie jest już zaimplementowane
+        (<code>SC4HubMachine.start_cycle</code>), ale <b>nie zostało
+        zweryfikowane na fizycznym sterowniku</b> — patrz
+        <code>docs/zmiany/cykl-na-sprzecie.md</code>.
       </p>
     </section>
   </main>

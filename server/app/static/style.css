@@ -141,6 +141,11 @@ input:invalid { border-color: var(--err); }
    (temat F): operator musi widzieć, że ruch faktycznie trwa. */
 button.jog:active { background: var(--accent); color: #06203a; border-color: var(--accent); }
 
+/* Przełączniki tak/nie w konfiguracji (wrzeciono) — checkbox nie ma się
+   rozciągać na całą szerokość jak zwykły input. */
+.check-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.check-row input { width: auto; margin: 0; }
+
 /* Przycisk „dojazd do HOME wszystkich osi" — środek klawiszy strzałek XY
    (notatki funkcjonalne §1). Wyróżniony, żeby nie ginął między strzałkami. */
 button.home-all {
