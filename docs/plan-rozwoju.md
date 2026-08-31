@@ -495,14 +495,18 @@ dla programu technologa i cyklu maszyny.
       „zapisz jako", usuwanie, pola rysowane wg rejestru procedur.
       29 nowych testów, 170/170 przechodzi. Szczegóły:
       [`zmiany/ekran-smart.md`](zmiany/ekran-smart.md).
-- [ ] **Etap 2:** **ekran `/sila` — kontrola siły i kalibracja.** Podgląd
-      obciążenia na żywo, **próba przejazdu wyznaczająca charakterystykę
-      bazową osi** (tarcie, ciężar, osobno dla obu kierunków i kilku
-      prędkości), kalibracja moment→siła siłomierzem, pomiar realnej
-      częstotliwości próbkowania; zapis do `config/kalibracja.json`.
-      Interfejs w Pythonie/JS (rejestrowanie to nie reagowanie — nie musi
-      być w C++), ale **sensowne liczby dopiero po etapie 0**. Ten ekran
-      daje progi siły do definicji SMART; bez niego dobiera się je na oślep.
+- [~] **Etap 2 (2026-08-31, częściowo):** **ekran `/sila` — kontrola siły
+      i kalibracja.** Zrobione: podgląd obciążenia na żywo (WebSocket, jak
+      panel operatora) i **kalibracja moment→siła siłomierzem** — ręczne pary
+      (moment %, siła N) w `config/kalibracja.json`. **Świadomie NIE
+      zrobione:** automatyczna **próba przejazdu wyznaczająca charakterystykę
+      bazową osi** (tarcie, ciężar, oba kierunki, kilka prędkości) i pomiar
+      realnej częstotliwości próbkowania — obie wymagają rzeczywistego ruchu
+      maszyny, więc profil ruchu (zakres, prędkość, `TrqGlobal` próby) trzeba
+      ustalić przy maszynie, nie zdalnie. Ten ekran daje progi siły do
+      definicji SMART już teraz (na ręcznie zmierzonych parach); bez próby
+      przejazdu brakuje tylko systematycznej charakterystyki tarcia/ciężaru.
+      13 nowych testów. Szczegóły: [`zmiany/ekran-sila.md`](zmiany/ekran-sila.md).
 - [x] **Etap 3:** operacja `SMART` w programie technologa (format 5 `.prg`,
       kolumna z nazwą definicji) + wybór z listy w edytorze.
 - [x] **Etap 4:** krok `SMART` w cyklu maszyny (`/cycle`) — ta sama definicja

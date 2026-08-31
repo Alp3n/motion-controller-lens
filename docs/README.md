@@ -152,5 +152,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   momentu profilu dociera do serw (`TRQLIMIT`, `ILimits.TrqGlobal`, etap 2b
   tematu B). Napisane i skompilowane osobno, **niewdrożone** — ważna
   kolejność wdrożenia (mostek przed Pythonem), inaczej zrywa połączenie.
+- [zmiany/ekran-sila.md](zmiany/ekran-sila.md) — ekran `/sila`: podgląd
+  momentu na żywo i ręczna kalibracja moment→siła (etap 2 tematu K,
+  częściowo — bez automatycznej próby przejazdu, bo ta rusza maszyną).
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

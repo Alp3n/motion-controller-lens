@@ -15,6 +15,7 @@
     "/profiles": "admin",
     "/cycle": "admin",
     "/smart": "admin",
+    "/sila": "admin",
     "/diagnostics": "admin",
   };
 

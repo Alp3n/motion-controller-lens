@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import audit, axes, config, cycle, outputs, profiles, smart, spindle, users
+from . import audit, axes, config, cycle, kalibracja, outputs, profiles, smart, spindle, users
 from .machine import (
     MachineError,
     MachineState,
@@ -74,6 +74,12 @@ machine.apply_profiles(profiles_cfg, active_profile)
 # odwołują się do definicji po nazwie.
 smart_cfg = smart.load(config.SMART_FILE)
 machine.apply_smart(smart_cfg)
+
+# Kalibracja moment -> siła (etap 2 tematu K) — pary (moment %, siła N)
+# wpisane po pomiarze siłomierzem. Dane pomocnicze do dobierania progów,
+# nie parametr bezpieczeństwa: błędny/brakujący plik nie przerywa startu
+# (powód w app/kalibracja.py).
+kalibracja_cfg = kalibracja.load(config.KALIBRACJA_FILE)
 
 # Cykl maszyny — kroki poziomu admina wokół programu detalu. Pusty, dopóki
 # nie zostanie zdefiniowany; błędny plik przerywa start (powód w app/cycle.py).
@@ -322,6 +328,18 @@ class SmartRequest(BaseModel):
 
     definitions: dict[str, dict] = Field(
         ..., description="nazwa definicji -> {procedure, params, note}"
+    )
+
+
+class KalibracjaRequest(BaseModel):
+    """Punkty kalibracji moment -> siła z ekranu `/sila`.
+
+    Jak przy osiach, profilach i SMART — walidacją zajmuje się
+    app/kalibracja.py, żeby operator zobaczył komunikat po polsku.
+    """
+
+    kalibracja: dict[str, dict] = Field(
+        ..., description="oś (x/y/z) -> {punkty: [{moment_pct, sila_n, ...}]}"
     )
 
 
@@ -880,6 +898,36 @@ async def put_smart(req: SmartRequest, user=Depends(require_admin)):
     }
 
 
+# --- kalibracja moment -> siła (etap 2 tematu K, ekran /sila) --------------
+
+
+@app.get("/api/kalibracja")
+async def get_kalibracja(user=Depends(require_operator)):
+    """Punkty kalibracji moment->siła zapisane dla każdej osi."""
+    return {
+        "kalibracja": kalibracja.to_dict(kalibracja_cfg),
+        "file": str(config.KALIBRACJA_FILE),
+    }
+
+
+@app.put("/api/kalibracja")
+async def put_kalibracja(req: KalibracjaRequest, user=Depends(require_admin)):
+    """Zapis punktów kalibracji — dane pomiarowe, nie parametr bezpieczeństwa."""
+    global kalibracja_cfg
+    try:
+        new_cfg = kalibracja.parse_kalibracja(req.kalibracja)
+    except kalibracja.KalibracjaError as exc:
+        raise HTTPException(422, str(exc))
+
+    try:
+        kalibracja.save(config.KALIBRACJA_FILE, new_cfg)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.KALIBRACJA_FILE}: {exc}")
+    kalibracja_cfg = new_cfg
+    _log(user, "zapis kalibracji moment->siła")
+    return {"ok": True, "kalibracja": kalibracja.to_dict(new_cfg)}
+
+
 # --- cykl maszyny ---------------------------------------------------------
 
 
@@ -1151,6 +1199,11 @@ async def diagnostics_page(request: Request):
 @app.get("/smart", include_in_schema=False)
 async def smart_page(request: Request):
     return _page(request, "smart.html", users.ROLE_ADMIN)
+
+
+@app.get("/sila", include_in_schema=False)
+async def sila_page(request: Request):
+    return _page(request, "sila.html", users.ROLE_ADMIN)
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

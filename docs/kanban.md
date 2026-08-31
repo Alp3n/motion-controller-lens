@@ -150,11 +150,13 @@ Definicje wspólne dla programu technologa i cyklu maszyny.
       Szczegóły: `zmiany/symulacja-momentu.md`
 - [x] Etap 1: model definicji + `/api/smart` + **ekran `/smart`** (lista,
       edycja, „zapisz jako", usuwanie) — `zmiany/ekran-smart.md`
-- [ ] Etap 2: **ekran `/sila` — kontrola siły i kalibracja**: podgląd na
-      żywo, próba przejazdu (charakterystyka bazowa osi: tarcie, ciężar,
-      oba kierunki, kilka prędkości), kalibracja siłomierzem, pomiar
-      próbkowania, zapis `config/kalibracja.json`. Kod bez sprzętu,
-      sensowne liczby po etapie 0
+- [~] Etap 2: **ekran `/sila`** — zrobione: podgląd momentu na żywo, ręczna
+      kalibracja siłomierzem (`config/kalibracja.json`). **Zostaje:**
+      automatyczna próba przejazdu (charakterystyka bazowa osi: tarcie,
+      ciężar, oba kierunki, kilka prędkości) — świadomie odłożona, bo rusza
+      maszyną i wymaga ustalenia profilu ruchu przy maszynie; pomiar
+      częstotliwości próbkowania (razem z próbą przejazdu). Szczegóły:
+      `zmiany/ekran-sila.md`
 - [x] Etap 3: operacja `SMART` w `.prg` (format 5) + wybór z listy
       w edytorze — `zmiany/smart-w-programie-i-cyklu.md`. Na sprzęcie mostek
       **odmawia** wykonania (lepsze niż ruch bez kontroli siły), w symulatorze

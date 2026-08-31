@@ -21,3 +21,4 @@ os.environ.setdefault("USERS_CONFIG", os.path.join(_tmp, "users.json"))
 os.environ.setdefault("AUDIT_LOG", os.path.join(_tmp, "dziennik-zmian.jsonl"))
 
 os.environ.setdefault("SMART_CONFIG", os.path.join(_tmp, "smart.json"))
+os.environ.setdefault("KALIBRACJA_CONFIG", os.path.join(_tmp, "kalibracja.json"))

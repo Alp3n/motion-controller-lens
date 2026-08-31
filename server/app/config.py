@@ -74,6 +74,12 @@ SPINDLE_OUTPUT = os.environ.get("SPINDLE_OUTPUT")
 # np. „SMART-sila"); wspólne dla programu technologa i cyklu maszyny
 SMART_FILE = Path(os.environ.get("SMART_CONFIG", "config/smart.json")).resolve()
 
+# kalibracja moment -> siła (etap 2 tematu K) — dane pomocnicze, nie parametr
+# bezpieczeństwa; błędny/brakujący plik nie przerywa startu (app/kalibracja.py)
+KALIBRACJA_FILE = Path(
+    os.environ.get("KALIBRACJA_CONFIG", "config/kalibracja.json")
+).resolve()
+
 # wartości startowe obszaru roboczego [mm] — używane tylko, dopóki nie ma
 # pliku konfiguracji osi
 WORK_AREA = {
