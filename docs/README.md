@@ -107,6 +107,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   dostaje `start_cycle` (brakowało go od etapu 4 tematu B — `/cycle` nie
   działał na sprzęcie). Pierwsze testy automatyczne dla tej klasy. Nie
   zweryfikowane na fizycznym sterowniku.
+- [zmiany/porzadek-konfiguracji.md](zmiany/porzadek-konfiguracji.md) — poprawka
+  `.gitignore` (wzorce nie łapały `server/config/`) i opis rozjazdu: konfiguracja
+  w dwóch katalogach, część śledzona w gicie — propozycja uporządkowania.
 - [zmiany/wyjscia-fizyczne.md](zmiany/wyjscia-fizyczne.md) — wyjścia
   `BRAKE_0`/`BRAKE_1` podpięte do aplikacji: komenda `OUTPUT` w mostku, krok
   `WYJSCIE` przełącza fizyczne wyjście, przeznaczenie i gaszenie przy STOP.

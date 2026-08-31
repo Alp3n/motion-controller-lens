@@ -6,6 +6,22 @@ __pycache__/
 .pytest_cache/
 .venv/
 venv/
-config/smart.json
-config/users.json
-config/dziennik-zmian.jsonl
+
+# --- pliki tworzone w czasie pracy panelu --------------------------------
+# UWAGA co do ścieżek: serwer uruchamia się z katalogu `server/` i większość
+# ścieżek konfiguracji jest względna, więc pliki lądują w `server/config/`.
+# Wyjątkiem jest AXES_CONFIG, które `tools/uruchom-maszyne.sh` wskazuje jawnie
+# na `config/` w katalogu głównym.
+#
+# Dlatego wzorce mają `**/`: wzorzec zawierający ukośnik (np. `config/users.json`)
+# git kotwiczy w katalogu tego pliku .gitignore i NIE złapałby
+# `server/config/users.json`. Sprawdzenie: `git check-ignore -v <ścieżka>`.
+
+# konta i skróty haseł — NIGDY w repozytorium
+**/config/users.json
+# dziennik zmian konfiguracji — dane konkretnej maszyny, rośnie w nieskończoność
+**/config/dziennik-zmian.jsonl
+# konfiguracja zapisywana z panelu; patrz docs/zmiany/porzadek-konfiguracji.md
+**/config/smart.json
+**/config/wyjscia.json
+**/config/spindle.json
