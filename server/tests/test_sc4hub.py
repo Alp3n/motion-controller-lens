@@ -268,3 +268,73 @@ def test_cycle_loop_repeats_until_stopped():
             m._run_task = None
 
     asyncio.run(asyncio.wait_for(drive_loop(), timeout=5))
+
+
+# --- JEDŹ DO ZERA (dojazd do zera po bazowaniu, bez ponownego bazowania) --
+
+
+def _axes_with_home_order(orders):
+    return axes_mod.parse_axes(
+        {
+            a: {
+                "length": 200, "home": "srodek",
+                "soft_min": -100, "soft_max": 100, "mm_per_rev": 5,
+                "home_order": orders[a],
+            }
+            for a in ("x", "y", "z")
+        }
+    )
+
+
+def test_go_to_zero_wymaga_stanu_ready():
+    m = _machine()
+    m.status.state = MachineState.NOT_HOMED
+    with pytest.raises(MachineError, match="READY"):
+        asyncio.run(m.go_to_zero())
+
+
+def test_go_to_zero_z_first_wysyla_movez_przed_movexy():
+    axes_cfg = _axes_with_home_order({"z": 1, "x": 2, "y": 3})
+    m = _machine(axes_cfg)
+    m.status.state = MachineState.READY
+
+    asyncio.run(m.go_to_zero())
+
+    assert m.calls == ["MOVEZ 0.000 1000", "MOVEXY 0.000 0.000 1000"]
+
+
+def test_go_to_zero_xy_first_wysyla_jedna_komende_movexy():
+    """Konfiguracja produkcyjna tej maszyny: X=1, Y=2, Z=3. X i Y jadą razem
+    jedną komendą MOVEXY (mostek nie umie ruszyć nimi osobno), potem Z."""
+    axes_cfg = _axes_with_home_order({"x": 1, "y": 2, "z": 3})
+    m = _machine(axes_cfg)
+    m.status.state = MachineState.READY
+
+    asyncio.run(m.go_to_zero())
+
+    assert m.calls == ["MOVEXY 0.000 0.000 1000", "MOVEZ 0.000 1000"]
+
+
+def test_go_to_zero_z_pustej_kolejnosci_jest_odrzucony():
+    axes_cfg = _axes_with_home_order({"x": 0, "y": 0, "z": 0})
+    m = _machine(axes_cfg)
+    m.status.state = MachineState.READY
+
+    with pytest.raises(MachineError, match="kolejności bazowania"):
+        asyncio.run(m.go_to_zero())
+    assert m.calls == []
+
+
+def test_go_to_zero_respects_soft_limits():
+    axes_cfg = axes_mod.parse_axes(
+        {
+            a: {"length": 100, "home": "srodek", "soft_min": 5, "soft_max": 50, "mm_per_rev": 5}
+            for a in ("x", "y", "z")
+        }
+    )
+    m = _machine(axes_cfg)
+    m.status.state = MachineState.READY
+
+    with pytest.raises(MachineError, match="limitem programowym"):
+        asyncio.run(m.go_to_zero())
+    assert m.calls == []

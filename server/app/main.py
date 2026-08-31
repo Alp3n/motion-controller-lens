@@ -945,6 +945,15 @@ async def machine_home(user=Depends(require_operator)):
     return {"ok": True}
 
 
+@app.post("/api/machine/go-to-zero")
+async def machine_go_to_zero(user=Depends(require_operator)):
+    try:
+        await machine.go_to_zero()
+    except MachineError as exc:
+        raise HTTPException(409, str(exc))
+    return {"ok": True}
+
+
 @app.post("/api/machine/start")
 async def machine_start(user=Depends(require_operator)):
     try:

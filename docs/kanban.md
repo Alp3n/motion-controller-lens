@@ -44,6 +44,13 @@ mam to założyć.
 - [x] Prędkości JOG i bazowania per oś (max i robocza już były gotowe —
       profile parametrów, `POSUW_ROBOCZY`/`POSUW_DOJAZDU`); bazowanie tylko
       w symulatorze, JOG też na sprzęcie
+- [x] Przycisk „JEDŹ DO ZERA" na panelu operatora, pod przyciskiem bazowania
+      — dojazd wszystkich osi do punktu zerowego (po zbazowaniu, gdy maszyna
+      stoi gdzie indziej), w tej samej kolejności co bazowanie. To ruch
+      pozycyjny, nie ponowne bazowanie. **Ryzyko nie złagodzone:** nie
+      podnosi Z przed ruchem XY, w przeciwieństwie do bazowania — możliwa
+      kolizja przy niskim Z. Nie zweryfikowane na fizycznym sterowniku.
+      Szczegóły: `zmiany/jedz-do-zera.md`
 - [x] Siła/prędkość zależne od pozycji — sprawdzone: *Conditional Torque
       Limiting* w serwie (ClearView) + `TrqGlobal` z API
 - [x] Siła per operacja w programie technologa — kolumna MOMENT, format 4

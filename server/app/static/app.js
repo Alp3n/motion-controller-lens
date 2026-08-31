@@ -156,6 +156,10 @@ const homeAll = () =>
   api("POST", "/api/machine/home").catch((e) => showMsg($("ctrl-msg"), e.message));
 $("btn-home").onclick = homeAll;
 $("btn-home-xy").onclick = homeAll;
+/* Dojazd do zera po bazowaniu — ruch pozycyjny, nie ponowne bazowanie
+   (maszyna po JOG-u albo cyklu stoi gdzie indziej niż punkt zerowy). */
+$("btn-go-to-zero").onclick = () =>
+  api("POST", "/api/machine/go-to-zero").catch((e) => showMsg($("ctrl-msg"), e.message));
 $("btn-reset").onclick = () =>
   api("POST", "/api/machine/reset").catch((e) => showMsg($("ctrl-msg"), e.message));
 

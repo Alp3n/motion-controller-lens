@@ -306,6 +306,9 @@ class Machine:
     async def home(self) -> None:
         raise NotImplementedError
 
+    async def go_to_zero(self) -> None:
+        raise NotImplementedError
+
     async def start(self) -> None:
         raise NotImplementedError
 
@@ -441,6 +444,48 @@ class SimulatedMachine(Machine):
             await self._move_to(
                 self.status.x, self.status.y, lift, feed=self._home_feed(["z"])
             )
+            for group in groups:
+                target = {"x": self.status.x, "y": self.status.y, "z": self.status.z}
+                for axis in group:
+                    target[axis] = 0.0
+                await self._move_to(
+                    target["x"], target["y"], target["z"], feed=self._home_feed(group)
+                )
+        except asyncio.CancelledError:
+            return
+        finally:
+            self._run_task = None
+        self.status.state = MachineState.READY
+
+    async def go_to_zero(self) -> None:
+        """Dojazd do zera po bazowaniu — ruch pozycyjny, NIE ponowne bazowanie.
+
+        Zakłada, że maszyna jest już zbazowana (stan READY): to zwykły ruch do
+        (0,0,0), w tej samej kolejności grup co bazowanie (ekran /homing).
+
+        RYZYKO — nie łagodzę: w przeciwieństwie do `_do_home` NIE podnosi
+        najpierw Z. Jedzie dokładnie w kolejności z konfiguracji; jeśli
+        aktualna pozycja XY przy niskim Z koliduje z detalem/oprzyrządowaniem,
+        ten ruch tego nie wykryje. Patrz docs/zmiany/jedz-do-zera.md.
+        """
+        if self.status.state != MachineState.READY:
+            raise MachineError(
+                f"dojazd do zera możliwy tylko w stanie READY "
+                f"(obecnie: {self.status.state.value})"
+            )
+        groups = self.home_groups()
+        if not groups:
+            raise MachineError(
+                "żadna oś nie ma ustawionej kolejności bazowania — ustaw ją na "
+                "ekranie konfiguracji bazowania"
+            )
+        self._require_not_released(["x", "y", "z"])
+        self._require_enable()
+        self.status.state = MachineState.HOMING
+        self._run_task = asyncio.create_task(self._do_go_to_zero(groups))
+
+    async def _do_go_to_zero(self, groups: list[list[str]]) -> None:
+        try:
             for group in groups:
                 target = {"x": self.status.x, "y": self.status.y, "z": self.status.z}
                 for axis in group:
@@ -1045,6 +1090,46 @@ class SC4HubMachine(Machine):
     async def home(self) -> None:
         self._require_not_released(["x", "y", "z"])
         await self._command("HOME")
+
+    async def go_to_zero(self) -> None:
+        """Dojazd do zera — ruch pozycyjny, NIE ponowne bazowanie.
+
+        W przeciwieństwie do `home()` (jedna komenda `HOME`, sekwencję i tak
+        prowadzi serwo) tu serwer sam wysyła `MOVEZ`/`MOVEXY` do zera, w
+        kolejności grup z ekranu /homing. X i Y trafiają zawsze do jednej
+        komendy `MOVEXY` — mostek nie umie ruszyć nimi osobno — więc grupa,
+        w której jako pierwsza pojawi się X albo Y, wysyła `MOVEXY 0 0` za obie.
+        Blokuje na czas ruchu, jak `home()` — mostek nie odpowiada na STATUS
+        w trakcie ruchu (`pollDuringMove()`).
+
+        RYZYKO — nie łagodzę: w przeciwieństwie do bazowania w symulatorze
+        (`_do_home`) NIE podnosi najpierw Z. Jedzie dokładnie w kolejności
+        z konfiguracji; jeśli aktualna pozycja XY przy niskim Z koliduje z
+        detalem/oprzyrządowaniem, ten ruch tego nie wykryje. Patrz
+        docs/zmiany/jedz-do-zera.md.
+        """
+        if self.status.state != MachineState.READY:
+            raise MachineError(
+                f"dojazd do zera możliwy tylko w stanie READY "
+                f"(obecnie: {self.status.state.value})"
+            )
+        groups = self.home_groups()
+        if not groups:
+            raise MachineError(
+                "żadna oś nie ma ustawionej kolejności bazowania — ustaw ją na "
+                "ekranie konfiguracji bazowania"
+            )
+        self._require_not_released(["x", "y", "z"])
+        for axis in ("x", "y", "z"):
+            self._check_soft_limit(axis, 0.0)
+        feed = 1000.0
+        xy_done = False
+        for group in groups:
+            if "z" in group:
+                await self._command(f"MOVEZ 0.000 {feed:.0f}")
+            if not xy_done and ("x" in group or "y" in group):
+                await self._command(f"MOVEXY 0.000 0.000 {feed:.0f}")
+                xy_done = True
 
     async def start(self) -> None:
         if self.status.state == MachineState.PAUSED:

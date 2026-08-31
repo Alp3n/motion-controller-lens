@@ -202,8 +202,55 @@ def test_bez_konfiguracji_osi_dziala_dawna_sekwencja():
     assert SimulatedMachine().home_groups() == [["x", "y"], ["z"]]
 
 
+# --- JEDŹ DO ZERA (dojazd do zera po bazowaniu, bez ponownego bazowania) --
+
+
+def test_jedz_do_zera_wymaga_stanu_ready():
+    m = SimulatedMachine()
+    m.apply_axis_config(_axes())
+    m.status.state = MachineState.NOT_HOMED
+    with pytest.raises(MachineError, match="READY"):
+        asyncio.run(m.go_to_zero())
+
+
+def test_jedz_do_zera_porusza_w_kolejnosci_bez_najpierw_z():
+    """W przeciwieństwie do bazowania NIE ma odjazdu w górę na start —
+    to zwykły dojazd do zera, nie procedura bazowania."""
+    m = SimulatedMachine()
+    m.apply_axis_config(_axes(z={"home_order": 1, "vel_home": 300},
+                              x={"home_order": 2}, y={"home_order": 3}))
+    m.status.state = MachineState.READY
+    m.status.x, m.status.y, m.status.z = 10.0, 20.0, 5.0
+    moves = _record_moves(m)
+
+    asyncio.run(_go_to_zero_and_wait(m))
+
+    assert [mv[:3] for mv in moves] == [
+        (10.0, 20.0, 0.0),
+        (0.0, 20.0, 0.0),
+        (0.0, 0.0, 0.0),
+    ]
+    assert m.status.state is MachineState.READY
+
+
+def test_jedz_do_zera_z_pustej_kolejnosci_jest_odrzucony():
+    m = SimulatedMachine()
+    m.apply_axis_config(_axes(x={"home_order": 0}, y={"home_order": 0},
+                              z={"home_order": 0}))
+    m.status.state = MachineState.READY
+    with pytest.raises(MachineError, match="kolejności bazowania"):
+        asyncio.run(m.go_to_zero())
+
+
 async def _home_and_wait(machine):
     await machine.home()
+    task = machine._run_task
+    if task is not None:
+        await task
+
+
+async def _go_to_zero_and_wait(machine):
+    await machine.go_to_zero()
     task = machine._run_task
     if task is not None:
         await task

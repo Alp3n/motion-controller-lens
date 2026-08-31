@@ -142,5 +142,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/skill-uruchom-projekt.md](zmiany/skill-uruchom-projekt.md) — skill
   Claude Code uruchamiający panel serwera jednym poleceniem, bezpiecznie na
   hoście produkcyjnym i na checkoucie deweloperskim.
+- [zmiany/jedz-do-zera.md](zmiany/jedz-do-zera.md) — przycisk „JEDŹ DO ZERA"
+  na panelu operatora: dojazd do (0,0,0) po bazowaniu, bez ponownego
+  bazowania; ryzyko kolizji, bo nie podnosi Z przed ruchem XY.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

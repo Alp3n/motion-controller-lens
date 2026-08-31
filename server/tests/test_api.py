@@ -135,5 +135,14 @@ def test_home_refused_on_released_axis(client):
     client.post("/api/machine/release", json={"axis": "y", "released": False})
 
 
+def test_go_to_zero_requires_ready_state(client):
+    """Maszyna w tym pliku testów nie jest zbazowana — dojazd do zera musi
+    to odrzucić, tak samo jak start programu (patrz `test_home_refused_on_released_axis`
+    obok — inny powód odrzucenia, ten sam brak gotowości maszyny)."""
+    res = client.post("/api/machine/go-to-zero")
+    assert res.status_code == 409
+    assert "READY" in res.json()["detail"]
+
+
 def test_release_rejects_unknown_axis(client):
     assert client.post("/api/machine/release", json={"axis": "q", "released": True}).status_code == 422

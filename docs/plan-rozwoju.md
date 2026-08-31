@@ -133,6 +133,19 @@ cyklu (temat F), ruch osi innych niż X/Y/Z (temat C).
       jednej komendzie `HOME`, więc kolejność i prędkość z ekranu działają
       **tylko w symulatorze**. Szczegóły:
       [`zmiany/ekran-bazowania.md`](zmiany/ekran-bazowania.md).
+- [x] Przycisk „JEDŹ DO ZERA" na panelu operatora, pod przyciskiem bazowania
+      — **zaimplementowany 2026-08-31**. To **osobna operacja od bazowania**:
+      zakłada, że maszyna jest już zbazowana (wymaga stanu READY, inaczej
+      odmawia), i sprowadza wszystkie osie z powrotem do zera w tej samej
+      kolejności co bazowanie (`home_groups()` z ekranu `/homing`). Zwykły
+      ruch pozycyjny do (0,0,0), nie ponowne bazowanie. Na sprzęcie X i Y
+      zawsze jadą razem jedną komendą `MOVEXY` (mostek nie rusza nimi
+      osobno). **Ryzyko nie złagodzone:** w przeciwieństwie do `_do_home`
+      NIE podnosi najpierw Z — przy obecnej konfiguracji tej maszyny
+      (X=1, Y=2, Z=3) XY jedzie do zera, zanim Z wróci na swoje; jeśli zero
+      XY nie jest bezpieczne przy aktualnej wysokości Z, może dojść do
+      kolizji. Nie zweryfikowane na fizycznym sterowniku. Szczegóły:
+      [`zmiany/jedz-do-zera.md`](zmiany/jedz-do-zera.md).
 - [x] Konfiguracja siły — **trzy poziomy**: globalna (domyślnie 20%), ruch
       podczas cyklu maszyny (per zdefiniowany ruch, domyślnie 15%), ruch
       podczas programu technologa (domyślnie 10%). Mechanizm (`ILimits.TrqGlobal`
