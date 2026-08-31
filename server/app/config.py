@@ -87,3 +87,10 @@ WORK_AREA = {
 
 # maksymalny skok pojedynczego ruchu JOG [mm]
 JOG_MAX_STEP = float(os.environ.get("JOG_MAX_STEP", "10"))
+
+# Token dla integracji MES (POST /api/mes/select-order) — inny kanał niż
+# role/logowanie operatora, bo wywołuje to system, nie człowiek. Bez ustawienia
+# endpoint zostaje otwarty jak dotychczas (temat E, "otwarte po tej zmianie"
+# w zmiany/role-i-logowanie.md) — to świadomie zachowana kompatybilność,
+# nie przeoczenie.
+MES_TOKEN = os.environ.get("MES_TOKEN")

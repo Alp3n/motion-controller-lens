@@ -145,5 +145,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/jedz-do-zera.md](zmiany/jedz-do-zera.md) — przycisk „JEDŹ DO ZERA"
   na panelu operatora: dojazd do (0,0,0) po bazowaniu, bez ponownego
   bazowania; ryzyko kolizji, bo nie podnosi Z przed ruchem XY.
+- [zmiany/token-mes.md](zmiany/token-mes.md) — opcjonalny token
+  (`X-MES-Token`) dla `POST /api/mes/select-order`; domyślnie wyłączony,
+  nie zmienia istniejącego zachowania dopóki nie ustawi się `MES_TOKEN`.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

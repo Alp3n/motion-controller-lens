@@ -65,6 +65,54 @@ def test_mes_select_order_bad_number(client):
     assert res.status_code == 400
 
 
+def test_mes_select_order_bez_tokenu_gdy_nieustawiony(client):
+    """Domyślnie (MES_TOKEN nieustawiony) endpoint zostaje otwarty — świadoma
+    kompatybilność wsteczna, nie przeoczenie (patrz zmiany/token-mes.md)."""
+    from app import config
+
+    assert config.MES_TOKEN is None
+    res = client.post(
+        "/api/mes/select-order",
+        json={"order_id": "ZL-TOK-1", "program_number": "583912004711"},
+    )
+    assert res.status_code == 200
+
+
+def test_mes_select_order_wymaga_tokenu_gdy_ustawiony(client, monkeypatch):
+    from app import config
+
+    monkeypatch.setattr(config, "MES_TOKEN", "sekret-mes")
+    res = client.post(
+        "/api/mes/select-order",
+        json={"order_id": "ZL-TOK-2", "program_number": "583912004711"},
+    )
+    assert res.status_code == 401
+
+
+def test_mes_select_order_odrzuca_zly_token(client, monkeypatch):
+    from app import config
+
+    monkeypatch.setattr(config, "MES_TOKEN", "sekret-mes")
+    res = client.post(
+        "/api/mes/select-order",
+        json={"order_id": "ZL-TOK-3", "program_number": "583912004711"},
+        headers={"X-MES-Token": "zly"},
+    )
+    assert res.status_code == 401
+
+
+def test_mes_select_order_akceptuje_poprawny_token(client, monkeypatch):
+    from app import config
+
+    monkeypatch.setattr(config, "MES_TOKEN", "sekret-mes")
+    res = client.post(
+        "/api/mes/select-order",
+        json={"order_id": "ZL-TOK-4", "program_number": "583912004711"},
+        headers={"X-MES-Token": "sekret-mes"},
+    )
+    assert res.status_code == 200
+
+
 def test_start_requires_ready_state(client):
     """Bez bazowania (NOT_HOMED) start musi być odrzucony."""
     client.post("/api/machine/reset")

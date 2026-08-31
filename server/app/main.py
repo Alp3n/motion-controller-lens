@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import secrets
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -145,6 +146,23 @@ def require_role(required: str):
 require_operator = require_role(users.ROLE_OPERATOR)
 require_technolog = require_role(users.ROLE_TECHNOLOG)
 require_admin = require_role(users.ROLE_ADMIN)
+
+
+def require_mes_token(request: Request) -> None:
+    """Token integracji MES — osobny kanał od ról operatora (wywołuje to
+    system, nie człowiek, więc nie ma tu sesji/ciasteczka do sprawdzenia).
+
+    Bez ustawionego `MES_TOKEN` endpoint zostaje otwarty jak dotychczas —
+    to świadomie zachowana kompatybilność (temat E), nie przeoczenie: MES,
+    który dziś nie ma czym się przedstawić, nie może stracić integracji po
+    aktualizacji serwera.
+    """
+    token = config.MES_TOKEN
+    if not token:
+        return
+    got = request.headers.get("X-MES-Token", "")
+    if not secrets.compare_digest(got, token):
+        raise HTTPException(401, "nieprawidłowy lub brakujący token MES (nagłówek X-MES-Token)")
 
 
 def _log(user: users.User | None, action: str, detail: str = "") -> None:
@@ -451,7 +469,7 @@ async def auth_logout(request: Request, response: Response):
 
 
 @app.post("/api/mes/select-order")
-async def mes_select_order(req: SelectOrderRequest):
+async def mes_select_order(req: SelectOrderRequest, _token=Depends(require_mes_token)):
     """MES podaje zlecenie i numer programu; maszyna ładuje konfigurację."""
     program = _load_and_validate(req.program_number)
     try:

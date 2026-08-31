@@ -233,9 +233,12 @@ niżej; rozstrzygnąć **przed** rozpoczęciem tego tematu.
   odpornym na manipulację; logowanie **nie jest funkcją bezpieczeństwa maszyny**
   — tę pełni sprzętowy E-stop / Global Stop.
 
-- [ ] **Otwarte po tej zmianie:** `POST /api/mes/select-order` dalej działa bez
-      uwierzytelnienia — wywołuje je system MES, nie człowiek. Do zrobienia
-      osobno: token dla MES albo ograniczenie na poziomie sieci.
+- [x] **Zamknięte 2026-08-31:** `POST /api/mes/select-order` ma teraz
+      opcjonalny token (`X-MES-Token`, włączany zmienną `MES_TOKEN`) —
+      osobny kanał od sesji/ról, bo wywołuje to system MES, nie człowiek.
+      Domyślnie (bez `MES_TOKEN`) endpoint zostaje otwarty jak dotychczas.
+      **Włączenie na tej maszynie nie zrobione** — wymaga ustalenia sekretu
+      z konfiguracją MES i restartu usługi. Szczegóły: `zmiany/token-mes.md`.
 
 - [ ] Przed uruchomieniem produkcyjnym: przegląd całego obwodu
       bezpieczeństwa (E-stop, Global Stop, kurtyny, kategoria wg

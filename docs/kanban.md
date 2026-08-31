@@ -72,8 +72,11 @@ mam to założyć.
 - [ ] Wejście sygnału drzwi (PWM/binarny), aktywne tylko w trybie auto
 - [x] Warstwa ról i logowania (admin/technolog/operator) — **osobne konta**
       (Twoja decyzja), `tools/konta.py`, dziennik zmian „kto co zmienił"
-- [ ] `POST /api/mes/select-order` dalej bez uwierzytelnienia — token dla MES
-      albo ograniczenie sieciowe, do zrobienia osobno
+- [x] `POST /api/mes/select-order` — opcjonalny token `X-MES-Token`
+      (`MES_TOKEN` w środowisku), domyślnie wyłączony, więc bez zmiany
+      zachowania dopóki się go nie ustawi. **Włączenie na produkcji nie
+      zrobione** — wymaga koordynacji z konfiguracją MES i restartu usługi.
+      Szczegóły: `zmiany/token-mes.md`
 - [ ] Przegląd obwodu bezpieczeństwa z osobą uprawnioną (CE) przed produkcją
 
 ### F. Tryby pracy — zrobione (ekran `/cycle` + panel operatora)
