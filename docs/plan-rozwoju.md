@@ -207,14 +207,22 @@ niżej; rozstrzygnąć **przed** rozpoczęciem tego tematu.
   diagnostyki i logiki trybu automatycznego. Ten sam obwód osłon musi
   **rozłączać szeregowo wyjście `BRAKE_x` sterujące wrzecionem** (temat J).
 
-- [ ] Warstwa ról i logowania: admin / technolog / operator, z dostępem do
-      `/axes`, `/editor`, panelu operatora odpowiednio.
+- [x] Warstwa ról i logowania: admin / technolog / operator. **Decyzja (Twoja):
+      osobne konta**, nie wspólne PIN-y — PIN-y z notatek (`123321`, `456`,
+      `789`) są bardzo słabe dla ekranu wpływającego na bezpieczeństwo, a wspólny
+      kod nie pozwala rozliczyć, kto zmienił parametry. Konta zakłada
+      `tools/konta.py`, hasła jako PBKDF2, do tego dziennik zmian „kto co
+      zmienił". Szczegóły:
+      [`zmiany/role-i-logowanie.md`](zmiany/role-i-logowanie.md).
 
-  **Ryzyko, nie do zmiękczenia:** PIN-y zaproponowane w notatkach
-  (`123321`, `456`, `789`) są bardzo słabe dla ekranu, który realnie wpływa
-  na bezpieczeństwo (konfiguracja siły/prędkości). Wspólny PIN na rolę też
-  nie pozwala rozliczyć, kto zmienił parametry. **Do ustalenia z Tobą:**
-  zostawiamy PIN-y (i jeśli tak, to jakie), czy przechodzimy na osobne konta.
+  **Ryzyka, które zostają:** panel chodzi po zwykłym HTTP (hasło jawnym tekstem
+  w sieci); dziennik zmian leży na tym samym komputerze, więc nie jest dowodem
+  odpornym na manipulację; logowanie **nie jest funkcją bezpieczeństwa maszyny**
+  — tę pełni sprzętowy E-stop / Global Stop.
+
+- [ ] **Otwarte po tej zmianie:** `POST /api/mes/select-order` dalej działa bez
+      uwierzytelnienia — wywołuje je system MES, nie człowiek. Do zrobienia
+      osobno: token dla MES albo ograniczenie na poziomie sieci.
 
 - [ ] Przed uruchomieniem produkcyjnym: przegląd całego obwodu
       bezpieczeństwa (E-stop, Global Stop, kurtyny, kategoria wg
@@ -262,9 +270,13 @@ potwierdzenia przy najbliższym uruchomieniu sprzętowym (temat H). Szczegóły:
       znika automatycznie, gdy pliku nie ma), plik jeszcze nie dostarczony —
       wystarczy wrzucić `server/app/static/img/logo.png` i wypchnąć, bez
       zmian w kodzie. Szczegóły: [`zmiany/ekran-glowny.md`](zmiany/ekran-glowny.md).
-- [ ] Ekran diagnostyczny (tylko admin) — definiowanie, praca ręczna,
-      półautomatyczna i automatyczna z funkcjami zabezpieczeń. Wymaga
-      warstwy ról (temat E) — dziś nie ma pojęcia „tylko admin".
+- [x] Ekran diagnostyczny `/diagnostics` (tylko admin) — stan maszyny na żywo,
+      praca ręczna/półautomatyczna/automatyczna w jednym miejscu, przegląd całej
+      konfiguracji z jej ostrzeżeniami, konta i sesje, dziennik zmian. Świadomie
+      wymienia też, **czego nie ma** (sygnał drzwi, limit momentu na sprzęcie),
+      bo ekran diagnostyczny pokazujący same zielone pola byłby mylący.
+      Odblokowany warstwą ról z tematu E. Szczegóły:
+      [`zmiany/role-i-logowanie.md`](zmiany/role-i-logowanie.md).
 - [x] Ekran definiowania operacji cyklu — osobne okno/zakładka. Zrobione
       jako `/cycle` już w etapie 4 tematu B — korekta tej listy, nie nowa
       praca (nikt wcześniej nie odhaczył tego punktu tutaj).
@@ -413,7 +425,9 @@ To jest **propozycja**, nie decyzja — ustalmy razem, czy się zgadzasz:
    `BRAKE_0`/`BRAKE_1`), nie blokuje już D. Zostają drobiazgi: obciążalność
    wyjścia, wybór modelu regulatora, przeznaczenie drugiego wyjścia.
 4. **C, D, F** (osie, wrzeciono, tryby pracy) — budują się na B.
-5. **E** (drzwi, uprawnienia) — wymaga decyzji od Ciebie (PIN-y vs konta).
+5. **E** (drzwi, uprawnienia) — ✅ uprawnienia zrobione (osobne konta).
+   Zostaje sygnał drzwi/osłony (wymaga wejścia sprzętowego) i przegląd obwodu
+   bezpieczeństwa z osobą uprawnioną.
 6. **G** (ekrany) — najlepiej równolegle z C–F, w miarę jak funkcje powstają.
 7. **H** — osobny tor, fizyczny, nie blokuje pracy nad softwarem, ale blokuje
    produkcję.

@@ -63,8 +63,10 @@ mam to założyć.
 
 ### E. Drzwi/osłona i uprawnienia
 - [ ] Wejście sygnału drzwi (PWM/binarny), aktywne tylko w trybie auto
-- [ ] Warstwa ról i logowania (admin/technolog/operator)
-- [ ] **Decyzja z Tobą:** PIN-y czy osobne konta
+- [x] Warstwa ról i logowania (admin/technolog/operator) — **osobne konta**
+      (Twoja decyzja), `tools/konta.py`, dziennik zmian „kto co zmienił"
+- [ ] `POST /api/mes/select-order` dalej bez uwierzytelnienia — token dla MES
+      albo ograniczenie sieciowe, do zrobienia osobno
 - [ ] Przegląd obwodu bezpieczeństwa z osobą uprawnioną (CE) przed produkcją
 
 ### F. Tryby pracy — zrobione (ekran `/cycle` + panel operatora)
@@ -76,7 +78,8 @@ mam to założyć.
 
 ### G. Ekrany i programy
 - [x] Ekran główny (nazwa poprawiona, miejsce na logo gotowe — czeka na plik)
-- [ ] Ekran diagnostyczny (admin) — czeka na warstwę ról z tematu E
+- [x] Ekran diagnostyczny `/diagnostics` (admin) — stan, tryby pracy, przegląd
+      konfiguracji, konta i sesje, dziennik zmian
 - [x] Ekran definiowania operacji cyklu — `/cycle`, zrobione już w etapie 4
       tematu B (korekta listy, nie nowa praca)
 - [x] „Zapisz jako" dla programów technologicznych

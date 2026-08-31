@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diagnostyka — maszyna do odcinania wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Ekran diagnostyczny <span class="rola">admin</span></h1>
+    <a href="/">← Panel operatora</a>
+    <a href="/axes">Konfiguracja osi</a>
+    <a href="/homing">Bazowanie</a>
+    <a href="/profiles">Profile parametrów</a>
+    <a href="/cycle">Cykl maszyny</a>
+  </header>
+
+  <main>
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Stan maszyny</h2>
+        <div id="state" class="state-badge state-INIT">—</div>
+        <p style="margin:14px 0 0">
+          <span id="enable-dot" class="enable-dot"></span>
+          <span id="enable-text">sygnał zezwolenia: —</span>
+        </p>
+        <p id="alarm" class="msg"></p>
+        <table class="kv"><tbody id="machine-kv"></tbody></table>
+      </section>
+
+      <section class="panel">
+        <h2>Funkcje zabezpieczeń — czego <b>nie</b> ma</h2>
+        <p class="muted" style="margin-top:-6px">
+          Ekran diagnostyczny ma pokazywać stan faktyczny, także tam, gdzie jest
+          niewygodny. Zatrzymanie awaryjne realizuje wyłącznie niezależny obwód
+          sprzętowy (E-stop, Global Stop) — <b>nie ten panel i nie logowanie</b>.
+        </p>
+        <ul id="safety-gaps" class="muted" style="line-height:1.8"></ul>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h2>Praca ręczna, półautomatyczna i automatyczna</h2>
+      <p class="muted" style="margin-top:-6px">
+        Te same akcje co na panelu operatora i na ekranie cyklu, zebrane
+        w jednym miejscu. Warunki wejścia sprawdza serwer — odmowa pojawi się
+        jako komunikat pod przyciskami.
+      </p>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button id="btn-home">Bazowanie (ręczna)</button>
+        <button id="btn-cycle">▶ Jeden cykl (półautomatyczna)</button>
+        <button id="btn-loop">↻ Pętla (automatyczna)</button>
+        <button class="stop" id="btn-stop">■ STOP</button>
+      </div>
+      <p id="ctrl-msg" class="msg"></p>
+      <p class="muted">
+        <b>STOP działa bez logowania</b> — świadomie. Wygasła sesja nie może
+        odebrać operatorowi możliwości zatrzymania maszyny z panelu.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Konfiguracja — co jest ustawione i co z tego działa</h2>
+      <div id="config-warnings"></div>
+      <div class="grid-2">
+        <div>
+          <h3>Osie</h3>
+          <div class="table-scroll"><table><thead><tr>
+            <th>Oś</th><th>Limity [mm]</th><th>mm/obr</th><th>JOG</th>
+          </tr></thead><tbody id="cfg-axes"></tbody></table></div>
+          <h3>Bazowanie</h3>
+          <div class="table-scroll"><table><thead><tr>
+            <th>Oś</th><th>Kolejność</th><th>Sposób</th><th>Moment [%]</th><th>Offset</th>
+          </tr></thead><tbody id="cfg-homing"></tbody></table></div>
+        </div>
+        <div>
+          <h3>Profile parametrów</h3>
+          <div class="table-scroll"><table><thead><tr>
+            <th>Profil</th><th>Osie</th><th>Aktywny</th>
+          </tr></thead><tbody id="cfg-profiles"></tbody></table></div>
+          <h3>Wrzeciono</h3>
+          <table class="kv"><tbody id="cfg-spindle"></tbody></table>
+          <h3>Cykl maszyny</h3>
+          <p class="muted" id="cfg-cycle"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Konta i sesje</h2>
+      <p class="muted" id="auth-summary" style="margin-top:-6px"></p>
+      <div class="table-scroll">
+        <table><thead><tr><th>Login</th><th>Imię i nazwisko</th><th>Rola</th></tr></thead>
+        <tbody id="users-rows"></tbody></table>
+      </div>
+      <p class="muted">
+        Konta zakłada się i zmienia narzędziem <code>tools/konta.py</code> na
+        serwerze — panel ich nie edytuje, żeby przejęta sesja admina nie mogła
+        założyć sobie kolejnego konta.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Dziennik zmian — kto co zmienił</h2>
+      <p class="muted" id="audit-summary" style="margin-top:-6px"></p>
+      <div class="table-scroll">
+        <table><thead><tr>
+          <th>Czas</th><th>Login</th><th>Rola</th><th>Akcja</th><th>Szczegóły</th>
+        </tr></thead><tbody id="audit-rows"></tbody></table>
+      </div>
+      <p class="muted">
+        <b>To nie jest rejestr odporny na manipulację.</b> Plik leży na tym samym
+        komputerze — kto ma do niego dostęp systemowy, może go zmienić. Służy do
+        ustalenia, kto ostatnio ruszał parametry, nie jako dowód formalny.
+      </p>
+    </section>
+  </main>
+
+  <script src="/static/diagnostics.js"></script>
+  <script src="/static/sesja.js"></script>
+</body>
+</html>

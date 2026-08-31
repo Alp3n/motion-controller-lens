@@ -46,6 +46,13 @@ wybraniu zlecenia w systemie MES.
 Aplikacja webowa w Pythonie (FastAPI) uruchamiana na komputerze przemysłowym
 (mini PC, Linux) przy maszynie. Zapewnia:
 
+- **Logowanie i role** (`/login`) — trzy narastające role: `operator`
+  (panel operatora), `technolog` (+ edytor), `admin` (+ konfiguracja
+  i diagnostyka). Osobne konta, nie wspólne PIN-y; zakładane narzędziem
+  `tools/konta.py`. **Dopóki nie ma pliku kont, logowanie jest wyłączone.**
+  `POST /api/machine/stop` i odczyt statusu działają zawsze bez logowania —
+  wygasła sesja nie może odebrać możliwości zatrzymania maszyny. Szczegóły
+  i ograniczenia: [zmiany/role-i-logowanie.md](zmiany/role-i-logowanie.md).
 - **Panel operatora** (`/`) — wybór/podgląd zlecenia, START/STOP, bazowanie,
   status osi, sygnał Global Stop, postęp operacji, panel JOG (ruch ręczny).
 - **Edytor technologa** (`/editor`) — tworzenie i edycja programów w formie
@@ -75,6 +82,10 @@ Aplikacja webowa w Pythonie (FastAPI) uruchamiana na komputerze przemysłowym
   Szczegóły: [model-cyklu-maszyny.md](model-cyklu-maszyny.md),
   [zmiany/cykl-na-sprzecie.md](zmiany/cykl-na-sprzecie.md),
   [zmiany/wrzeciono-start.md](zmiany/wrzeciono-start.md).
+- **Ekran diagnostyczny** (`/diagnostics`, tylko admin) — stan maszyny na żywo,
+  praca ręczna/półautomatyczna/automatyczna, przegląd całej konfiguracji z jej
+  ostrzeżeniami, konta i sesje oraz dziennik zmian („kto co zmienił").
+  Świadomie wymienia też funkcje, których **nie ma**.
 - **API REST dla MES** — MES po wybraniu zlecenia wywołuje
   `POST /api/mes/select-order` z numerem zlecenia i 12-cyfrowym numerem
   programu; serwer ładuje plik programu i przygotowuje maszynę.

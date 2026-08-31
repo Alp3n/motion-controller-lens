@@ -100,6 +100,30 @@ patrz [docs/sterownik-sc4-hub.md](docs/sterownik-sc4-hub.md)); nowe wdrożenia
 używaj nazw `sc4hub`/`BRIDGE_*` —
 [docs/zmiany/nazewnictwo-sc4hub.md](docs/zmiany/nazewnictwo-sc4hub.md).
 
+## Konta i logowanie
+
+Trzy role: `operator` (panel operatora), `technolog` (+ edytor programów),
+`admin` (+ konfiguracja osi, bazowania, profili, cyklu i ekran diagnostyczny).
+Osobne konta, nie wspólne PIN-y — po to, żeby dało się ustalić, kto zmienił
+parametry siły i prędkości.
+
+```bash
+tools/konta.py lista
+tools/konta.py dodaj zbyszek --rola admin --imie "Zbigniew Walukiewicz"
+tools/konta.py haslo zbyszek
+```
+
+**Dopóki nie ma pliku `config/users.json`, logowanie jest wyłączone** i wszystkie
+ekrany są dostępne bez hasła — dokładnie tak, jak przed dodaniem tej warstwy.
+Pierwsze `konta.py dodaj` włącza logowanie na całym panelu; po każdej zmianie
+kont trzeba zrestartować serwer.
+
+Ograniczenia wprost: panel chodzi po zwykłym HTTP (hasło jawnym tekstem
+w sieci), `POST /api/machine/stop` celowo działa bez logowania, a całość
+**nie jest funkcją bezpieczeństwa maszyny** — tę pełni sprzętowy obwód
+E-stop / Global Stop. Szczegóły:
+[docs/zmiany/role-i-logowanie.md](docs/zmiany/role-i-logowanie.md).
+
 ## API dla MES
 
 Po wybraniu zlecenia MES wywołuje:

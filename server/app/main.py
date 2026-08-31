@@ -10,12 +10,13 @@ import asyncio
 import contextlib
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import axes, config, cycle, profiles, spindle
+from . import audit, axes, config, cycle, profiles, spindle, users
 from .machine import (
     MachineError,
     MachineState,
@@ -74,7 +75,88 @@ machine.apply_cycle(cycle_cfg)
 spindle_cfg = spindle.load(config.SPINDLE_FILE)
 machine.apply_spindle_config(spindle_cfg)
 
+# Konta i sesje. Pusty słownik kont = logowanie wyłączone (patrz app/users.py):
+# maszyna, która dziś pracuje bez logowania, nie może po aktualizacji serwera
+# zostać zablokowana przed operatorem. Błędny plik przerywa start.
+users_cfg = users.load(config.USERS_FILE)
+sessions = users.Sessions(config.SESSION_TTL)
+
 STATIC_DIR = Path(__file__).parent / "static"
+
+
+# --- logowanie i role -----------------------------------------------------
+
+
+def auth_enabled() -> bool:
+    """Logowanie działa dopiero, gdy istnieje choć jedno konto."""
+    return bool(users_cfg)
+
+
+def _user_from_request(request: Request) -> users.User | None:
+    login = sessions.login_for(request.cookies.get(users.COOKIE_NAME))
+    if login is None:
+        return None
+    return users_cfg.get(login)
+
+
+def current_user(request: Request) -> users.User | None:
+    """Zalogowany użytkownik albo None (także gdy logowanie jest wyłączone)."""
+    return _user_from_request(request)
+
+
+def require_role(required: str):
+    """Zależność FastAPI: wpuszcza rolę `required` i wyższe.
+
+    Przy wyłączonym logowaniu przepuszcza wszystko — inaczej aktualizacja
+    serwera odcięłaby panel na maszynie, która nie ma jeszcze założonych kont.
+    """
+
+    def dependency(request: Request) -> users.User | None:
+        if not auth_enabled():
+            return None
+        user = _user_from_request(request)
+        if user is None:
+            raise HTTPException(401, "zaloguj się, żeby wykonać tę operację")
+        if not users.role_allows(user.role, required):
+            raise HTTPException(
+                403,
+                f"rola „{user.role}” nie ma uprawnień do tej operacji "
+                f"(wymagana: {required} lub wyższa)",
+            )
+        return user
+
+    return dependency
+
+
+require_operator = require_role(users.ROLE_OPERATOR)
+require_technolog = require_role(users.ROLE_TECHNOLOG)
+require_admin = require_role(users.ROLE_ADMIN)
+
+
+def _log(user: users.User | None, action: str, detail: str = "") -> None:
+    """Wpis do dziennika zmian; bez logowania zapisujemy to wprost."""
+    audit.record(
+        config.AUDIT_FILE,
+        login=user.login if user else "(bez logowania)",
+        role=user.role if user else "-",
+        action=action,
+        detail=detail,
+    )
+
+
+def _page(request: Request, filename: str, required: str) -> Response:
+    """Strona panelu chroniona rolą — bez uprawnień odsyła na ekran logowania.
+
+    Przekierowanie zamiast 403, bo to jest wejście z paska adresu albo
+    z odnośnika: operator ma zobaczyć formularz logowania, nie surowy błąd.
+    """
+    if auth_enabled():
+        user = _user_from_request(request)
+        if user is None:
+            return RedirectResponse(f"/login?cel={request.url.path}", status_code=303)
+        if not users.role_allows(user.role, required):
+            return FileResponse(STATIC_DIR / "brak-dostepu.html", status_code=403)
+    return FileResponse(STATIC_DIR / filename)
 
 # Jeden poller na cały serwer. Wcześniej status odpytywała każda pętla
 # WebSocketu z osobna: przy kilku otwartych panelach mnożyło to komendy do
@@ -131,6 +213,11 @@ class AxesRequest(BaseModel):
     """
 
     axes: dict[str, dict] = Field(..., description="osie x, y, z")
+
+
+class LoginRequest(BaseModel):
+    login: str = Field(..., max_length=64)
+    password: str = Field(..., max_length=256)
 
 
 class SpindleRequest(BaseModel):
@@ -253,6 +340,77 @@ def _load_and_validate(number: str):
     return program
 
 
+# --- logowanie ------------------------------------------------------------
+
+
+@app.get("/api/auth/me")
+async def auth_me(request: Request):
+    """Kto jest zalogowany i czy logowanie w ogóle działa.
+
+    Panel pyta o to przy każdym otwarciu ekranu — stąd wie, które odnośniki
+    pokazać i czy w nagłówku ma być przycisk „Wyloguj".
+    """
+    user = current_user(request)
+    return {
+        "auth_enabled": auth_enabled(),
+        "user": user.public() if user else None,
+        "roles": list(users.ROLES),
+    }
+
+
+@app.post("/api/auth/login")
+async def auth_login(req: LoginRequest, response: Response):
+    """Logowanie loginem i hasłem.
+
+    Komunikat błędu jest celowo jednakowy dla nieznanego loginu i złego hasła —
+    inaczej formularz podpowiadałby, które konta istnieją.
+    """
+    if not auth_enabled():
+        raise HTTPException(
+            409,
+            "logowanie jest wyłączone — na tym serwerze nie założono jeszcze "
+            "żadnego konta (tools/konta.py)",
+        )
+    login = req.login.strip().lower()
+    locked = sessions.locked_for(login)
+    if locked > 0:
+        _log(None, "logowanie zablokowane", f"login {login}")
+        raise HTTPException(
+            429,
+            f"za dużo nieudanych prób — spróbuj ponownie za {int(locked / 60) + 1} min",
+        )
+    user = users_cfg.get(login)
+    if user is None or not users.verify_password(req.password, user.password_hash):
+        sessions.note_failure(login)
+        _log(None, "nieudane logowanie", f"login {login}")
+        raise HTTPException(401, "nieprawidłowy login albo hasło")
+
+    sessions.note_success(login)
+    token = sessions.create(login)
+    # Bez `secure`: panel na hali chodzi po zwykłym HTTP i ciasteczko z flagą
+    # secure nigdy by nie doszło. Konsekwencje opisane w app/users.py.
+    response.set_cookie(
+        users.COOKIE_NAME,
+        token,
+        httponly=True,
+        samesite="lax",
+        max_age=int(config.SESSION_TTL),
+        path="/",
+    )
+    _log(user, "zalogowanie")
+    return {"ok": True, "user": user.public()}
+
+
+@app.post("/api/auth/logout")
+async def auth_logout(request: Request, response: Response):
+    user = current_user(request)
+    sessions.drop(request.cookies.get(users.COOKIE_NAME))
+    response.delete_cookie(users.COOKIE_NAME, path="/")
+    if user:
+        _log(user, "wylogowanie")
+    return {"ok": True}
+
+
 # --- MES ------------------------------------------------------------------
 
 
@@ -275,7 +433,7 @@ async def mes_select_order(req: SelectOrderRequest):
 
 
 @app.get("/api/programs")
-async def list_programs():
+async def list_programs(user=Depends(require_technolog)):
     """Lista programów w katalogu — numer + nazwa (jeśli plik poprawny)."""
     items = []
     for path in sorted(config.PROGRAMS_DIR.glob("*.prg")):
@@ -294,7 +452,7 @@ async def list_programs():
 
 
 @app.get("/api/programs/{number}")
-async def get_program(number: str):
+async def get_program(number: str, user=Depends(require_technolog)):
     """Program w postaci strukturalnej (dla edytora) + surowa treść pliku."""
     path = _program_path(number)
     if not path.exists():
@@ -309,7 +467,7 @@ async def get_program(number: str):
 
 
 @app.get("/api/programs/{number}/raw", response_class=PlainTextResponse)
-async def get_program_raw(number: str):
+async def get_program_raw(number: str, user=Depends(require_technolog)):
     """Surowy plik .prg — do pobrania/edycji w Excelu."""
     path = _program_path(number)
     if not path.exists():
@@ -318,7 +476,9 @@ async def get_program_raw(number: str):
 
 
 @app.put("/api/programs/{number}")
-async def save_program(number: str, req: SaveProgramRequest):
+async def save_program(
+    number: str, req: SaveProgramRequest, user=Depends(require_technolog)
+):
     """Zapis programu przez technologa — plik jest walidowany przed zapisem."""
     path = _program_path(number)
     try:
@@ -328,6 +488,7 @@ async def save_program(number: str, req: SaveProgramRequest):
         raise HTTPException(422, str(exc))
     config.PROGRAMS_DIR.mkdir(parents=True, exist_ok=True)
     path.write_text(req.content, encoding="utf-8")
+    _log(user, "zapis programu technologa", f"{number} ({program.name})")
     return {"ok": True, "number": number, "name": program.name}
 
 
@@ -335,7 +496,7 @@ async def save_program(number: str, req: SaveProgramRequest):
 
 
 @app.get("/api/config")
-async def get_config():
+async def get_config(user=Depends(require_operator)):
     """Parametry maszyny potrzebne panelowi (skalowanie podglądu, limity)."""
     return {
         # obszar roboczy = limity programowe osi z ekranu konfiguracji
@@ -350,7 +511,7 @@ async def get_config():
 
 
 @app.get("/api/axes")
-async def get_axes():
+async def get_axes(user=Depends(require_operator)):
     """Konfiguracja osi dla ekranu konfiguracji."""
     return {
         "axes": axes.to_dict(axes_cfg),
@@ -362,7 +523,7 @@ async def get_axes():
 
 
 @app.put("/api/axes")
-async def put_axes(req: AxesRequest):
+async def put_axes(req: AxesRequest, user=Depends(require_admin)):
     """Zapis konfiguracji osi: walidacja, plik, przekazanie do maszyny.
 
     Zmiana limitów w trakcie ruchu jest odrzucana — trwający cykl został
@@ -387,6 +548,7 @@ async def put_axes(req: AxesRequest):
         raise HTTPException(500, f"nie udało się zapisać {config.AXES_FILE}: {exc}")
     axes_cfg = new_axes
     machine.apply_axis_config(new_axes)
+    _log(user, "zapis konfiguracji osi", ", ".join(sorted(new_axes)).upper())
     return {"ok": True, "axes": axes.to_dict(new_axes), "warnings": warnings}
 
 
@@ -404,13 +566,13 @@ def _spindle_payload(cfg) -> dict:
 
 
 @app.get("/api/spindle")
-async def get_spindle():
+async def get_spindle(user=Depends(require_operator)):
     """Konfiguracja wrzeciona: kiedy się załącza i kiedy gaśnie."""
     return _spindle_payload(spindle_cfg)
 
 
 @app.put("/api/spindle")
-async def put_spindle(req: SpindleRequest):
+async def put_spindle(req: SpindleRequest, user=Depends(require_admin)):
     """Zapis ustawień wrzeciona; pominięte pola zostają bez zmian.
 
     Zmiana w trakcie ruchu jest odrzucana — przełączenie „wrzeciono rusza
@@ -435,6 +597,7 @@ async def put_spindle(req: SpindleRequest):
         raise HTTPException(500, f"nie udało się zapisać {config.SPINDLE_FILE}: {exc}")
     spindle_cfg = new_cfg
     machine.apply_spindle_config(new_cfg)
+    _log(user, "zapis ustawień wrzeciona", ", ".join(f"{k}={v}" for k, v in changes.items()))
     return {"ok": True, **_spindle_payload(new_cfg)}
 
 
@@ -456,13 +619,13 @@ def _homing_payload(current: dict) -> dict:
 
 
 @app.get("/api/homing")
-async def get_homing():
+async def get_homing(user=Depends(require_operator)):
     """Konfiguracja bazowania — kolejność, tryb, parametry dla ClearView."""
     return _homing_payload(axes_cfg)
 
 
 @app.put("/api/homing")
-async def put_homing(req: HomingRequest):
+async def put_homing(req: HomingRequest, user=Depends(require_admin)):
     """Zapis konfiguracji bazowania; reszta parametrów osi zostaje bez zmian."""
     global axes_cfg
     if machine.status.state in (MachineState.RUNNING, MachineState.HOMING):
@@ -479,6 +642,7 @@ async def put_homing(req: HomingRequest):
         raise HTTPException(500, f"nie udało się zapisać {config.AXES_FILE}: {exc}")
     axes_cfg = new_axes
     machine.apply_axis_config(new_axes)
+    _log(user, "zapis konfiguracji bazowania", ", ".join(sorted(req.axes)).upper())
     return {"ok": True, **_homing_payload(new_axes)}
 
 
@@ -486,7 +650,7 @@ async def put_homing(req: HomingRequest):
 
 
 @app.get("/api/profiles")
-async def get_profiles():
+async def get_profiles(user=Depends(require_operator)):
     """Profile parametrów ruchu + który jest aktywny."""
     return {
         "profiles": profiles.to_dict(profiles_cfg),
@@ -497,7 +661,7 @@ async def get_profiles():
 
 
 @app.put("/api/profiles")
-async def put_profiles(req: ProfilesRequest):
+async def put_profiles(req: ProfilesRequest, user=Depends(require_admin)):
     """Zapis profili: walidacja, plik, przekazanie do maszyny."""
     global profiles_cfg
     if machine.status.state in (MachineState.RUNNING, MachineState.HOMING):
@@ -518,6 +682,7 @@ async def put_profiles(req: ProfilesRequest):
         raise HTTPException(500, f"nie udało się zapisać {config.PROFILES_FILE}: {exc}")
     profiles_cfg = new_profiles
     machine.apply_profiles(new_profiles, active)
+    _log(user, "zapis profili parametrów ruchu", f"aktywny: {active}")
     return {
         "ok": True,
         "profiles": profiles.to_dict(new_profiles),
@@ -527,7 +692,9 @@ async def put_profiles(req: ProfilesRequest):
 
 
 @app.post("/api/profiles/active")
-async def set_active_profile(req: ActiveProfileRequest):
+async def set_active_profile(
+    req: ActiveProfileRequest, user=Depends(require_admin)
+):
     """Przełącza aktywny profil bez zmiany samych profili."""
     try:
         machine.set_active_profile(req.active)
@@ -537,6 +704,7 @@ async def set_active_profile(req: ActiveProfileRequest):
         profiles.save(config.PROFILES_FILE, profiles_cfg, req.active)
     except OSError as exc:
         raise HTTPException(500, f"nie udało się zapisać {config.PROFILES_FILE}: {exc}")
+    _log(user, "zmiana aktywnego profilu", machine.active_profile)
     return {"ok": True, "active": machine.active_profile}
 
 
@@ -544,7 +712,7 @@ async def set_active_profile(req: ActiveProfileRequest):
 
 
 @app.get("/api/cycle")
-async def get_cycle():
+async def get_cycle(user=Depends(require_operator)):
     """Definicja cyklu maszyny."""
     return {
         "cycle": cycle_cfg.to_dict(),
@@ -556,7 +724,7 @@ async def get_cycle():
 
 
 @app.put("/api/cycle")
-async def put_cycle(req: CycleRequest):
+async def put_cycle(req: CycleRequest, user=Depends(require_admin)):
     """Zapis definicji cyklu: walidacja, plik, przekazanie do maszyny."""
     global cycle_cfg
     if machine.status.state in (MachineState.RUNNING, MachineState.HOMING):
@@ -573,11 +741,14 @@ async def put_cycle(req: CycleRequest):
         raise HTTPException(500, f"nie udało się zapisać {config.CYCLE_FILE}: {exc}")
     cycle_cfg = new_cycle
     machine.apply_cycle(new_cycle)
+    _log(user, "zapis cyklu maszyny", f"{len(new_cycle.steps)} kroków")
     return {"ok": True, "cycle": new_cycle.to_dict(), "warnings": result}
 
 
 @app.post("/api/machine/cycle/start")
-async def start_cycle(req: CycleStartRequest | None = None):
+async def start_cycle(
+    req: CycleStartRequest | None = None, user=Depends(require_operator)
+):
     """Uruchamia cykl maszyny — jeden przebieg albo pętlę (tryb automatyczny),
     albo wznawia po PAUZA. Body opcjonalne — brak znaczy jeden przebieg,
     tak jak przed dodaniem trybu automatycznego (temat F).
@@ -596,7 +767,7 @@ async def get_status():
 
 
 @app.post("/api/machine/home")
-async def machine_home():
+async def machine_home(user=Depends(require_operator)):
     try:
         # home() waliduje synchronicznie i sam uruchamia ruch w tle;
         # create_task() w tym miejscu gubiło błędy walidacji (zawsze 200).
@@ -607,7 +778,7 @@ async def machine_home():
 
 
 @app.post("/api/machine/start")
-async def machine_start():
+async def machine_start(user=Depends(require_operator)):
     try:
         await machine.start()
     except MachineError as exc:
@@ -622,13 +793,13 @@ async def machine_stop():
 
 
 @app.post("/api/machine/reset")
-async def machine_reset():
+async def machine_reset(user=Depends(require_operator)):
     await machine.reset()
     return {"ok": True}
 
 
 @app.post("/api/machine/jog")
-async def machine_jog(req: JogRequest):
+async def machine_jog(req: JogRequest, user=Depends(require_operator)):
     distance = max(-config.JOG_MAX_STEP, min(config.JOG_MAX_STEP, req.distance))
     axis = req.axis.lower()
     feed = req.feed if req.feed is not None else machine.axis_jog_feed(axis)
@@ -640,7 +811,7 @@ async def machine_jog(req: JogRequest):
 
 
 @app.post("/api/machine/release")
-async def machine_release(req: ReleaseRequest):
+async def machine_release(req: ReleaseRequest, user=Depends(require_operator)):
     """Zdejmuje lub przywraca moment na osi — do ręcznego przestawiania.
 
     UWAGA: zluzowana oś nie stawia oporu. Oś pionowa bez hamulca opadnie
@@ -655,7 +826,7 @@ async def machine_release(req: ReleaseRequest):
 
 
 @app.post("/api/sim/safety-enable")
-async def sim_safety_enable(req: SimEnableRequest):
+async def sim_safety_enable(req: SimEnableRequest, user=Depends(require_operator)):
     """Tylko symulator: przełączenie sygnału zezwolenia do testów.
 
     W trybie sprzętowym sygnał pochodzi z niezależnego systemu bezpieczeństwa
@@ -665,6 +836,62 @@ async def sim_safety_enable(req: SimEnableRequest):
         raise HTTPException(409, "dostępne tylko w trybie symulacji (MACHINE_MODE=sim)")
     machine.set_safety_enable(req.enabled)
     return {"ok": True, "safety_enable": req.enabled}
+
+
+# --- ekran diagnostyczny (admin, temat G) --------------------------------
+
+
+@app.get("/api/diagnostics")
+async def get_diagnostics(user=Depends(require_admin)):
+    """Wszystko, co admin musi zobaczyć w jednym miejscu, zanim ruszy maszynę.
+
+    Świadomie zbiera też to, czego dziś **nie ma** albo co działa wyłącznie
+    w symulatorze — ekran diagnostyczny, który pokazuje same zielone pola,
+    byłby mylący.
+    """
+    hardware = config.MACHINE_MODE != "sim"
+    return {
+        "machine": {
+            "mode": config.MACHINE_MODE,
+            "hardware": hardware,
+            "bridge": f"{config.BRIDGE_HOST}:{config.BRIDGE_PORT}" if hardware else None,
+            "status": machine.status.to_dict(),
+        },
+        "safety": {
+            "enable": machine.status.safety_enable,
+            # Świadomie wymieniamy, czego NIE mamy — patrz docstring.
+            "brak": [
+                "sygnał drzwi/osłony nie jest czytany przez serwer (temat E)",
+                "limit momentu nie dociera do sprzętu (etap 2b tematu B)",
+                "zatrzymanie awaryjne realizuje wyłącznie obwód sprzętowy "
+                "(E-stop / Global Stop) — nie ten panel",
+            ],
+        },
+        "config": {
+            "axes": axes.to_dict(axes_cfg),
+            "axes_warnings": _axis_warnings(axes_cfg),
+            "homing": _homing_payload(axes_cfg),
+            "profiles": profiles.to_dict(profiles_cfg),
+            "active_profile": machine.active_profile,
+            "profile_warnings": _profile_warnings(profiles_cfg),
+            "cycle": cycle_cfg.to_dict(),
+            "cycle_warnings": cycle.warnings(
+                cycle_cfg, profiles_cfg.keys(), axes_cfg.keys()
+            ),
+            "spindle": _spindle_payload(spindle_cfg),
+        },
+        "auth": {
+            "enabled": auth_enabled(),
+            "users": [u.public() for u in users_cfg.values()],
+            "active_sessions": sessions.active_count(),
+            "file": str(config.USERS_FILE),
+        },
+        "audit": {
+            "file": str(config.AUDIT_FILE),
+            "exists": config.AUDIT_FILE.exists(),
+            "entries": audit.tail(config.AUDIT_FILE, 100),
+        },
+    }
 
 
 # --- status na żywo (WebSocket) ------------------------------------------
@@ -685,34 +912,44 @@ async def ws_status(ws: WebSocket):
 # --- panel WWW ------------------------------------------------------------
 
 
+@app.get("/login", include_in_schema=False)
+async def login_page():
+    return FileResponse(STATIC_DIR / "login.html")
+
+
 @app.get("/", include_in_schema=False)
-async def index():
-    return FileResponse(STATIC_DIR / "index.html")
+async def index(request: Request):
+    return _page(request, "index.html", users.ROLE_OPERATOR)
 
 
 @app.get("/editor", include_in_schema=False)
-async def editor():
-    return FileResponse(STATIC_DIR / "editor.html")
+async def editor(request: Request):
+    return _page(request, "editor.html", users.ROLE_TECHNOLOG)
 
 
 @app.get("/axes", include_in_schema=False)
-async def axes_page():
-    return FileResponse(STATIC_DIR / "axes.html")
+async def axes_page(request: Request):
+    return _page(request, "axes.html", users.ROLE_ADMIN)
 
 
 @app.get("/cycle", include_in_schema=False)
-async def cycle_page():
-    return FileResponse(STATIC_DIR / "cycle.html")
+async def cycle_page(request: Request):
+    return _page(request, "cycle.html", users.ROLE_ADMIN)
 
 
 @app.get("/profiles", include_in_schema=False)
-async def profiles_page():
-    return FileResponse(STATIC_DIR / "profiles.html")
+async def profiles_page(request: Request):
+    return _page(request, "profiles.html", users.ROLE_ADMIN)
 
 
 @app.get("/homing", include_in_schema=False)
-async def homing_page():
-    return FileResponse(STATIC_DIR / "homing.html")
+async def homing_page(request: Request):
+    return _page(request, "homing.html", users.ROLE_ADMIN)
+
+
+@app.get("/diagnostics", include_in_schema=False)
+async def diagnostics_page(request: Request):
+    return _page(request, "diagnostics.html", users.ROLE_ADMIN)
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

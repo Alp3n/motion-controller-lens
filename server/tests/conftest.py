@@ -14,3 +14,7 @@ os.environ.setdefault("AXES_CONFIG", os.path.join(_tmp, "axes.json"))
 os.environ.setdefault("PROFILES_CONFIG", os.path.join(_tmp, "profiles.json"))
 os.environ.setdefault("CYCLE_CONFIG", os.path.join(_tmp, "cycle.json"))
 os.environ.setdefault("SPINDLE_CONFIG", os.path.join(_tmp, "spindle.json"))
+# Konta: plik celowo NIE istnieje — większość testów sprawdza API bez logowania.
+# Warstwę ról testuje test_role.py, który przeładowuje aplikację z własnym plikiem.
+os.environ.setdefault("USERS_CONFIG", os.path.join(_tmp, "users.json"))
+os.environ.setdefault("AUDIT_LOG", os.path.join(_tmp, "dziennik-zmian.jsonl"))

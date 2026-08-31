@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brak uprawnień — maszyna do odcinania wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Brak uprawnień do tego ekranu</h1>
+    <a href="/">← Panel operatora</a>
+  </header>
+  <main>
+    <section class="panel login-panel">
+      <p class="msg err">
+        Twoje konto nie ma roli wymaganej przez ten ekran.
+      </p>
+      <p class="muted" style="line-height:1.7">
+        Dostęp do ekranów wg roli:
+      </p>
+      <ul class="muted" style="line-height:1.8">
+        <li><b>operator</b> — panel operatora</li>
+        <li><b>technolog</b> — powyższe + edytor programów</li>
+        <li><b>admin</b> — powyższe + konfiguracja osi, bazowania, profili,
+          cyklu i ekran diagnostyczny</li>
+      </ul>
+      <p class="muted">
+        Rolę zmienia administrator maszyny narzędziem <code>tools/konta.py</code>.
+      </p>
+      <div class="btn-row" style="max-width:420px">
+        <a href="/"><button>Panel operatora</button></a>
+        <button class="small" id="btn-logout">Wyloguj</button>
+      </div>
+    </section>
+  </main>
+  <script>
+    document.getElementById("btn-logout").onclick = () =>
+      fetch("/api/auth/logout", { method: "POST" }).then(
+        () => (location.href = "/login")
+      );
+  </script>
+</body>
+</html>

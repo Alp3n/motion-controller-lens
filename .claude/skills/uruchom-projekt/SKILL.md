@@ -62,6 +62,9 @@ Jeśli `tools/uruchom-maszyne.sh` nie istnieje w tej wersji repo, użyj
 
 Zgłoś użytkownikowi:
 - URL panelu operatora (`/`), edytora (`/editor`), konfiguracji osi (`/axes`).
+- Czy panel wymaga logowania — sprawdź `curl -s <url>/api/auth/me`. Gdy
+  `auth_enabled` jest `false`, **powiedz to wprost**: wszystkie ekrany są
+  dostępne bez hasła (nie ma pliku kont; zakłada je `tools/konta.py`).
 - Tryb (`sim` czy `sc4hub`) — **jeśli `sc4hub`, powiedz to wprost**,
   to oznacza realny sprzęt. `clearcore` to ta sama rzecz pod dawną nazwą.
 

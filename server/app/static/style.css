@@ -141,6 +141,47 @@ input:invalid { border-color: var(--err); }
    (temat F): operator musi widzieć, że ruch faktycznie trwa. */
 button.jog:active { background: var(--accent); color: #06203a; border-color: var(--accent); }
 
+/* Ekran diagnostyczny: tabelki klucz-wartość i węższe tabele przeglądowe. */
+table.kv { margin-top: 12px; }
+table.kv td { padding: 4px 8px 4px 0; border: 0; }
+table.kv td:first-child { width: 45%; }
+.panel h3 { font-size: 14px; margin: 18px 0 6px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.5px; }
+.panel h3:first-child { margin-top: 0; }
+.grid-2 .table-scroll table { min-width: 0; }
+/* odznaka roli używana też poza paskiem sesji (nagłówek diagnostyki) */
+.rola {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  vertical-align: middle;
+}
+
+/* Ekran logowania i „brak dostępu" — wąska kolumna na środku. */
+.login-panel { max-width: 460px; margin: 40px auto; }
+/* Puste pole logowania nie jest błędem — czerwona ramka, zanim ktokolwiek
+   cokolwiek wpisał, tylko myli. Czerwień dopiero po próbie wysłania. */
+#login-form input:invalid { border-color: var(--border); }
+#login-form input:user-invalid { border-color: var(--err); }
+.warn-box {
+  display: block;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  border-radius: 6px;
+  padding: 10px 12px;
+  line-height: 1.6;
+  margin-top: 16px;
+}
+
+/* Nagłówek: kto jest zalogowany + wylogowanie. */
+.user-box { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.user-box .who { color: var(--muted); white-space: nowrap; }
+
+
 /* Przełączniki tak/nie w konfiguracji (wrzeciono) — checkbox nie ma się
    rozciągać na całą szerokość jak zwykły input. */
 .check-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }

@@ -42,6 +42,18 @@ PROFILES_FILE = Path(
 # plik definicji cyklu maszyny (kroki poziomu admina wokół programu detalu)
 CYCLE_FILE = Path(os.environ.get("CYCLE_CONFIG", "config/cycle.json")).resolve()
 
+# Plik kont użytkowników (login, rola, skrót hasła). Zakładany narzędziem
+# tools/konta.py. **Dopóki plik nie istnieje, logowanie jest wyłączone**
+# i wszystkie ekrany są dostępne bez hasła — tak działa maszyna dziś i tak
+# zostaje, dopóki ktoś świadomie nie założy kont (powód: app/users.py).
+USERS_FILE = Path(os.environ.get("USERS_CONFIG", "config/users.json")).resolve()
+
+# dziennik zmian konfiguracji (kto, kiedy, co) — app/audit.py
+AUDIT_FILE = Path(os.environ.get("AUDIT_LOG", "config/dziennik-zmian.jsonl")).resolve()
+
+# ważność sesji panelu [s] — liczona od ostatniego użycia, nie od zalogowania
+SESSION_TTL = float(os.environ.get("SESSION_TTL", str(12 * 3600)))
+
 # plik konfiguracji wrzeciona (kiedy się załącza i kiedy gaśnie)
 SPINDLE_FILE = Path(
     os.environ.get("SPINDLE_CONFIG", "config/spindle.json")

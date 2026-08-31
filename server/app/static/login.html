@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Logowanie — maszyna do odcinania wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <img id="logo" src="/static/img/logo.png" alt="WALKNER" onerror="this.remove()">
+    <h1>Maszyna — odcinanie wlewków płytek optyki</h1>
+  </header>
+
+  <main>
+    <section class="panel login-panel">
+      <h2>Logowanie</h2>
+      <form id="login-form" autocomplete="on">
+        <div class="field">
+          <label for="f-login">Login</label>
+          <input id="f-login" name="username" autocomplete="username"
+                 autocapitalize="none" spellcheck="false" required>
+        </div>
+        <div class="field">
+          <label for="f-password">Hasło</label>
+          <input id="f-password" name="password" type="password"
+                 autocomplete="current-password" required>
+        </div>
+        <div class="btn-row" style="margin-top:14px">
+          <button class="big start" id="btn-login" type="submit">Zaloguj</button>
+        </div>
+      </form>
+      <p id="login-msg" class="msg"></p>
+      <p class="muted" style="margin-top:14px; line-height:1.6">
+        Konta zakłada administrator maszyny narzędziem <code>tools/konta.py</code>.
+        Zapomniane hasło resetuje się tym samym narzędziem — nie da się go
+        odzyskać, bo w pliku jest tylko skrót.
+      </p>
+      <p class="msg warn-box" id="http-note">
+        <b>Uwaga:</b> panel działa po zwykłym HTTP. Hasło idzie przez sieć
+        otwartym tekstem — używaj tylko w odseparowanej sieci maszynowej.
+        Logowanie ogranicza dostęp do ekranów; <b>nie jest funkcją
+        bezpieczeństwa maszyny</b> — tę pełni sprzętowy obwód E-stop.
+      </p>
+    </section>
+  </main>
+
+  <script src="/static/login.js"></script>
+</body>
+</html>
