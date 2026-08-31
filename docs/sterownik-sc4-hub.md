@@ -698,10 +698,14 @@ Testy, których jeszcze nie zrobiono:
 - [ ] Dokładne rozszyfrowanie maski `ShutdownWhenGet()` odpowiedzialnej za
       Group Shutdown (robocza interpretacja: realizacja watchdoga sieciowego
       — niepotwierdzona w 100%, patrz sekcja 3 „Ryzyka do rozstrzygnięcia”).
-- [ ] Zdecydować, czy trzymać `vendor/teknic/` w `/opt/motion-controller-lens`
-      na hoście produkcyjnym (dla `make -C bridge` przy przyszłych zmianach),
-      czy zostać przy samej instalacji systemowej (`/usr/local/lib`) — obecnie
-      tylko to drugie jest zrobione.
+- [x] ~~Zdecydować, czy trzymać `vendor/teknic/` w `/opt/motion-controller-lens`
+      na hoście produkcyjnym~~ — **rozstrzygnięte 2026-08-31: tak, trzymać.**
+      Etap 0 tematu K (odczyt momentu) wymagał przebudowy mostka; brakujące
+      nagłówki SDK (`inc/inc-pub`) trzeba było doprowadzić z powrotem
+      (`Linux_Software.tar.gz` pobrany ponownie ze strony Teknica). Pakiet
+      rozpakowany trwale do `vendor/teknic/` (poza gitem), żeby kolejny
+      rebuild nie wymagał ponownego pobierania. Szczegóły procedury:
+      `zmiany/symulacja-momentu.md`.
 
 Pozostałe:
 

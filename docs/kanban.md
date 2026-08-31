@@ -135,15 +135,13 @@ Trzy poziomy: **procedura** (C++, programista) → **definicja SMART**
 (nazwany zestaw parametrów, np. `SMART-sila`, własny ekran z „zapisz jako")
 → **użycie** (wiersz programu albo krok cyklu, z listy jak inne operacje).
 Definicje wspólne dla programu technologa i cyklu maszyny.
-- [~] Etap 0: `STATUS` z odczytem momentu (`TRQX/Y/Z`) + podgląd na panelu.
-      **Serwer i panel gotowe** (`zmiany/symulacja-momentu.md`); symulator
-      podstawia wartości ZMYŚLONE, oznaczone w statusie jako „symulacja".
-      **Kod C++ w mostku napisany** (`TrqUnit(PCT_MAX)`, `TRQX/Y/Z` w
-      `statusLine()`), ale **nieskompilowany** — na hoście brakuje nagłówków
-      SDK (`inc/inc-pub`), jest tylko biblioteka runtime. Do zrobienia:
-      dostarczyć pakiet SDK trwale na maszynę, skompilować, podmienić
-      binarkę mostka, dopiero wtedy zmierzyć koszt próbkowania. Szczegóły:
-      `zmiany/symulacja-momentu.md`
+- [x] Etap 0: `STATUS` z odczytem momentu (`TRQX/Y/Z`) + podgląd na panelu.
+      **Działa na prawdziwym sprzęcie od 2026-08-31** — `torque_source:
+      "sterownik"`, realne wartości. Symulator dalej podstawia wartości
+      zmyślone, oznaczone jako „symulacja". SDK Teknica dostarczone trwale
+      do `vendor/teknic/` na hoście. Zostaje: zmierzyć koszt próbkowania
+      `TrqMeasured` przy trzech osiach (ryzyko 3 z `funkcje-smart.md`).
+      Szczegóły: `zmiany/symulacja-momentu.md`
 - [x] Etap 1: model definicji + `/api/smart` + **ekran `/smart`** (lista,
       edycja, „zapisz jako", usuwanie) — `zmiany/ekran-smart.md`
 - [ ] Etap 2: **ekran `/sila` — kontrola siły i kalibracja**: podgląd na

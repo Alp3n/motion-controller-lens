@@ -6,10 +6,12 @@ ją z własnego, zmyślonego modelu; parser odczytu ze sterownika (`TRQX/Y/Z`)
 jest gotowy. Dzięki temu ekrany i funkcje SMART dało się zbudować przed pracą
 przy maszynie (etap 0 tematu K).
 
-**Stan (2026-08-31): kod C++ w mostku napisany, ale NIESKOMPILOWANY** — patrz
-sekcja „Blokada kompilacji" niżej. `bridge/sc4hub_bridge` na hoście
-produkcyjnym dalej nie wysyła `TRQX/TRQY/TRQZ`, więc panel dalej pokazuje
-kreski na prawdziwym sprzęcie.
+**Stan (2026-08-31): DZIAŁA na prawdziwym sprzęcie.** Pakiet SDK dostarczony
+(pobrany ze strony Teknica), mostek skompilowany i uruchomiony ponownie.
+`GET /api/status` na hoście produkcyjnym zwraca realny pomiar, np.
+`"torque": {"x": 1.2, "y": 0.1, "z": -2.7}, "torque_source": "sterownik"`.
+Etap 0 tematu K jest zamknięty. Historia blokady kompilacji i jej
+rozwiązania — niżej, zostawione jako zapis dla przyszłych rebuildów mostka.
 
 ## Pliki
 
@@ -24,34 +26,53 @@ kreski na prawdziwym sprzęcie.
 - `bridge/sc4hub_bridge.cpp` — `openHardware()`: `TrqUnit(PCT_MAX)` ustawiony
   raz na każdym węźle po mapowaniu osi; `statusLine()`: dopisane pola
   `TRQX=.. TRQY=.. TRQZ=..` z `Motion.TrqMeasured.Value()`, zerowe gdy port
-  niepodłączony. **Napisane, nieskompilowane** (patrz niżej).
+  niepodłączony.
+- `bridge/sc4hub_bridge` — binarka przebudowana i wdrożona 2026-08-31.
+- `vendor/teknic/` (poza gitem, `.gitignore`) — pakiet SDK Teknica
+  (`Linux_Software.tar.gz`, pobrany ze strony producenta), rozpakowany
+  trwale na hoście produkcyjnym, żeby kolejny rebuild mostka nie wymagał
+  ponownego pobierania.
 
-## Blokada kompilacji (2026-08-31)
+## Historia: blokada kompilacji i jak ją rozwiązano (2026-08-31)
 
-Próba `make -C bridge` kończy się:
+Pierwsza próba `make -C bridge` (bez `vendor/teknic/`) kończyła się:
 
 ```
 sc4hub_bridge.cpp:36:10: fatal error: pubSysCls.h: No such file or directory
 ```
 
-Na hoście produkcyjnym jest zainstalowana **tylko biblioteka runtime**
+Na hoście była zainstalowana **tylko biblioteka runtime**
 (`/usr/local/lib/libsFoundation20.so*`, metoda „Systemwide Install" —
-patrz `docs/sterownik-sc4-hub.md`), **nie ma nagłówków SDK**
+patrz `docs/sterownik-sc4-hub.md`), **nie było nagłówków SDK**
 (`inc/inc-pub/pubSysCls.h` i reszta). Wcześniej pobrany pakiet
 `Linux_Software.tar.gz` trafił do scratchpada sesji (`/tmp`) i przepadł przy
 restarcie maszyny (`tmpfs` — patrz „Pułapka 3" w `sterownik-sc4-hub.md`).
-Katalogu `vendor/teknic/` na tym hoście **nie ma** — to ten sam otwarty punkt,
-co w `docs/sterownik-sc4-hub.md` „Do zrobienia": zdecydować, czy trzymać
-pakiet SDK trwale na maszynie (dla przyszłych `make -C bridge`), czy za
-każdym razem pobierać go na nowo.
 
-**Do zrobienia, żeby dokończyć etap 0:** dostarczyć pakiet
-`Linux_Software.tar.gz` (albo sam katalog `inc/inc-pub`) w trwałe miejsce na
-tej maszynie — najprościej `/opt/motion-controller-lens/vendor/teknic/`
-(katalog już w `.gitignore`, matchuje ścieżkę z `Makefile`) — a potem
-`make -C bridge`, zatrzymać `motion-controller-bridge.service`, podmienić
-binarkę, wystartować z powrotem. Dopiero wtedy da się zmierzyć koszt
-próbkowania `TrqMeasured` (ryzyko 3 z `funkcje-smart.md`).
+Rozwiązanie: użytkownik pobrał `Linux_Software.tar.gz` ponownie ze strony
+Teknica (przeglądarką, na tym samym mini PC), plik trafił do
+`~/snap/firefox/common/Downloads/` (Firefox jest snapem — **nie** do
+zwykłego `~/Downloads`, którego na tym koncie w ogóle nie ma). Rozpakowany
+do `vendor/teknic/` (`tar -xzf` zewnętrznego archiwum, potem `tar -xf
+sFoundation.tar` środka) — to rozwiązuje na trwałe punkt „Do zrobienia" z
+`docs/sterownik-sc4-hub.md` o trzymaniu SDK na maszynie.
+
+**Błąd przy rebuildzie, odnotowany żeby się nie powtórzył:** `make -C
+bridge` nadpisało plik binarny **w miejscu, gdzie stary mostek już
+działał** (proces sprzed przebudowy, PID wciąż żywy) — powinien być
+najpierw `sudo systemctl stop motion-controller-bridge.service`. Proces
+przeżył nadpisanie i dalej poprawnie odpowiadał na `STATUS`, ale to był
+przypadek, nie gwarancja — nadpisywanie w locie mapowanego pliku
+wykonywalnego jest niezdefiniowanym zachowaniem. **Przy każdym kolejnym
+rebuildzie mostka: najpierw zatrzymać usługę, dopiero potem `make`.**
+
+Po restarcie usługi (`sudo systemctl restart
+motion-controller-bridge.service`) — z koniecznym ponownym bazowaniem, bo
+restart mostka resetuje stan do `NOT_HOMED` — `torque_source` zaczął
+zwracać `"sterownik"` z realnymi wartościami.
+
+**Wciąż niezrobione:** zmierzenie kosztu próbkowania `TrqMeasured` przy
+trzech osiach (ryzyko 3 z `funkcje-smart.md`) — możliwe teraz, że odczyt
+działa, ale nikt jeszcze tego nie zmierzył.
 
 ## Uwagi
 

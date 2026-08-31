@@ -473,14 +473,14 @@ dla programu technologa i cyklu maszyny.
       obciążenie. Żeby nie wstrzymywać etapów 3 i 4, **symulator podstawia
       wartości zmyślone**, oznaczone jako `symulacja` — panel mówi to wprost
       i nie wolno na nich dobierać progów siły.
-      **Kod C++ w mostku napisany** (2026-08-31): `TrqUnit(PCT_MAX)` ustawiany
-      raz na każdym węźle, `TRQX/TRQY/TRQZ` dopisane do `statusLine()` z
-      `Motion.TrqMeasured.Value()`. **Nieskompilowany** — `make -C bridge`
-      kończy się `fatal error: pubSysCls.h: No such file or directory`: na
-      hoście jest tylko biblioteka runtime (`/usr/local/lib`), nagłówków SDK
-      (`inc/inc-pub`) nie ma. Do zrobienia: dostarczyć pakiet SDK trwale na
-      maszynę (`vendor/teknic/`, już w `.gitignore`), skompilować, podmienić
-      binarkę mostka, dopiero wtedy zmierzyć koszt próbkowania.
+      **Zamknięte 2026-08-31: działa na prawdziwym sprzęcie.**
+      `TrqUnit(PCT_MAX)` ustawiany raz na każdym węźle, `TRQX/TRQY/TRQZ`
+      dopisane do `statusLine()` z `Motion.TrqMeasured.Value()`. SDK Teknica
+      dostarczone trwale do `vendor/teknic/` na hoście (wcześniej brakowało
+      tylko nagłówków — biblioteka runtime była już zainstalowana), mostek
+      skompilowany i uruchomiony ponownie. `GET /api/status` zwraca
+      `torque_source: "sterownik"` z realnymi wartościami. Zostaje: zmierzyć
+      koszt próbkowania `TrqMeasured` przy trzech osiach.
       [`zmiany/symulacja-momentu.md`](zmiany/symulacja-momentu.md)
 - [x] **Etap 1:** model definicji (`server/app/smart.py`, `config/smart.json`),
       `GET/PUT /api/smart` i **ekran `/smart`** — lista definicji, edycja,
