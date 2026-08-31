@@ -6,5 +6,6 @@ __pycache__/
 .pytest_cache/
 .venv/
 venv/
+config/smart.json
 config/users.json
 config/dziennik-zmian.jsonl

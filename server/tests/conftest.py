@@ -18,3 +18,5 @@ os.environ.setdefault("SPINDLE_CONFIG", os.path.join(_tmp, "spindle.json"))
 # Warstwę ról testuje test_role.py, który przeładowuje aplikację z własnym plikiem.
 os.environ.setdefault("USERS_CONFIG", os.path.join(_tmp, "users.json"))
 os.environ.setdefault("AUDIT_LOG", os.path.join(_tmp, "dziennik-zmian.jsonl"))
+
+os.environ.setdefault("SMART_CONFIG", os.path.join(_tmp, "smart.json"))

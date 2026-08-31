@@ -147,7 +147,7 @@ def test_format_1_still_parses_and_upgrades_on_save():
     p = parse_program(VALID)
     assert p.operations[0].passes is None
     text = serialize_program(p)
-    assert "FORMAT;4" in text
+    assert "FORMAT;5" in text
     assert "POSUW;OBROTY;MOMENT;PRZEJSCIA;PRZYROST" in text
     again = parse_program(text)
     assert len(again.operations) == len(p.operations)
@@ -276,7 +276,7 @@ def test_rectangle_corners_checked_against_work_area():
 def test_format_3_roundtrip():
     p = parse_program(FORMAT3, "583912004711")
     text = serialize_program(p)
-    assert "FORMAT;4" in text
+    assert "FORMAT;5" in text
     again = parse_program(text, "583912004711")
     assert [o.op_type for o in again.operations] == [o.op_type for o in p.operations]
     assert again.operations[0].rpm == 8000
@@ -310,7 +310,7 @@ def test_parse_format_4_torque_column():
 def test_format_4_roundtrip():
     p = parse_program(FORMAT4, "583912004711")
     text = serialize_program(p)
-    assert "FORMAT;4" in text
+    assert "FORMAT;5" in text
     again = parse_program(text, "583912004711")
     assert again.operations[0].torque_pct == 8
     assert again.operations[1].torque_pct is None

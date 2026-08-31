@@ -54,6 +54,33 @@ function applyStatus(st) {
   $("pos-z").textContent = fmt(st.position.z);
   $("spindle").textContent = st.spindle_on ? "ZAŁ" : "WYŁ";
 
+  /* Obciążenie osi — podstawa funkcji SMART. Źródło pokazujemy zawsze
+     i wprost: „symulacja" to liczby wymyślone przez symulator, nie pomiar.
+     Bez tego ktoś dobrałby progi siły na zmyślonych wartościach. */
+  const trq = st.torque || {};
+  const source = st.torque_source || "brak";
+  for (const axis of ["x", "y", "z"]) {
+    const el = $("trq-" + axis);
+    if (!el) continue;
+    el.textContent =
+      source === "brak" || trq[axis] == null ? "—" : trq[axis].toFixed(1) + " %";
+  }
+  const srcEl = $("trq-source");
+  if (srcEl) {
+    if (source === "sterownik") {
+      srcEl.textContent = "źródło: pomiar ze sterownika (TrqMeasured)";
+      srcEl.className = "muted";
+    } else if (source === "symulacja") {
+      srcEl.textContent =
+        "źródło: SYMULACJA — wartości wymyślone przez symulator, nie pomiar; " +
+        "nie dobieraj na nich progów siły";
+      srcEl.className = "msg warn";
+    } else {
+      srcEl.textContent = "brak odczytu momentu — mostek go jeszcze nie wysyła";
+      srcEl.className = "muted";
+    }
+  }
+
   const released = st.released_axes || [];
   document.querySelectorAll(".rel").forEach((btn) => {
     const axis = btn.dataset.axis;

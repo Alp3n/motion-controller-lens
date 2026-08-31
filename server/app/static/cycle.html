@@ -13,6 +13,7 @@
     <a href="/axes">Konfiguracja osi</a>
     <a href="/homing">Bazowanie</a>
     <a href="/profiles">Profile parametrów</a>
+    <a href="/smart">Funkcje SMART</a>
     <a href="/editor">Edytor technologa →</a>
   </header>
 
@@ -46,6 +47,7 @@
               <th title="posuw przejazdu [mm/min]">Posuw</th>
               <th title="wyjście cyfrowe maszyny">Wyjście</th>
               <th title="stan wyjścia">Stan</th>
+              <th title="definicja SMART — tylko krok SMART; parametry (próg siły, prędkości) są w definicji, ekran „Funkcje SMART”">SMART</th>
               <th>Uwagi</th>
               <th></th>
             </tr>
@@ -126,6 +128,12 @@
           dalej.</li>
         <li><b>WYJSCIE</b> — załączenie lub wyłączenie wyjścia cyfrowego
           (podajnik, wyrzutnik, lampka).</li>
+        <li><b>SMART</b> — ruch reagujący na siłę, opisany definicją
+          z ekranu „Funkcje SMART" (te same definicje, których używa program
+          technologa). <b>Działa dziś tylko w symulatorze i tylko pozornie:</b>
+          symulator reaguje na moment zmyślony przez swój model, a nie na
+          pomiar z silnika. Na maszynie krok SMART zatrzyma cykl błędem,
+          dopóki mostek nie dostanie procedury (temat K, etap 5).</li>
         <li><b>PAUZA</b> — zatrzymanie do potwierdzenia przez operatora
           przyciskiem START.</li>
       </ul>
@@ -137,6 +145,10 @@
         <b>Uwaga:</b> uruchomienie cyklu na sprzęcie jest już zaimplementowane
         (<code>SC4HubMachine.start_cycle</code>), ale <b>nie zostało
         zweryfikowane na fizycznym sterowniku</b> — patrz
+
+        <b>Uwaga:</b> uruchomienie cyklu na sprzęcie jest napisane (kroki
+        RUCH/PROGRAM/PAUZA jadą istniejącymi komendami mostka), ale
+        <b>nie zostało jeszcze sprawdzone na fizycznej maszynie</b> — patrz
         <code>docs/zmiany/cykl-na-sprzecie.md</code>.
       </p>
     </section>

@@ -114,6 +114,46 @@ Pomiary i testy:
       (temat B, `CycleStep`) — podajnik/wyrzutnik/lampka/błąd, konkretny
       wybór przy budowie tego ekranu; program technologa go nie używa
 
+### K. Funkcje SMART (ruch z kontrolą siły)
+Nowy temat — technolog wstawia „funkcję smart" po punkcie w programie;
+procedurę pisze programista, technolog wybiera ją i podaje parametry.
+Analiza, model danych i ryzyka: [`funkcje-smart.md`](funkcje-smart.md).
+Potwierdzone u źródła: `IMotion::TrqMeasured` daje odczyt momentu (PCT_MAX).
+Pętla musi być w mostku (C++) — Python nie może nic robić w trakcie ruchu.
+Trzy poziomy: **procedura** (C++, programista) → **definicja SMART**
+(nazwany zestaw parametrów, np. `SMART-sila`, własny ekran z „zapisz jako")
+→ **użycie** (wiersz programu albo krok cyklu, z listy jak inne operacje).
+Definicje wspólne dla programu technologa i cyklu maszyny.
+- [~] Etap 0: `STATUS` z odczytem momentu (`TRQX/Y/Z`) + podgląd na panelu.
+      **Serwer i panel gotowe** (`zmiany/symulacja-momentu.md`); symulator
+      podstawia wartości ZMYŚLONE, oznaczone w statusie jako „symulacja".
+      **Zostaje C++:** dopisać `TRQ*` do odpowiedzi `STATUS` w mostku
+      i zmierzyć koszt próbkowania *(maszyna)*
+- [x] Etap 1: model definicji + `/api/smart` + **ekran `/smart`** (lista,
+      edycja, „zapisz jako", usuwanie) — `zmiany/ekran-smart.md`
+- [ ] Etap 2: **ekran `/sila` — kontrola siły i kalibracja**: podgląd na
+      żywo, próba przejazdu (charakterystyka bazowa osi: tarcie, ciężar,
+      oba kierunki, kilka prędkości), kalibracja siłomierzem, pomiar
+      próbkowania, zapis `config/kalibracja.json`. Kod bez sprzętu,
+      sensowne liczby po etapie 0
+- [x] Etap 3: operacja `SMART` w `.prg` (format 5) + wybór z listy
+      w edytorze — `zmiany/smart-w-programie-i-cyklu.md`. Na sprzęcie mostek
+      **odmawia** wykonania (lepsze niż ruch bez kontroli siły), w symulatorze
+      działa pozornie — na momencie zmyślonym, nie na pomiarze
+- [x] Etap 4: krok `SMART` w cyklu maszyny (`/cycle`) — ta sama definicja
+      i ta sama ścieżka wykonania co operacja w programie technologa
+- [ ] Etap 5: procedura `ciecie_adaptacyjne` + `SMART`/`SMARTLIST` w mostku
+      *(C++, wymaga `vendor/` i maszyny — tu zaczyna realnie działać)*
+- [ ] Etap 6: kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
+      `detekcja_kolizji`)
+- [ ] Etap 7 (opcjonalny): profil siły — jakość cięcia, zużycie noża
+
+Dwa ryzyka domyka etap 2 (ekran `/sila`), zamiast zostawiać je otwarte:
+- [ ] **Do zmierzenia na maszynie:** ile realnie kosztuje odczyt
+      `TrqMeasured` i jak gęsto da się próbkować przy trzech osiach
+- [ ] **Do dobrania doświadczalnie:** przełożenie % momentu → siła na nożu
+      (wzór ze źródła pomija sprawność śruby)
+
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`
 - [ ] GRBL/G-code jako alternatywa

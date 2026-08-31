@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import audit, axes, config, cycle, profiles, spindle, users
+from . import audit, axes, config, cycle, profiles, smart, spindle, users
 from .machine import (
     MachineError,
     MachineState,
@@ -28,6 +28,7 @@ from .program import (
     NC12_RE,
     ProgramError,
     parse_program,
+    smart_warnings,
     validate_work_area,
 )
 
@@ -64,6 +65,14 @@ machine.apply_axis_config(axes_cfg)
 # błędna konfiguracja osi — powód w app/profiles.py.
 profiles_cfg, active_profile = profiles.load(config.PROFILES_FILE, axes_cfg.keys())
 machine.apply_profiles(profiles_cfg, active_profile)
+
+# Definicje SMART — nazwane zestawy parametrów procedur sterowanych siłą,
+# wspólne dla programu technologa i cyklu maszyny. Błędny plik przerywa start,
+# jak przy osiach i profilach: te wartości decydują o sile dociskanej do
+# materiału (powód w app/smart.py). Wczytywane PRZED cyklem, bo kroki cyklu
+# odwołują się do definicji po nazwie.
+smart_cfg = smart.load(config.SMART_FILE)
+machine.apply_smart(smart_cfg)
 
 # Cykl maszyny — kroki poziomu admina wokół programu detalu. Pusty, dopóki
 # nie zostanie zdefiniowany; błędny plik przerywa start (powód w app/cycle.py).
@@ -271,6 +280,18 @@ class CycleRequest(BaseModel):
     steps: list[dict] = Field(..., description="kroki cyklu, LP ciągłe od 1")
 
 
+class SmartRequest(BaseModel):
+    """Definicje SMART z ekranu /smart.
+
+    Jak przy osiach, profilach i cyklu — walidacją zajmuje się app/smart.py,
+    żeby operator zobaczył komunikat po polsku z nazwą definicji i parametru.
+    """
+
+    definitions: dict[str, dict] = Field(
+        ..., description="nazwa definicji -> {procedure, params, note}"
+    )
+
+
 class CycleStartRequest(BaseModel):
     """Uruchomienie cyklu — jeden przebieg (domyślnie) albo pętla (temat F)."""
 
@@ -458,9 +479,13 @@ async def get_program(number: str, user=Depends(require_technolog)):
     if not path.exists():
         raise HTTPException(404, f"brak pliku programu {number}.prg")
     text = path.read_text(encoding="utf-8")
-    result: dict = {"number": number, "content": text, "parsed": None, "error": ""}
+    result: dict = {
+        "number": number, "content": text, "parsed": None, "error": "", "warnings": [],
+    }
     try:
-        result["parsed"] = parse_program(text, expected_number=number).to_dict()
+        program = parse_program(text, expected_number=number)
+        result["parsed"] = program.to_dict()
+        result["warnings"] = smart_warnings(program, smart_cfg.keys())
     except ProgramError as exc:
         result["error"] = str(exc)
     return result
@@ -489,7 +514,15 @@ async def save_program(
     config.PROGRAMS_DIR.mkdir(parents=True, exist_ok=True)
     path.write_text(req.content, encoding="utf-8")
     _log(user, "zapis programu technologa", f"{number} ({program.name})")
-    return {"ok": True, "number": number, "name": program.name}
+    return {
+        "ok": True,
+        "number": number,
+        "name": program.name,
+        # brakująca definicja SMART nie blokuje zapisu (plik .prg jest
+        # samodzielny), ale technolog musi ją zobaczyć od razu, a nie dopiero
+        # przy starcie na maszynie
+        "warnings": smart_warnings(program, smart_cfg.keys()),
+    }
 
 
 # --- sterowanie maszyną ---------------------------------------------------
@@ -708,6 +741,56 @@ async def set_active_profile(
     return {"ok": True, "active": machine.active_profile}
 
 
+# --- definicje SMART ------------------------------------------------------
+
+
+@app.get("/api/smart")
+async def get_smart(user=Depends(require_operator)):
+    """Definicje SMART + rejestr procedur (żeby ekran wiedział, co narysować)."""
+    return {
+        "definitions": smart.to_dict(smart_cfg),
+        "procedures": smart.procedures_to_dict(),
+        "file": str(config.SMART_FILE),
+        "warnings": smart.warnings(smart_cfg, config.MACHINE_MODE),
+    }
+
+
+@app.put("/api/smart")
+async def put_smart(req: SmartRequest, user=Depends(require_admin)):
+    """Zapis definicji SMART: walidacja, plik.
+
+    Zapis odrzucamy w ruchu z tego samego powodu co profile — definicja może
+    być właśnie używana przez wykonywany krok cyklu.
+    """
+    global smart_cfg
+    if machine.status.state in (MachineState.RUNNING, MachineState.HOMING):
+        raise HTTPException(
+            409, "nie można zmieniać definicji SMART w trakcie ruchu maszyny"
+        )
+    try:
+        new_defs = smart.parse_definitions({"definitions": req.definitions})
+    except smart.SmartError as exc:
+        raise HTTPException(422, str(exc))
+
+    try:
+        smart.save(config.SMART_FILE, new_defs)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.SMART_FILE}: {exc}")
+    smart_cfg = new_defs
+    machine.apply_smart(new_defs)
+    # SMART to ruch z kontrolą siły — zmiana tych liczb zmienia, jak mocno
+    # maszyna naciska na detal. Dokładnie po to jest dziennik zmian.
+    _log(user, "zapis definicji SMART", ", ".join(sorted(new_defs)))
+    return {
+        "ok": True,
+        "definitions": smart.to_dict(new_defs),
+        # ostrzeżenia o cyklu też, bo zmiana nazwy definicji może osierocić
+        # krok SMART, a admin zobaczyłby to dopiero przy starcie cyklu
+        "warnings": smart.warnings(new_defs, config.MACHINE_MODE)
+        + cycle.warnings(cycle_cfg, profiles_cfg.keys(), axes_cfg.keys(), new_defs.keys()),
+    }
+
+
 # --- cykl maszyny ---------------------------------------------------------
 
 
@@ -718,8 +801,12 @@ async def get_cycle(user=Depends(require_operator)):
         "cycle": cycle_cfg.to_dict(),
         "step_kinds": list(cycle.STEP_KINDS),
         "outputs": list(cycle.OUTPUT_NAMES),
+        # nazwy definicji SMART — ekran cyklu buduje z nich listę wyboru
+        "smart": sorted(smart_cfg),
         "file": str(config.CYCLE_FILE),
-        "warnings": cycle.warnings(cycle_cfg, profiles_cfg.keys(), axes_cfg.keys()),
+        "warnings": cycle.warnings(
+            cycle_cfg, profiles_cfg.keys(), axes_cfg.keys(), smart_cfg.keys()
+        ),
     }
 
 
@@ -734,7 +821,9 @@ async def put_cycle(req: CycleRequest, user=Depends(require_admin)):
     except cycle.CycleError as exc:
         raise HTTPException(422, str(exc))
 
-    result = cycle.warnings(new_cycle, profiles_cfg.keys(), axes_cfg.keys())
+    result = cycle.warnings(
+        new_cycle, profiles_cfg.keys(), axes_cfg.keys(), smart_cfg.keys()
+    )
     try:
         cycle.save(config.CYCLE_FILE, new_cycle)
     except OSError as exc:
@@ -950,6 +1039,11 @@ async def homing_page(request: Request):
 @app.get("/diagnostics", include_in_schema=False)
 async def diagnostics_page(request: Request):
     return _page(request, "diagnostics.html", users.ROLE_ADMIN)
+
+
+@app.get("/smart", include_in_schema=False)
+async def smart_page(request: Request):
+    return _page(request, "smart.html", users.ROLE_ADMIN)
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

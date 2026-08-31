@@ -134,6 +134,9 @@ input:invalid { border-color: var(--err); }
 .msg { padding: 10px 12px; border-radius: 6px; margin-top: 10px; font-size: 14px; display: none; }
 .msg.err { display: block; background: #55201b; color: #ffd7d2; }
 .msg.ok { display: block; background: #1e4d33; color: #d3ffe4; }
+/* ostrzeżenie: coś wymaga uwagi, ale to nie jest alarm maszyny —
+   czerwień w panelu operatora ma znaczyć wyłącznie alarm */
+.msg.warn { display: block; background: #4d431a; color: #ffeaa0; }
 
 .muted { color: var(--muted); font-size: 13px; }
 .jog-grid { display: grid; grid-template-columns: repeat(3, 60px); gap: 8px; justify-content: start; }

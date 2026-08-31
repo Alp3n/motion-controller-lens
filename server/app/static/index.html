@@ -14,6 +14,7 @@
     <a href="/axes">Konfiguracja osi →</a>
     <a href="/homing">Bazowanie →</a>
     <a href="/profiles">Profile parametrów →</a>
+    <a href="/smart">Funkcje SMART →</a>
     <a href="/editor">Edytor technologa →</a>
     <a href="/cycle">Cykl maszyny →</a>
   </header>
@@ -57,6 +58,14 @@
           <div class="axis"><span>Z</span><span id="pos-z">0.000</span></div>
         </div>
         <p class="muted" style="margin-top:12px">Wrzeciono: <b id="spindle">WYŁ</b></p>
+
+        <h2 style="margin-top:16px">Obciążenie osi [% momentu]</h2>
+        <div class="axes">
+          <div class="axis"><span>X</span><span id="trq-x">—</span></div>
+          <div class="axis"><span>Y</span><span id="trq-y">—</span></div>
+          <div class="axis"><span>Z</span><span id="trq-z">—</span></div>
+        </div>
+        <p class="muted" id="trq-source" style="margin-top:8px"></p>
       </section>
     </div>
 

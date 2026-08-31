@@ -43,7 +43,7 @@ Pary `KLUCZ;WARTOSC`, po jednej w linii.
 
 | Klucz           | Wymagany | Opis                                                     |
 |-----------------|----------|----------------------------------------------------------|
-| `FORMAT`        | tak      | wersja formatu: `1` (8 kolumn), `2` (11), `3` (12), `4` (13) |
+| `FORMAT`        | tak      | wersja formatu: `1` (8 kolumn), `2` (11), `3` (12), `4` (13), `5` (14) |
 | `PROGRAM`       | tak      | 12-cyfrowy numer programu — musi zgadzać się z nazwą pliku |
 | `NAZWA`         | tak      | czytelna nazwa programu / detalu                         |
 | `MATERIAL`      | nie      | materiał płytki (np. PMMA, PC)                           |
@@ -61,6 +61,7 @@ Pierwsza linia to nagłówek kolumn (stały):
 - **format 2:** `LP;OPERACJA;X;Y;Z;X2;Y2;POSUW;PRZEJSCIA;PRZYROST;UWAGI`
 - **format 3:** `LP;OPERACJA;X;Y;Z;X2;Y2;POSUW;OBROTY;PRZEJSCIA;PRZYROST;UWAGI`
 - **format 4:** `LP;OPERACJA;X;Y;Z;X2;Y2;POSUW;OBROTY;MOMENT;PRZEJSCIA;PRZYROST;UWAGI`
+- **format 5:** `LP;OPERACJA;X;Y;Z;X2;Y2;POSUW;OBROTY;MOMENT;PRZEJSCIA;PRZYROST;SMART;UWAGI`
 
 Nagłówek musi odpowiadać wersji podanej w `FORMAT`. Parser czyta wszystkie
 wersje, a edytor zapisuje zawsze w najnowszej — starsze pliki awansują przy
@@ -80,6 +81,7 @@ zapisany z Excela w polskich ustawieniach też zadziała).
 | `PROSTOKAT` | X, Y, Z, X2, Y2 | obrys prostokąta o narożnikach przeciwległych (X,Y) i (X2,Y2); tor zamyka się w punkcie startu |
 | `SZYBKI` | X, Y             | przejazd bez skrawania na wysokości `Z_BEZPIECZNE`, posuwem dojazdu           |
 | `WRZECIONO` | OBROTY        | zmiana obrotów wrzeciona w trakcie programu; `0` wyłącza wrzeciono            |
+| `SMART`  | SMART            | wywołanie funkcji SMART — ruch reagujący na siłę, opisany definicją z ekranu „Funkcje SMART". Jedzie od miejsca, w którym stoi maszyna; dystans, oś, próg siły i prędkości są w definicji |
 | `PAUZA`  | —                | zatrzymanie cyklu; operator wznawia przyciskiem START (np. kontrola wzrokowa)     |
 
 Kolumna `UWAGI` jest dowolnym opisem dla operatora (wyświetlana na panelu).
@@ -91,10 +93,11 @@ Kolumny opcjonalne. Puste znaczy „weź wartość z nagłówka programu" (albo,
 dla `MOMENT`, „weź wartość z aktywnego profilu parametrów").
 
 `PRZEJSCIA` i `PRZYROST` przyjmują **tylko operacje skrawające**
-(`PUNKT`, `LINIA`, `PROSTOKAT`). `POSUW` i `MOMENT` nie dotyczą `PAUZA` ani
-`WRZECIONO` (nie poruszają osiami). `OBROTY` dotyczą wyłącznie `WRZECIONO`.
-Złamanie tych reguł jest błędem z numerem linii, a nie cichym
-zignorowaniem wartości.
+(`PUNKT`, `LINIA`, `PROSTOKAT`). `POSUW` i `MOMENT` nie dotyczą `PAUZA`,
+`WRZECIONO` ani `SMART`. `OBROTY` dotyczą wyłącznie `WRZECIONO`, a `SMART`
+wyłącznie operacji `SMART`. Operacja `SMART` nie przyjmuje też współrzędnych
+— jedzie od bieżącej pozycji. Złamanie tych reguł jest błędem z numerem
+linii, a nie cichym zignorowaniem wartości.
 
 | Kolumna     | Opis                                                                 |
 |-------------|----------------------------------------------------------------------|
@@ -103,6 +106,7 @@ zignorowaniem wartości.
 | `MOMENT`    | limit siły (momentu silnika) tylko dla tej operacji, w % (0, 100]; puste = wartość z aktywnego profilu parametrów. **Dziś tylko zapis w pliku** — jak limit momentu w profilach, nie działa jeszcze w symulatorze ani na sprzęcie (protokół mostka nie ma komendy momentu) |
 | `PRZEJSCIA` | liczba przejść na głębokość (liczba całkowita ≥ 1)                    |
 | `PRZYROST`  | przyrost głębokości na przejście [mm]                                 |
+| `SMART`     | nazwa definicji SMART — **wyłącznie** dla operacji `SMART`. Parametry (oś, dystans, próg siły, prędkości) siedzą w definicji, wspólnej z cyklem maszyny (`config/smart.json`, ekran `/smart`). **Na maszynie jeszcze nie działa** — mostek nie zna komendy SMART i przerwie program błędem; w symulatorze wykonuje się, ale reaguje na moment zmyślony przez symulator, nie na pomiar (patrz `funkcje-smart.md`) |
 
 `PRZEJSCIA` i `PRZYROST` **wykluczają się** — wypełnij jedno albo żadne.
 Bez nich operacja wykonuje jedno przejście na pełną głębokość.

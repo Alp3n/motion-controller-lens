@@ -65,6 +65,10 @@ SPINDLE_FILE = Path(
 # oznacza „serwer nie wie" (zmienna nie jest wyeksportowana do jego procesu).
 SPINDLE_OUTPUT = os.environ.get("SPINDLE_OUTPUT")
 
+# plik definicji SMART (nazwane zestawy parametrów procedur sterowanych siłą,
+# np. „SMART-sila"); wspólne dla programu technologa i cyklu maszyny
+SMART_FILE = Path(os.environ.get("SMART_CONFIG", "config/smart.json")).resolve()
+
 # wartości startowe obszaru roboczego [mm] — używane tylko, dopóki nie ma
 # pliku konfiguracji osi
 WORK_AREA = {

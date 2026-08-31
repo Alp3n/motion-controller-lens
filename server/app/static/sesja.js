@@ -14,6 +14,7 @@
     "/homing": "admin",
     "/profiles": "admin",
     "/cycle": "admin",
+    "/smart": "admin",
     "/diagnostics": "admin",
   };
 
