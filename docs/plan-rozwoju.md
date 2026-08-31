@@ -418,10 +418,17 @@ w istniejącą pętlę `waitMoves()`, która już chodzi co 20 ms.
 cyklu, wybierany z listy jak każda inna operacja). Definicje są **wspólne**
 dla programu technologa i cyklu maszyny.
 
-- [ ] **Etap 0:** `STATUS` z odczytem momentu (`TRQX/TRQY/TRQZ`) → panel
+- [~] **Etap 0:** `STATUS` z odczytem momentu (`TRQX/TRQY/TRQZ`) → panel
       operatora pokazuje obciążenie osi. Najmniejszy krok weryfikujący całą
       drogę odczytu na maszynie; pozwala zmierzyć realny koszt próbkowania.
-      Przydatny sam w sobie. *(mostek — wymaga maszyny)*
+      **Strona serwera i panelu gotowa:** `MachineStatus` niesie `torque`
+      i `torque_source`, `poll_status` czyta `TRQ*`, panel pokazuje
+      obciążenie. Żeby nie wstrzymywać etapów 3 i 4, **symulator podstawia
+      wartości zmyślone**, oznaczone jako `symulacja` — panel mówi to wprost
+      i nie wolno na nich dobierać progów siły.
+      **Zostaje C++:** dopisać `TRQ*` do odpowiedzi `STATUS` w mostku
+      i zmierzyć koszt próbkowania. *(mostek — wymaga maszyny)*
+      [`zmiany/symulacja-momentu.md`](zmiany/symulacja-momentu.md)
 - [x] **Etap 1:** model definicji (`server/app/smart.py`, `config/smart.json`),
       `GET/PUT /api/smart` i **ekran `/smart`** — lista definicji, edycja,
       „zapisz jako", usuwanie, pola rysowane wg rejestru procedur.
@@ -435,9 +442,18 @@ dla programu technologa i cyklu maszyny.
       Interfejs w Pythonie/JS (rejestrowanie to nie reagowanie — nie musi
       być w C++), ale **sensowne liczby dopiero po etapie 0**. Ten ekran
       daje progi siły do definicji SMART; bez niego dobiera się je na oślep.
-- [ ] **Etap 3:** operacja `SMART` w programie technologa (format 5 `.prg`,
-      kolumna z nazwą definicji) + wybór z listy w edytorze. **Bez sprzętu.**
-- [ ] **Etap 4:** krok `SMART` w cyklu maszyny (`/cycle`). **Bez sprzętu.**
+- [x] **Etap 3:** operacja `SMART` w programie technologa (format 5 `.prg`,
+      kolumna z nazwą definicji) + wybór z listy w edytorze.
+- [x] **Etap 4:** krok `SMART` w cyklu maszyny (`/cycle`) — ta sama definicja
+      i ta sama ścieżka wykonania. 27 nowych testów, 199/199 przechodzi.
+      [`zmiany/smart-w-programie-i-cyklu.md`](zmiany/smart-w-programie-i-cyklu.md)
+
+      **Czego to jeszcze nie robi:** na sprzęcie mostek **odmawia** wykonania
+      kroku SMART (świadomie — cichy ruch bez kontroli siły wbiłby nóż
+      w materiał z pełnym momentem). W symulatorze krok się wykonuje, ale
+      reaguje na moment **zmyślony** przez model symulatora, nie na pomiar
+      — i robi to w Pythonie, czyli tak, jak na maszynie zrobić się nie da.
+      Realna funkcja zaczyna działać dopiero w etapie 5.
 - [ ] **Etap 5:** procedura `ciecie_adaptacyjne` w mostku + komendy `SMART`
       i `SMARTLIST`. *(C++, wymaga `vendor/` i maszyny — tu funkcja zaczyna
       realnie działać)*

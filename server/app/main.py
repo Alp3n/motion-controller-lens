@@ -27,6 +27,7 @@ from .program import (
     NC12_RE,
     ProgramError,
     parse_program,
+    smart_warnings,
     validate_work_area,
 )
 
@@ -64,16 +65,18 @@ machine.apply_axis_config(axes_cfg)
 profiles_cfg, active_profile = profiles.load(config.PROFILES_FILE, axes_cfg.keys())
 machine.apply_profiles(profiles_cfg, active_profile)
 
+# Definicje SMART — nazwane zestawy parametrów procedur sterowanych siłą,
+# wspólne dla programu technologa i cyklu maszyny. Błędny plik przerywa start,
+# jak przy osiach i profilach: te wartości decydują o sile dociskanej do
+# materiału (powód w app/smart.py). Wczytywane PRZED cyklem, bo kroki cyklu
+# odwołują się do definicji po nazwie.
+smart_cfg = smart.load(config.SMART_FILE)
+machine.apply_smart(smart_cfg)
+
 # Cykl maszyny — kroki poziomu admina wokół programu detalu. Pusty, dopóki
 # nie zostanie zdefiniowany; błędny plik przerywa start (powód w app/cycle.py).
 cycle_cfg = cycle.load(config.CYCLE_FILE)
 machine.apply_cycle(cycle_cfg)
-
-# Definicje SMART — nazwane zestawy parametrów procedur sterowanych siłą,
-# wspólne dla programu technologa i cyklu maszyny. Błędny plik przerywa start,
-# jak przy osiach i profilach: te wartości decydują o sile dociskanej do
-# materiału (powód w app/smart.py).
-smart_cfg = smart.load(config.SMART_FILE)
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -288,9 +291,13 @@ async def get_program(number: str):
     if not path.exists():
         raise HTTPException(404, f"brak pliku programu {number}.prg")
     text = path.read_text(encoding="utf-8")
-    result: dict = {"number": number, "content": text, "parsed": None, "error": ""}
+    result: dict = {
+        "number": number, "content": text, "parsed": None, "error": "", "warnings": [],
+    }
     try:
-        result["parsed"] = parse_program(text, expected_number=number).to_dict()
+        program = parse_program(text, expected_number=number)
+        result["parsed"] = program.to_dict()
+        result["warnings"] = smart_warnings(program, smart_cfg.keys())
     except ProgramError as exc:
         result["error"] = str(exc)
     return result
@@ -316,7 +323,15 @@ async def save_program(number: str, req: SaveProgramRequest):
         raise HTTPException(422, str(exc))
     config.PROGRAMS_DIR.mkdir(parents=True, exist_ok=True)
     path.write_text(req.content, encoding="utf-8")
-    return {"ok": True, "number": number, "name": program.name}
+    return {
+        "ok": True,
+        "number": number,
+        "name": program.name,
+        # brakująca definicja SMART nie blokuje zapisu (plik .prg jest
+        # samodzielny), ale technolog musi ją zobaczyć od razu, a nie dopiero
+        # przy starcie na maszynie
+        "warnings": smart_warnings(program, smart_cfg.keys()),
+    }
 
 
 # --- sterowanie maszyną ---------------------------------------------------
@@ -469,10 +484,14 @@ async def put_smart(req: SmartRequest):
     except OSError as exc:
         raise HTTPException(500, f"nie udało się zapisać {config.SMART_FILE}: {exc}")
     smart_cfg = new_defs
+    machine.apply_smart(new_defs)
     return {
         "ok": True,
         "definitions": smart.to_dict(new_defs),
-        "warnings": smart.warnings(new_defs, config.MACHINE_MODE),
+        # ostrzeżenia o cyklu też, bo zmiana nazwy definicji może osierocić
+        # krok SMART, a admin zobaczyłby to dopiero przy starcie cyklu
+        "warnings": smart.warnings(new_defs, config.MACHINE_MODE)
+        + cycle.warnings(cycle_cfg, profiles_cfg.keys(), axes_cfg.keys(), new_defs.keys()),
     }
 
 
@@ -486,8 +505,12 @@ async def get_cycle():
         "cycle": cycle_cfg.to_dict(),
         "step_kinds": list(cycle.STEP_KINDS),
         "outputs": list(cycle.OUTPUT_NAMES),
+        # nazwy definicji SMART — ekran cyklu buduje z nich listę wyboru
+        "smart": sorted(smart_cfg),
         "file": str(config.CYCLE_FILE),
-        "warnings": cycle.warnings(cycle_cfg, profiles_cfg.keys(), axes_cfg.keys()),
+        "warnings": cycle.warnings(
+            cycle_cfg, profiles_cfg.keys(), axes_cfg.keys(), smart_cfg.keys()
+        ),
     }
 
 
@@ -502,7 +525,9 @@ async def put_cycle(req: CycleRequest):
     except cycle.CycleError as exc:
         raise HTTPException(422, str(exc))
 
-    result = cycle.warnings(new_cycle, profiles_cfg.keys(), axes_cfg.keys())
+    result = cycle.warnings(
+        new_cycle, profiles_cfg.keys(), axes_cfg.keys(), smart_cfg.keys()
+    )
     try:
         cycle.save(config.CYCLE_FILE, new_cycle)
     except OSError as exc:

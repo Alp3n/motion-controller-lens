@@ -313,6 +313,14 @@ krok (nic nie jeździ inaczej), a **od razu weryfikuje całą drogę odczytu na
 prawdziwej maszynie** i pozwala zmierzyć koszt próbkowania (ryzyko 3).
 Przydatny sam w sobie — operator widzi, czy nóż się nie zakleszcza.
 
+*Stan: strona serwera i panelu **gotowa** — `MachineStatus` ma `torque`
+i `torque_source`, `poll_status` czyta `TRQX/TRQY/TRQZ`, panel pokazuje
+obciążenie osi. Żeby nie wstrzymywać etapów 3 i 4, symulator wylicza
+obciążenie z własnego, **zmyślonego** modelu, oznaczonego w statusie jako
+`symulacja` — panel mówi to wprost. **Brakuje części w mostku (C++)**:
+dopisania pól `TRQ*` do odpowiedzi `STATUS`. Do zrobienia przy maszynie.
+Opis: `zmiany/symulacja-momentu.md`.*
+
 **Etap 1 — model definicji + ekran `/smart`.** `server/app/smart.py`
 (definicja, rejestr procedur, walidacja, plik `config/smart.json`),
 `GET/PUT /api/smart`, ekran `/smart` z listą, edycją, „zapisz jako"
@@ -330,11 +338,21 @@ na oślep.
 
 **Etap 3 — `SMART` w programie technologa.** Format 5 `.prg` (kolumna
 `SMART` z nazwą definicji), walidacja w `program.py`, wybór z listy
-w edytorze. Symulator wykonuje `SMART` jako zwykły ruch na zadany dystans,
-z ostrzeżeniem w logu, że siła nie jest kontrolowana. **Bez sprzętu.**
+w edytorze. **Bez sprzętu.**
+
+*Stan: **zrobione**, `zmiany/smart-w-programie-i-cyklu.md`. Symulator nie
+wykonuje `SMART` jako zwykłego ruchu (tak było w planie) — odtwarza kształt
+procedury: dojazd, zwolnienie przy rosnącym obciążeniu, zatrzymanie na progu,
+cofnięcie. Reaguje jednak na moment **zmyślony** przez model symulatora,
+a nie na pomiar, i robi to w Pythonie — czyli tak, jak na maszynie zrobić się
+nie da. `ClearCoreMachine` **odmawia** wykonania `SMART` zamiast pojechać bez
+kontroli siły.*
 
 **Etap 4 — `SMART` w cyklu maszyny.** Nowy rodzaj kroku na ekranie `/cycle`,
 te same definicje. **Bez sprzętu.**
+
+*Stan: **zrobione**, ten sam opis zmiany. Krok `SMART` i operacja `SMART`
+idą tą samą ścieżką wykonania i tym samym zbiorem definicji.*
 
 **Etap 5 — procedura `ciecie_adaptacyjne` w mostku.** Algorytm z materiału
 źródłowego, wpięty w `waitMoves`: `TrqGlobal` jako sufit, próbkowanie,

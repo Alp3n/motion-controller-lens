@@ -14,6 +14,7 @@ Rodzaje kroków:
     RUCH     — przejazd wskazanych osi do zadanych pozycji
     PROGRAM  — wywołanie załadowanego programu detalu (12NC)
     WYJSCIE  — ustawienie wyjścia cyfrowego (podajnik, wyrzutnik, lampka)
+    SMART    — wywołanie definicji SMART (ruch reagujący na siłę, temat K)
     PAUZA    — zatrzymanie do potwierdzenia przez operatora
 
 Świadomie **nie ma** kroku „czekaj na wejście": dziś nie mamy żadnego
@@ -30,12 +31,18 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .smart import is_valid_name
+
 STEP_MOVE = "RUCH"
 STEP_PROGRAM = "PROGRAM"
 STEP_OUTPUT = "WYJSCIE"
+# Krok SMART wskazuje definicję po nazwie — te same definicje, których używa
+# program technologa (kolumna SMART w `.prg`), żeby nazwa znaczyła w obu
+# miejscach dokładnie to samo. Model: `app/smart.py`, opis: docs/funkcje-smart.md
+STEP_SMART = "SMART"
 STEP_PAUSE = "PAUZA"
 
-STEP_KINDS = (STEP_MOVE, STEP_PROGRAM, STEP_OUTPUT, STEP_PAUSE)
+STEP_KINDS = (STEP_MOVE, STEP_PROGRAM, STEP_OUTPUT, STEP_SMART, STEP_PAUSE)
 
 # Wyjścia cyfrowe maszyny. Odpowiadają wyjściom BRAKE_0/BRAKE_1 na SC4-Hub —
 # jedno z nich zajmuje wrzeciono, drugie jest do dyspozycji cyklu (decyzja
@@ -77,6 +84,7 @@ class CycleStep:
     feed: float | None = None          # RUCH: posuw [mm/min]
     output: str | None = None          # WYJSCIE: nazwa wyjścia
     output_on: bool | None = None      # WYJSCIE: stan do ustawienia
+    smart: str | None = None           # SMART: nazwa definicji
     note: str = ""
 
     def to_dict(self) -> dict:
@@ -88,6 +96,7 @@ class CycleStep:
             "feed": self.feed,
             "output": self.output,
             "output_on": self.output_on,
+            "smart": self.smart,
             "note": self.note,
         }
 
@@ -125,6 +134,7 @@ class CycleStep:
 
         output = data.get("output") or None
         output_on = data.get("output_on")
+        smart = data.get("smart") or None
 
         step = cls(
             lp=lp,
@@ -134,6 +144,7 @@ class CycleStep:
             feed=feed,
             output=None if output is None else str(output),
             output_on=None if output_on is None else bool(output_on),
+            smart=None if smart is None else str(smart).strip(),
             note=str(data.get("note", "")),
         )
         step.validate()
@@ -163,6 +174,26 @@ class CycleStep:
         elif self.output is not None or self.output_on is not None:
             raise CycleError(
                 f"{self.kind} nie steruje wyjściem — pola output dotyczą WYJSCIE",
+                self.lp,
+            )
+
+        if self.kind == STEP_SMART:
+            if not self.smart:
+                raise CycleError(
+                    "SMART wymaga wskazania definicji (ekran „Funkcje SMART”)",
+                    self.lp,
+                )
+            if not is_valid_name(self.smart):
+                raise CycleError(
+                    f"nieprawidłowa nazwa definicji SMART '{self.smart}' — "
+                    "zacznij od litery, dalej litery, cyfry, podkreślenie "
+                    "albo myślnik",
+                    self.lp,
+                )
+        elif self.smart:
+            raise CycleError(
+                f"{self.kind} nie wywołuje funkcji SMART — pole SMART dotyczy "
+                "kroku SMART",
                 self.lp,
             )
 
@@ -224,12 +255,18 @@ def save(path: Path, cycle: Cycle) -> None:
     tmp.replace(path)
 
 
-def warnings(cycle: Cycle, profile_names, axis_names) -> list[str]:
+def warnings(cycle: Cycle, profile_names, axis_names, smart_names=()) -> list[str]:
     """Rzeczy poprawne składniowo, ale które nie zadziałają tak, jak wygląda."""
     out: list[str] = []
     profile_names = set(profile_names)
     axis_names = set(axis_names)
+    smart_names = set(smart_names)
     for step in cycle.steps:
+        if step.kind == STEP_SMART and step.smart not in smart_names:
+            out.append(
+                f"krok {step.lp}: nie ma definicji SMART '{step.smart}' — "
+                "cykl zatrzyma się na tym kroku, dopóki jej nie dodasz"
+            )
         if step.profile and step.profile not in profile_names:
             out.append(
                 f"krok {step.lp}: profil '{step.profile}' nie istnieje — "

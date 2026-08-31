@@ -43,11 +43,15 @@ def _definition(**overrides):
 
 
 def test_default_definition_matches_source_material():
-    """Wartości startowe są te z zbyszek/kontrola-sily.md (30% / 5 mm / 1 mm)."""
+    """Wartości startowe są te z zbyszek/kontrola-sily.md (30% / 5 mm / 1 mm).
+
+    Dojazd trzymamy ze znakiem — dla domyślnej osi Z zagłębianie idzie w dół,
+    więc -5 mm, nie +5 mm.
+    """
     defs = smart.default_definitions()
     d = defs[smart.DEFAULT_DEFINITION]
     assert d.params["sila_pct"] == 30.0
-    assert d.params["dojazd_mm"] == 5.0
+    assert d.params["dojazd_mm"] == -5.0
     assert d.params["cofniecie_mm"] == 1.0
     assert d.params["os"] == "z"
 
@@ -86,7 +90,7 @@ def test_missing_parameters_filled_from_defaults():
         "x", {"procedure": "ciecie_adaptacyjne", "params": {"sila_pct": 12}}
     )
     assert d.params["sila_pct"] == 12
-    assert d.params["dojazd_mm"] == 5.0  # z rejestru
+    assert d.params["dojazd_mm"] == -5.0  # z rejestru
 
 
 @pytest.mark.parametrize(
@@ -94,7 +98,7 @@ def test_missing_parameters_filled_from_defaults():
     [
         ({"sila_pct": 0}, "Próg siły"),
         ({"sila_pct": 101}, "Próg siły"),
-        ({"dojazd_mm": 0}, "Dojazd"),
+        ({"dojazd_mm": 999}, "Dojazd"),
         ({"probkowanie_ms": 0}, "Okres próbkowania"),
         ({"os": "q"}, "Oś ruchu"),
     ],
@@ -103,6 +107,19 @@ def test_parameter_ranges_enforced(overrides, fragment):
     with pytest.raises(smart.SmartError) as exc:
         smart.SmartDefinition.from_dict("x", _definition(**overrides))
     assert fragment in str(exc.value)
+
+
+def test_zero_travel_rejected():
+    """Dojazd 0 mm to krok, który nic nie robi — lepszy błąd niż cisza."""
+    with pytest.raises(smart.SmartError) as exc:
+        smart.SmartDefinition.from_dict("x", _definition(dojazd_mm=0))
+    assert "dojazd nie może być zerowy" in str(exc.value)
+
+
+def test_travel_sign_sets_direction():
+    """Znak dojazdu wyznacza kierunek — dodatni też musi być dozwolony."""
+    d = smart.SmartDefinition.from_dict("x", _definition(dojazd_mm=3.5, os="x"))
+    assert d.params["dojazd_mm"] == 3.5
 
 
 def test_zero_force_rejected_not_treated_as_safest():

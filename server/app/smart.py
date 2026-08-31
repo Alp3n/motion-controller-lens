@@ -20,9 +20,10 @@ oba i **ostrzec** przy rozjeździe, zamiast wywalić się dopiero przy starcie
 cyklu.
 
 OGRANICZENIE, które trzeba znać: sama procedura (pętla odczytu momentu
-i reakcji) **nie istnieje jeszcze w mostku** — to etap 4 tematu K. Do tego
-czasu definicje można tworzyć i zapisywać, a symulator wykonuje krok SMART
-jako zwykły ruch, bez kontroli siły. Patrz `docs/funkcje-smart.md`.
+i reakcji) **nie istnieje jeszcze w mostku** — to etap 5 tematu K. Do tego
+czasu definicje można tworzyć i zapisywać, a symulator odtwarza tylko
+*kształt* procedury, reagując na moment zmyślony przez model symulatora,
+a nie na pomiar z silnika. Patrz `docs/funkcje-smart.md`.
 """
 
 from __future__ import annotations
@@ -41,6 +42,15 @@ _NAME_RE = re.compile(r"^[^\W\d_][\w-]*$", re.UNICODE)
 
 # oś, na której działa procedura — dziś mostek rusza tylko X/Y/Z
 AXES = ("x", "y", "z")
+
+
+def is_valid_name(name: str) -> bool:
+    """Czy tekst nadaje się na nazwę definicji SMART.
+
+    Wydzielone, bo tej samej reguły pilnuje parser `.prg` (kolumna SMART)
+    i model kroku cyklu — nazwa jedzie do pliku rozdzielanego średnikami.
+    """
+    return bool(_NAME_RE.match(name or ""))
 
 
 class SmartError(Exception):
@@ -137,7 +147,8 @@ class Procedure:
 #
 # Parametry `ciecie_adaptacyjne` odpowiadają algorytmowi „smart cutting"
 # z `zbyszek/kontrola-sily.md`. Wartości domyślne są z tamtego materiału
-# (30% siły, 5 mm dojazdu, 1 mm cofnięcia, progi 0.8/0.5, kolizja 2.0×),
+# (30% siły, 5 mm dojazdu, 1 mm cofnięcia, progi 0.8/0.5, kolizja 2.0×;
+# dojazd trzymamy ze znakiem, więc domyślnie -5 mm — dla osi Z w dół),
 # przeliczone tam, gdzie trzymamy inne jednostki: prędkości w mm/min, tak jak
 # posuwy w całym projekcie, a nie w mm/s.
 
@@ -162,9 +173,10 @@ _CIECIE_ADAPTACYJNE = Procedure(
                  "cięcie za wykonane i cofamy narzędzie",
         ),
         ParamSpec(
-            "dojazd_mm", "Dojazd", default=5.0, unit="mm",
-            minimum=0.001, maximum=500.0,
-            help="o ile oś ma pojechać do przodu, licząc od bieżącej pozycji",
+            "dojazd_mm", "Dojazd", default=-5.0, unit="mm",
+            minimum=-500.0, maximum=500.0,
+            help="o ile oś ma pojechać, licząc od bieżącej pozycji; ZNAK "
+                 "wyznacza kierunek (dla osi Z zagłębianie jest ujemne)",
         ),
         ParamSpec(
             "cofniecie_mm", "Cofnięcie", default=1.0, unit="mm",
@@ -298,6 +310,11 @@ class SmartDefinition:
                 f"({_fmt(zwolnienie)}) — inaczej procedura przełączałaby "
                 "prędkość w kółko przy tym samym obciążeniu"
             )
+        if abs(float(self.params["dojazd_mm"])) < 1e-9:
+            raise SmartError(
+                f"definicja '{self.name}': dojazd nie może być zerowy — "
+                "podaj dystans ze znakiem (dla osi Z zagłębianie jest ujemne)"
+            )
         if float(self.params["v_wolna"]) > float(self.params["v_szybka"]):
             raise SmartError(
                 f"definicja '{self.name}': prędkość wolna nie może być większa "
@@ -366,7 +383,7 @@ def to_dict(definitions: dict[str, SmartDefinition]) -> dict:
 def warnings(definitions: dict[str, SmartDefinition], machine_mode: str) -> list[str]:
     """Ostrzeżenia o tym, co jest poprawne, ale jeszcze nie działa naprawdę.
 
-    Procedury nie ma dziś w mostku (etap 4 tematu K) — technolog, który
+    Procedury nie ma dziś w mostku (etap 5 tematu K) — technolog, który
     zapisuje definicję z progiem siły 30%, musi wiedzieć, że na maszynie
     nic jej jeszcze nie pilnuje.
     """
@@ -374,8 +391,9 @@ def warnings(definitions: dict[str, SmartDefinition], machine_mode: str) -> list
     if definitions:
         out.append(
             "procedury SMART nie ma jeszcze w mostku — definicje da się zapisać, "
-            "ale krok SMART wykona zwykły ruch bez kontroli siły "
-            "(docs/funkcje-smart.md, etap 4)"
+            "ale w symulatorze krok SMART reaguje na moment ZMYŚLONY przez "
+            "model symulatora, a nie na pomiar z silnika "
+            "(docs/funkcje-smart.md, etap 5)"
         )
     if machine_mode != "sim":
         out.append(

@@ -23,19 +23,29 @@ const OP_SCHEMA = {
   },
   SZYBKI: { uses: ["x", "y", "feed", "torque_pct"], required: ["x", "y"] },
   WRZECIONO: { uses: ["rpm"], required: ["rpm"] },
+  /* SMART nie ma współrzędnych: jedzie od miejsca, w którym stoi maszyna,
+     o dystans z definicji. Parametry (próg siły, prędkości) siedzą
+     w definicji — ekran „Funkcje SMART". */
+  SMART: { uses: ["smart"], required: ["smart"] },
   PAUZA: { uses: [], required: [] },
 };
 const OP_TYPES = Object.keys(OP_SCHEMA);
-const FIELDS = ["x", "y", "z", "x2", "y2", "feed", "rpm", "torque_pct", "passes", "depth_step"];
+const FIELDS = [
+  "x", "y", "z", "x2", "y2", "feed", "rpm", "torque_pct", "passes", "depth_step", "smart",
+];
+// pola tekstowe wśród FIELDS — reszta to liczby
+const TEXT_FIELDS = ["smart"];
 const STEP = { passes: "1", feed: "1", rpm: "100", torque_pct: "1", depth_step: "0.01" };
 // nazwy kolumn tak, jak widzi je technolog w tabeli i w pliku .prg
 const LABEL = {
   x: "X", y: "Y", z: "Z", x2: "X2", y2: "Y2",
-  feed: "POSUW", rpm: "OBROTY", torque_pct: "MOMENT", passes: "PRZEJSCIA", depth_step: "PRZYROST",
+  feed: "POSUW", rpm: "OBROTY", torque_pct: "MOMENT", passes: "PRZEJSCIA",
+  depth_step: "PRZYROST", smart: "SMART",
 };
 
 let currentNumber = null;
 let workArea = null;
+let smartNames = [];
 
 async function api(method, url, body) {
   const res = await fetch(url, {
@@ -90,6 +100,32 @@ function numCell(field, value) {
   return input;
 }
 
+/* Definicja SMART wybierana z listy, nie wpisywana — technolog ma widzieć
+   to samo, co na ekranie „Funkcje SMART". Nazwa z pliku, której nie ma na
+   liście, zostaje w opcjach (oznaczona), żeby otwarcie programu jej nie
+   skasowało po cichu. */
+function smartCell(value) {
+  const sel = document.createElement("select");
+  const names = [...smartNames];
+  if (value && !names.includes(value)) names.push(value);
+  for (const name of ["", ...names]) {
+    const o = document.createElement("option");
+    o.value = name;
+    o.textContent =
+      name === ""
+        ? "— wybierz —"
+        : smartNames.includes(name)
+        ? name
+        : `${name} (brak definicji)`;
+    sel.appendChild(o);
+  }
+  sel.value = value || "";
+  sel.style.minWidth = "10em";
+  sel.dataset.field = "smart";
+  sel.onchange = onEdit;
+  return sel;
+}
+
 function iconBtn(label, title, onClick) {
   const b = document.createElement("button");
   b.className = "small icon";
@@ -121,7 +157,7 @@ function addOpRow(op = {}, after = null) {
 
   const fieldTds = FIELDS.map((f) => {
     const td = document.createElement("td");
-    td.appendChild(numCell(f, op[f]));
+    td.appendChild(f === "smart" ? smartCell(op.smart) : numCell(f, op[f]));
     return td;
   });
 
@@ -167,7 +203,7 @@ function applyRowSchema(tr) {
   const type = tr.querySelector("select").value;
   const uses = OP_SCHEMA[type].uses;
   for (const f of FIELDS) {
-    const input = tr.querySelector(`input[data-field="${f}"]`);
+    const input = tr.querySelector(`[data-field="${f}"]`);
     const used = uses.includes(f);
     input.disabled = !used;
     input.parentElement.classList.toggle("off", !used);
@@ -189,7 +225,12 @@ function readRows() {
     for (const f of [...FIELDS, "note"]) {
       const input = tr.querySelector(`[data-field="${f}"]`);
       const raw = input.value.trim();
-      op[f] = f === "note" ? raw : raw === "" ? null : Number(raw.replace(",", "."));
+      op[f] =
+        f === "note" || TEXT_FIELDS.includes(f)
+          ? raw
+          : raw === ""
+          ? null
+          : Number(raw.replace(",", "."));
     }
     return op;
   });
@@ -210,8 +251,13 @@ function validate(ops) {
   for (const op of ops) {
     const schema = OP_SCHEMA[op.op_type];
     for (const f of schema.required) {
-      if (op[f] === null || Number.isNaN(op[f])) mark(op, f, `brak wartości ${LABEL[f]}`);
+      const empty = TEXT_FIELDS.includes(f)
+        ? op[f] === ""
+        : op[f] === null || Number.isNaN(op[f]);
+      if (empty) mark(op, f, `brak wartości ${LABEL[f]}`);
     }
+    if (op.op_type === "SMART" && op.smart && !smartNames.includes(op.smart))
+      mark(op, "smart", `nie ma definicji SMART „${op.smart}"`);
     if (op.passes !== null && op.depth_step !== null)
       mark(op, "depth_step", "wypełnij PRZEJSCIA albo PRZYROST, nie oba");
     if (op.passes !== null && (!Number.isInteger(op.passes) || op.passes < 1))
@@ -427,7 +473,7 @@ function collectContent() {
   const today = new Date().toISOString().slice(0, 10);
   const lines = [
     "[NAGLOWEK]",
-    "FORMAT;4",
+    "FORMAT;5",
     `PROGRAM;${currentNumber}`,
     `NAZWA;${$("f-name").value.trim()}`,
   ];
@@ -473,7 +519,9 @@ async function loadProgram(number) {
     $("f-feed-travel").value = p.feed_travel;
     $("f-z-safe").value = p.z_safe;
     p.operations.forEach((op) => addOpRow(op));
-    showMsg(`załadowano program ${number}`, true);
+    const warn = (data.warnings || []).join("; ");
+    if (warn) showMsg(`załadowano program ${number} — uwagi: ${warn}`);
+    else showMsg(`załadowano program ${number}`, true);
   } else {
     showMsg(`plik ${number}.prg zawiera błąd: ${data.error} — popraw i zapisz ponownie`);
   }
@@ -511,7 +559,9 @@ $("btn-save").onclick = async () => {
     const data = await api("PUT", `/api/programs/${currentNumber}`, {
       content: collectContent(),
     });
-    showMsg(`zapisano program ${data.number} (${data.name})`, true);
+    const warn = (data.warnings || []).join("; ");
+    if (warn) showMsg(`zapisano program ${data.number} — uwagi: ${warn}`);
+    else showMsg(`zapisano program ${data.number} (${data.name})`, true);
     refreshList();
   } catch (e) {
     showMsg("nie zapisano — " + e.message);
@@ -569,6 +619,13 @@ window.addEventListener("resize", () => drawEditView(readRows()));
     workArea = (await api("GET", "/api/config")).work_area;
   } catch (e) {
     workArea = { x_min: -100, x_max: 100, y_min: -100, y_max: 100, z_min: -20, z_max: 50 };
+  }
+  try {
+    // lista definicji SMART do kolumny SMART — bez niej operacja SMART nie ma
+    // z czego wybierać, ale reszta edytora działa dalej
+    smartNames = Object.keys((await api("GET", "/api/smart")).definitions || {});
+  } catch (e) {
+    smartNames = [];
   }
   await refreshList();
   onEdit();

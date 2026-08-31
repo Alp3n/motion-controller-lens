@@ -110,6 +110,12 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   dostaje `start_cycle` (brakowało go od etapu 4 tematu B — `/cycle` nie
   działał na sprzęcie). Pierwsze testy automatyczne dla tej klasy. Nie
   zweryfikowane na fizycznym sterowniku.
+- [zmiany/symulacja-momentu.md](zmiany/symulacja-momentu.md) — obciążenie osi
+  w statusie (`torque` + `torque_source`); symulator podstawia wartości
+  zmyślone, parser `TRQX/Y/Z` ze sterownika gotowy (etap 0 tematu K).
+- [zmiany/smart-w-programie-i-cyklu.md](zmiany/smart-w-programie-i-cyklu.md) —
+  operacja `SMART` w `.prg` (format 5) i krok `SMART` w cyklu maszyny, jedne
+  definicje dla obu (etapy 3 i 4 tematu K); na sprzęcie mostek odmawia.
 - [zmiany/skill-uruchom-projekt.md](zmiany/skill-uruchom-projekt.md) — skill
   Claude Code uruchamiający panel serwera jednym poleceniem, bezpiecznie na
   hoście produkcyjnym i na checkoucie deweloperskim.

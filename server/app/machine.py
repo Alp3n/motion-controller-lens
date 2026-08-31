@@ -19,11 +19,13 @@ from .cycle import (
     STEP_OUTPUT,
     STEP_PAUSE,
     STEP_PROGRAM,
+    STEP_SMART,
     Cycle,
     CycleStep,
     empty_cycle,
 )
 from .profiles import PROFILE_GLOBAL, AxisParams, ParameterProfile
+from .smart import SmartDefinition
 from .program import Operation, Program, cut_path, pass_depths
 
 
@@ -65,6 +67,13 @@ class MachineStatus:
     )
     # profil parametrów ruchu obowiązujący w tej chwili
     active_profile: str = ""
+    # obciążenie osi [% momentu maksymalnego] — podstawa funkcji SMART
+    torque: dict[str, float] = field(
+        default_factory=lambda: {a: 0.0 for a in REQUIRED_AXES}
+    )
+    # skąd pochodzi `torque`: "sterownik" (realny pomiar), "symulacja"
+    # (wyliczone przez symulator — NIE jest pomiarem) albo "brak"
+    torque_source: str = "brak"
 
     def to_dict(self) -> dict:
         return {
@@ -84,7 +93,13 @@ class MachineStatus:
             "cycle_loop": self.cycle_loop,
             "outputs": dict(self.outputs),
             "active_profile": self.active_profile,
+            "torque": {a: round(v, 1) for a, v in self.torque.items()},
+            "torque_source": self.torque_source,
         }
+
+
+def _fmt_pct(value: float) -> str:
+    return f"{value:.1f}".rstrip("0").rstrip(".")
 
 
 class MachineError(Exception):
@@ -107,12 +122,30 @@ class Machine:
         self.status.active_profile = PROFILE_GLOBAL
         # cykl maszyny (poziom admina) — pusty, dopóki nie zostanie zdefiniowany
         self.cycle: Cycle = empty_cycle()
+        # definicje SMART (nazwa -> zestaw parametrów procedury); wspólne dla
+        # programu technologa i cyklu maszyny — celowo jeden zbiór, żeby ta
+        # sama nazwa znaczyła to samo w obu miejscach
+        self.smart: dict[str, SmartDefinition] = {}
 
     # --- konfiguracja osi (wspólna) ---------------------------------------
 
     def apply_axis_config(self, axes: dict[str, AxisConfig]) -> None:
         """Podmienia konfigurację osi; podklasy dosyłają ją do sprzętu."""
         self.axes = dict(axes)
+
+    def apply_smart(self, definitions: dict[str, SmartDefinition]) -> None:
+        """Podmienia definicje SMART widoczne dla programu i cyklu."""
+        self.smart = dict(definitions)
+
+    def _smart_definition(self, name: str) -> SmartDefinition:
+        definition = self.smart.get(name or "")
+        if definition is None:
+            known = ", ".join(sorted(self.smart)) or "brak zdefiniowanych"
+            raise MachineError(
+                f"nie ma definicji SMART '{name}' — zdefiniuj ją na ekranie "
+                f"„Funkcje SMART” (dostępne: {known})"
+            )
+        return definition
 
     # --- profile parametrów ruchu (wspólne) -------------------------------
 
@@ -269,6 +302,26 @@ class Machine:
             )
 
 
+# --- symulacja obciążenia osi ----------------------------------------------
+#
+# UWAGA: poniższe liczby są ZMYŚLONE. Nie pochodzą z pomiaru na maszynie ani
+# z dokumentacji Teknica — mają tylko dać panelowi i funkcjom SMART przebieg,
+# który zachowuje się z grubsza sensownie, zanim mostek zacznie odsyłać realny
+# `TrqMeasured` (etap 0 tematu K). Dlatego status niesie osobne pole
+# `torque_source`: symulator wpisuje "symulacja", sterownik "sterownik".
+#
+# NIE WOLNO na tych wartościach dobierać progów siły dla maszyny. Do tego służy
+# pomiar na sprzęcie i ekran `/sila` (etap 0 i 2 tematu K) — patrz
+# `docs/funkcje-smart.md`.
+
+SIM_TRQ_HOLD = {"x": 0.5, "y": 0.5, "z": 8.0}   # postój [% momentu maks.]
+SIM_TRQ_FRICTION = 3.0        # opór ruchu, niezależny od prędkości [%]
+SIM_TRQ_PER_1000 = 4.0        # narastanie z prędkością [% na 1000 mm/min]
+SIM_TRQ_GRAVITY_Z = 5.0       # asymetria osi Z: w górę drożej, w dół taniej
+SIM_TRQ_CUT = 20.0            # dodatek za skrawanie (wrzeciono + Z pod zerem)
+SIM_TRQ_CUT_PER_MM = 12.0     # ... rosnący z głębokością [% na mm]
+
+
 class SimulatedMachine(Machine):
     """Symulator: ruchy w czasie rzeczywistym wg posuwów z programu.
 
@@ -282,6 +335,8 @@ class SimulatedMachine(Machine):
         self.status.state = MachineState.NOT_HOMED
         self.status.safety_enable = True  # symulacja: zezwolenie domyślnie aktywne
         self._run_task: asyncio.Task | None = None
+        self._sim_load: dict[str, float] = {}
+        self._settle_sim_torque()
 
     def set_safety_enable(self, enabled: bool) -> None:
         self.status.safety_enable = enabled
@@ -501,6 +556,10 @@ class SimulatedMachine(Machine):
             self.status.outputs[step.output] = bool(step.output_on)
             return
 
+        if step.kind == STEP_SMART:
+            await self._run_smart(step.smart)
+            return
+
         if step.kind == STEP_PROGRAM:
             program = self._program
             if program is None:
@@ -522,6 +581,89 @@ class SimulatedMachine(Machine):
         feed = step.feed or 1000.0
         await self._move_to(target["x"], target["y"], target["z"], feed)
 
+    # --- funkcje SMART ----------------------------------------------------
+
+    async def _move_axis(self, axis: str, value: float, feed: float) -> None:
+        """Przejazd jednej osi do pozycji bezwzględnej; reszta stoi."""
+        target = {"x": self.status.x, "y": self.status.y, "z": self.status.z}
+        if axis not in target:
+            raise MachineError(
+                f"oś {axis.upper()} nie jest obsługiwana przez ruch symulatora "
+                "(dziś tylko X/Y/Z)"
+            )
+        self._check_soft_limit(axis, value)
+        target[axis] = value
+        await self._move_to(target["x"], target["y"], target["z"], feed)
+
+    async def _run_smart(self, name: str) -> None:
+        """Funkcja SMART w symulatorze — RUCH BEZ REALNEJ KONTROLI SIŁY.
+
+        Odtwarza *kształt* procedury `ciecie_adaptacyjne`: dojazd prędkością
+        szybką, zwolnienie, gdy obciążenie przekroczy próg zwolnienia, powrót
+        do prędkości szybkiej poniżej progu przyspieszenia, zatrzymanie po
+        osiągnięciu progu siły i cofnięcie narzędzia.
+
+        Reaguje jednak na moment ZMYŚLONY przez `_sim_torque`, a nie na
+        pomiar z silnika, i robi to w Pythonie — czyli dokładnie tak, jak na
+        maszynie zrobić się NIE DA (mostek nie oddaje sterowania w trakcie
+        ruchu, powód w `docs/funkcje-smart.md`). Służy do sprawdzenia
+        przepływu danych i ekranów, nie do dobierania progów siły.
+        """
+        definition = self._smart_definition(name)
+        p = definition.params
+        axis = str(p["os"])
+        threshold = float(p["sila_pct"])
+        distance = float(p["dojazd_mm"])
+        retract = float(p["cofniecie_mm"])
+        v_fast = float(p["v_szybka"])
+        v_slow = float(p["v_wolna"])
+        slow_above = threshold * float(p["prog_zwolnienia"])
+        fast_below = threshold * float(p["prog_przyspieszenia"])
+        collision_at = threshold * float(p["wsp_kolizji"])
+
+        # Odcinek między „odczytami momentu" — tyle, ile mostek przejechałby
+        # przy prędkości szybkiej w jednym okresie próbkowania. Zgrubnie, żeby
+        # przebieg w symulatorze przypominał ten z maszyny.
+        stride = max(0.02, v_fast / 60.0 * float(p["probkowanie_ms"]) / 1000.0)
+
+        start = getattr(self.status, axis)
+        direction = 1.0 if distance >= 0 else -1.0
+        total = abs(distance)
+        travelled = 0.0
+        feed = v_fast
+        reached = False
+        collision = False
+
+        while travelled < total - 1e-9:
+            travelled = min(total, travelled + stride)
+            await self._move_axis(axis, start + direction * travelled, feed)
+            load = self._sim_load.get(axis, 0.0)
+            if load >= collision_at:
+                collision = True
+                break
+            if load >= threshold:
+                reached = True
+                break
+            if load >= slow_above:
+                feed = v_slow
+            elif load <= fast_below:
+                feed = v_fast
+
+        if retract > 0 and (reached or collision):
+            # przy kolizji cofamy mocniej — narzędzie ma odejść od przeszkody,
+            # a nie zostać oparte o nią z pełnym momentem
+            back = retract * (3.0 if collision else 1.0)
+            await self._move_axis(
+                axis, getattr(self.status, axis) - direction * back, v_fast
+            )
+
+        if collision:
+            raise MachineError(
+                f"SMART '{name}': obciążenie osi {axis.upper()} przekroczyło "
+                f"{_fmt_pct(collision_at)}% momentu — traktuję to jako kolizję, "
+                "narzędzie cofnięte"
+            )
+
     async def _execute_operation(self, program: Program, op: Operation) -> None:
         if op.op_type == "PAUZA":
             self.status.spindle_on = False
@@ -533,6 +675,10 @@ class SimulatedMachine(Machine):
 
         if op.op_type == "WRZECIONO":
             self.status.spindle_on = op.rpm > 0
+            return
+
+        if op.op_type == "SMART":
+            await self._run_smart(op.smart)
             return
 
         if op.op_type == "SZYBKI":
@@ -564,6 +710,45 @@ class SimulatedMachine(Machine):
                 # powrót na początek toru przed kolejnym przejściem
                 await self._move_to(op.x, op.y, program.z_safe, program.feed_travel)
 
+    # --- zmyślone obciążenie osi (patrz komentarz przy SIM_TRQ_*) ---------
+
+    def _sim_torque(self, axis: str, delta: float, feed: float) -> float:
+        """Obciążenie jednej osi [% momentu maks.] — wartość WYMYŚLONA.
+
+        Model: moment postojowy (oś Z trzyma ciężar) + opór ruchu rosnący
+        z prędkością + asymetria grawitacyjna Z (w górę drożej niż w dół)
+        + dodatek za skrawanie, rosnący z głębokością pod powierzchnią
+        materiału (Z < 0). Tyle wystarczy, żeby ekrany pokazywały coś, co
+        zmienia się w sposób podobny do prawdy; z prawdą nie ma to nic
+        wspólnego poza kształtem.
+        """
+        value = SIM_TRQ_HOLD.get(axis, 0.5)
+        if abs(delta) > 1e-9:
+            value += SIM_TRQ_FRICTION + SIM_TRQ_PER_1000 * abs(feed) / 1000.0
+            if axis == "z":
+                value += SIM_TRQ_GRAVITY_Z if delta > 0 else -SIM_TRQ_GRAVITY_Z
+            depth = self.status.z
+            if self.status.spindle_on and depth < 0.0:
+                value += SIM_TRQ_CUT + SIM_TRQ_CUT_PER_MM * (-depth)
+        return max(0.0, min(100.0, value))
+
+    def _update_sim_torque(self, deltas: dict[str, float], feed: float) -> None:
+        for axis in ("x", "y", "z"):
+            self.status.torque[axis] = self._sim_torque(
+                axis, deltas.get(axis, 0.0), feed
+            )
+        self.status.torque_source = "symulacja"
+        if any(abs(d) > 1e-9 for d in deltas.values()):
+            # Ostatnie obciążenie *w ruchu*. Pętla SMART czyta właśnie to,
+            # a nie `status.torque`: status po zakończeniu odcinka wraca do
+            # wartości postojowych, więc odczytany po ruchu wyglądałby tak,
+            # jakby narzędzie nagle przestało napotykać opór.
+            self._sim_load = dict(self.status.torque)
+
+    def _settle_sim_torque(self) -> None:
+        """Maszyna stoi — zostaje sam moment trzymający."""
+        self._update_sim_torque({}, 0.0)
+
     async def _move_to(self, x: float, y: float, z: float, feed: float) -> None:
         """Ruch liniowy z interpolacją pozycji w czasie (feed w mm/min).
 
@@ -575,6 +760,7 @@ class SimulatedMachine(Machine):
         sx, sy, sz = self.status.x, self.status.y, self.status.z
         dist = math.dist((sx, sy, sz), (x, y, z))
         if dist < 1e-9:
+            self._settle_sim_torque()
             return
         moving = [
             axis
@@ -582,6 +768,7 @@ class SimulatedMachine(Machine):
             if abs(delta) > 1e-9
         ]
         feed = self._capped_feed(feed, moving)
+        deltas = {"x": x - sx, "y": y - sy, "z": z - sz}
         duration = dist / (feed / 60.0)
         steps = max(1, int(duration / 0.05))
         for i in range(1, steps + 1):
@@ -590,7 +777,11 @@ class SimulatedMachine(Machine):
             self.status.x = sx + (x - sx) * t
             self.status.y = sy + (y - sy) * t
             self.status.z = sz + (z - sz) * t
+            # moment liczymy po przesunięciu pozycji — dodatek za skrawanie
+            # zależy od bieżącej głębokości, nie od tej sprzed kroku
+            self._update_sim_torque(deltas, feed)
             await asyncio.sleep(duration / steps)
+        self._settle_sim_torque()
 
 
 class ClearCoreMachine(Machine):
@@ -685,6 +876,20 @@ class ClearCoreMachine(Machine):
             raise MachineError(f"sterownik odrzucił komendę: {reply}")
         return reply
 
+    def _no_smart_in_bridge(self, what: str) -> MachineError:
+        """Jeden komunikat na oba miejsca, w których SMART trafiłby do mostka.
+
+        Świadomie **przerywamy pracę** zamiast wykonać zwykły ruch: krok SMART
+        istnieje po to, żeby pilnować siły. Cichy przejazd bez tej kontroli
+        wbiłby nóż w materiał z pełnym momentem — a operator zobaczyłby, że
+        cykl „przeszedł".
+        """
+        return MachineError(
+            f"{what}: mostek nie zna jeszcze komendy SMART (etap 5 tematu K) "
+            "— na maszynie nie ma czym pilnować siły, więc nie wykonuję tego "
+            "kroku jako zwykłego ruchu"
+        )
+
     async def poll_status(self) -> None:
         """Cykliczne odpytywanie STATUS — wywoływane z pętli serwera."""
         reply = await self._command("STATUS")
@@ -716,6 +921,24 @@ class ClearCoreMachine(Machine):
         self.status.spindle_on = fields.get("SP") == "1"
         rel = fields.get("REL", "-")
         self.status.released_axes = [] if rel == "-" else sorted(c.lower() for c in rel)
+
+        # Obciążenie osi: TRQX/TRQY/TRQZ w procentach momentu maksymalnego
+        # (`sFnd::IMotion::TrqMeasured`, jednostka PCT_MAX — potwierdzone
+        # w S-FoundationRef.chm). Mostek jeszcze tego nie wysyła; parser jest
+        # gotowy, żeby po dopisaniu w C++ (etap 0 tematu K) panel dostał realny
+        # pomiar bez zmiany w serwerze. Dopóki pól nie ma, źródłem jest "brak"
+        # — pusty wskaźnik jest uczciwszy niż zera udające pomiar.
+        measured = False
+        for axis in ("x", "y", "z"):
+            raw = fields.get("TRQ" + axis.upper())
+            if raw is None:
+                continue
+            try:
+                self.status.torque[axis] = float(raw)
+            except ValueError:
+                continue
+            measured = True
+        self.status.torque_source = "sterownik" if measured else "brak"
 
     async def home(self) -> None:
         self._require_not_released(["x", "y", "z"])
@@ -785,6 +1008,8 @@ class ClearCoreMachine(Machine):
                 self.status.state = MachineState.RUNNING
                 await self._command(f"SPINDLE 1 {program.spindle_rpm:.0f}")
                 continue
+            if op.op_type == "SMART":
+                raise self._no_smart_in_bridge(f"operacja LP={op.lp} (SMART)")
             if op.op_type == "WRZECIONO":
                 if op.rpm > 0:
                     await self._command(f"SPINDLE 1 {op.rpm:.0f}")
@@ -916,6 +1141,9 @@ class ClearCoreMachine(Machine):
             # ekranie, ale fizycznie nic się nie przełącza.
             self.status.outputs[step.output] = bool(step.output_on)
             return
+
+        if step.kind == STEP_SMART:
+            raise self._no_smart_in_bridge(f"krok {step.lp} (SMART)")
 
         if step.kind == STEP_PROGRAM:
             program = self._program

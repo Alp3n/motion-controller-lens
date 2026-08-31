@@ -12,6 +12,10 @@ const STEP_SCHEMA = {
   RUCH: { uses: ["profile", "x", "y", "z", "feed"] },
   PROGRAM: { uses: ["profile"] },
   WYJSCIE: { uses: ["profile", "output", "output_on"] },
+  /* SMART: ruch reagujący na siłę, opisany definicją (ekran „Funkcje SMART").
+     Bez własnych pozycji i posuwu — to wszystko jest w definicji, wspólnej
+     z programem technologa. */
+  SMART: { uses: ["profile", "smart"] },
   PAUZA: { uses: [] },
 };
 const STEP_KINDS = Object.keys(STEP_SCHEMA);
@@ -20,6 +24,7 @@ const NUM_FIELDS = [...AXES, "feed"];
 
 let profileNames = [];
 let outputNames = [];
+let smartNames = [];
 let axesCfg = null;
 let machineBusy = false;
 
@@ -120,6 +125,16 @@ function addStepRow(step = {}, after = null) {
     })
   );
 
+  const smartTd = document.createElement("td");
+  const smartOptions = [...smartNames];
+  if (step.smart && !smartOptions.includes(step.smart)) smartOptions.push(step.smart);
+  const smartLabels = { "": "—" };
+  for (const n of smartOptions)
+    if (!smartNames.includes(n)) smartLabels[n] = `${n} (brak definicji)`;
+  smartTd.appendChild(
+    selectCell("smart", ["", ...smartOptions], step.smart || "", smartLabels)
+  );
+
   const noteTd = document.createElement("td");
   const noteInput = document.createElement("input");
   noteInput.value = step.note || "";
@@ -147,7 +162,7 @@ function addStepRow(step = {}, after = null) {
     })
   );
 
-  tr.append(lpTd, kindTd, profTd, ...numTds, outTd, stateTd, noteTd, actTd);
+  tr.append(lpTd, kindTd, profTd, ...numTds, outTd, stateTd, smartTd, noteTd, actTd);
   if (after) after.after(tr);
   else tbody.appendChild(tr);
   applyRowSchema(tr);
@@ -196,6 +211,7 @@ function readRows() {
       feed: num(get("feed").value),
       output: get("output").value || null,
       output_on: outputOn === "" ? null : outputOn === "1",
+      smart: get("smart").value || null,
       note: get("note").value.trim(),
       tr,
     };
@@ -246,6 +262,12 @@ function validate(steps) {
       if (step.output_on == null) mark(step, "output_on", "WYJSCIE wymaga stanu");
     }
 
+    if (step.kind === "SMART") {
+      if (!step.smart) mark(step, "smart", "SMART wymaga wskazania definicji");
+      else if (!smartNames.includes(step.smart))
+        mark(step, "smart", `nie ma definicji SMART „${step.smart}"`);
+    }
+
     if (step.profile && !profileNames.includes(step.profile)) {
       mark(step, "profile", `profil „${step.profile}" nie istnieje`);
     }
@@ -287,6 +309,7 @@ function toPayload(steps) {
     feed: s.feed,
     output: s.output,
     output_on: s.output_on,
+    smart: s.smart,
     note: s.note,
   }));
 }
@@ -394,6 +417,7 @@ Promise.all([
   .then(([cyc, prof, ax]) => {
     profileNames = Object.keys(prof.profiles || {});
     outputNames = cyc.outputs || [];
+    smartNames = cyc.smart || [];
     axesCfg = ax.axes || null;
     applyCycle(cyc);
   })

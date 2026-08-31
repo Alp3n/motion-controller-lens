@@ -122,8 +122,11 @@ Trzy poziomy: **procedura** (C++, programista) → **definicja SMART**
 (nazwany zestaw parametrów, np. `SMART-sila`, własny ekran z „zapisz jako")
 → **użycie** (wiersz programu albo krok cyklu, z listy jak inne operacje).
 Definicje wspólne dla programu technologa i cyklu maszyny.
-- [ ] Etap 0: `STATUS` z odczytem momentu (`TRQX/Y/Z`) + podgląd na panelu
-      — mały krok, weryfikuje sprzęt i koszt próbkowania *(maszyna)*
+- [~] Etap 0: `STATUS` z odczytem momentu (`TRQX/Y/Z`) + podgląd na panelu.
+      **Serwer i panel gotowe** (`zmiany/symulacja-momentu.md`); symulator
+      podstawia wartości ZMYŚLONE, oznaczone w statusie jako „symulacja".
+      **Zostaje C++:** dopisać `TRQ*` do odpowiedzi `STATUS` w mostku
+      i zmierzyć koszt próbkowania *(maszyna)*
 - [x] Etap 1: model definicji + `/api/smart` + **ekran `/smart`** (lista,
       edycja, „zapisz jako", usuwanie) — `zmiany/ekran-smart.md`
 - [ ] Etap 2: **ekran `/sila` — kontrola siły i kalibracja**: podgląd na
@@ -131,9 +134,12 @@ Definicje wspólne dla programu technologa i cyklu maszyny.
       oba kierunki, kilka prędkości), kalibracja siłomierzem, pomiar
       próbkowania, zapis `config/kalibracja.json`. Kod bez sprzętu,
       sensowne liczby po etapie 0
-- [ ] Etap 3: operacja `SMART` w `.prg` (format 5) + wybór z listy
-      w edytorze **— bez sprzętu**
-- [ ] Etap 4: krok `SMART` w cyklu maszyny (`/cycle`) **— bez sprzętu**
+- [x] Etap 3: operacja `SMART` w `.prg` (format 5) + wybór z listy
+      w edytorze — `zmiany/smart-w-programie-i-cyklu.md`. Na sprzęcie mostek
+      **odmawia** wykonania (lepsze niż ruch bez kontroli siły), w symulatorze
+      działa pozornie — na momencie zmyślonym, nie na pomiarze
+- [x] Etap 4: krok `SMART` w cyklu maszyny (`/cycle`) — ta sama definicja
+      i ta sama ścieżka wykonania co operacja w programie technologa
 - [ ] Etap 5: procedura `ciecie_adaptacyjne` + `SMART`/`SMARTLIST` w mostku
       *(C++, wymaga `vendor/` i maszyny — tu zaczyna realnie działać)*
 - [ ] Etap 6: kolejne procedury (`szukanie_kontaktu`, `miekki_docisk`,
