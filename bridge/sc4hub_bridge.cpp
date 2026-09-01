@@ -113,6 +113,18 @@ static SysManager *mgr = nullptr;
 static IPort *port = nullptr;
 static Axis axes[3] = {{"X", 0}, {"Y", 1}, {"Z", 2}};
 static State state = State::INIT;
+// Czy maszyna była kiedykolwiek zbazowana w tej sesji mostka (od startu
+// procesu). Pozwala RESET-owi odróżnić "zwykłe zatrzymanie po zbazowanej
+// maszynie" (pozycja z enkodera dalej wiarygodna — Global Stop na tym
+// sprzęcie to sygnał logiczny, nie odcięcie zasilania serw, potwierdzone
+// przez operatora 2026-09-01) od "mostek dopiero wystartował, pozycja
+// nieznana" — patrz RESET niżej i docs/zmiany/wznowienie-bez-bazowania.md.
+static bool everHomed = false;
+// Ustawiane, gdy RESET wznowił pracę bez ponownego bazowania (patrz wyżej) —
+// operator powinien obejrzeć maszynę, zanim użyje JEDŹ DO ZERA/ruchu
+// ręcznego. Gaśnie dopiero przy następnym udanym bazowaniu, nie przy samym
+// odczycie — to ma być widoczne, dopóki ktoś świadomie nie zbazuje ponownie.
+static bool resumedWithoutHoming = false;
 static bool axisEnabled[3] = {false, false, false};
 // Oś zluzowana: moment zdjęty celowo, żeby dało się nią ruszyć ręcznie.
 // Komendy ruchu takiej osi są odrzucane aż do ponownego zaciśnięcia (HOLD).
@@ -396,6 +408,8 @@ static void doHome(int fd, std::string &pending) {
                    axes[a].name, axCfg[a].softMin, axCfg[a].softMax);
     (void)fd; (void)pending;
     state = State::READY;
+    everHomed = true;
+    resumedWithoutHoming = false;
 }
 
 /* Numer wyjścia zajętego przez wrzeciono, albo -1 gdy SPINDLE_OUTPUT=none. */
@@ -461,12 +475,12 @@ static std::string statusLine() {
     char buf[320];
     snprintf(buf, sizeof(buf),
              "OK STATE=%s EN=%d X=%.3f Y=%.3f Z=%.3f SP=%d REL=%s OUT=%d%d "
-             "TRQX=%.1f TRQY=%.1f TRQZ=%.1f",
+             "TRQX=%.1f TRQY=%.1f TRQZ=%.1f RESUMED=%d",
              stateName(state), safetyEnabled() ? 1 : 0,
              port ? posMm(0) : 0.0, port ? posMm(1) : 0.0, port ? posMm(2) : 0.0,
              spindleOn ? 1 : 0, rel.c_str(),
              outputState[0] ? 1 : 0, outputState[1] ? 1 : 0,
-             trq[0], trq[1], trq[2]);
+             trq[0], trq[1], trq[2], resumedWithoutHoming ? 1 : 0);
     std::string line = buf;
 
     // Powód alarmu jako ostatnie pole — tekst ze spacjami, więc wszystko po
@@ -554,7 +568,21 @@ static std::string handle(const std::string &line, int fd, std::string &pending)
                 port->Nodes(i).Motion.NodeStopClear();
             }
             alarmMsg.clear();
-            state = State::NOT_HOMED;
+            // Maszyna, która była już zbazowana w tej sesji mostka, wraca do
+            // READY zamiast do NOT_HOMED — pozycja z enkodera zostaje
+            // wiarygodna (Global Stop na tym sprzęcie nie odcina zasilania
+            // serw). Bez tego zwykłe zatrzymanie (STOP, limit momentu,
+            // zacięcie się materiału) wymuszało pełne ponowne bazowanie,
+            // mimo że maszyna cały czas "wiedziała", gdzie stoi — zgłoszone
+            // przy maszynie 2026-09-01. Operator i tak dostaje ostrzeżenie
+            // (RESUMED w STATUS) — to zastępuje wymuszone bazowanie
+            // świadomym „obejrzyj maszynę", nie cichym pominięciem kroku.
+            if (everHomed) {
+                state = State::READY;
+                resumedWithoutHoming = true;
+            } else {
+                state = State::NOT_HOMED;
+            }
             return "OK";
         }
         // RELEASE/HOLD celowo przed bramką ALARM — po alarmie operator często

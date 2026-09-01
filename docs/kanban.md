@@ -89,6 +89,12 @@ mam to założyć.
 - [x] Automatyczny (pętla do STOP/błędu/utraty zezwolenia) + start/stop —
       drzwi jeszcze nie istnieją jako sygnał (temat E), zatrzyma się na tym,
       co już jest: STOP, błąd w kroku, utrata sygnału zezwolenia
+- [x] **Wznowienie po alarmie bez ponownego bazowania** (2026-09-01,
+      zgłoszone po pierwszym pełnym teście cyklu na sprzęcie) — `RESET` na
+      już zbazowanej maszynie wraca do `READY`, nie wymusza `NOT_HOMED`
+      (Global Stop na tym sprzęcie nie odcina zasilania serw, potwierdzone
+      przez operatora). Żółte ostrzeżenie na panelu każe obejrzeć maszynę.
+      Szczegóły: `zmiany/wznowienie-bez-bazowania.md`
 
 ### G. Ekrany i programy
 - [x] Ekran główny (nazwa poprawiona, miejsce na logo gotowe — czeka na plik)
@@ -108,7 +114,9 @@ Jedna sesja w ClearView (Windows) domyka pierwsze pięć pozycji:
 - [ ] Sprawdzić dostępność g-Stop (tłumienie drgań)
 
 Pomiary i testy:
-- [ ] Zweryfikować cykl maszyny (`SC4HubMachine.start_cycle`) na sprzęcie
+- [x] Zweryfikować cykl maszyny (`SC4HubMachine.start_cycle`) na sprzęcie —
+      **2026-09-01, działa poprawnie.** Przy okazji znaleziony i naprawiony
+      problem: wymuszone bazowanie po RESET, patrz temat F wyżej
 - [ ] Weryfikacja pomiarowa toru `LINIA` + próba grup wyzwalania
 - [ ] Zmierzyć domyślny watchdog sieciowy (czy w ogóle działa)
 - [ ] Test: utrata zezwolenia w ruchu

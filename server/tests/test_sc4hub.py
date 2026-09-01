@@ -402,6 +402,43 @@ def test_trqlimit_pomija_os_bez_wpisu_w_profilu():
     assert not any(c.startswith("TRQLIMIT Z") for c in m.calls)
 
 
+# --- RESUMED=1 w STATUS (wznowienie po alarmie bez ponownego bazowania) ----
+
+
+def test_poll_status_czyta_resumed_flag():
+    m = _machine()
+    m.status.state = MachineState.NOT_HOMED
+
+    async def fake_command(command: str) -> str:
+        if command == "STATUS":
+            return "OK STATE=READY EN=1 X=0.000 Y=0.000 Z=0.000 SP=0 REL=- OUT=00 RESUMED=1"
+        return "OK"
+
+    m._command = fake_command
+
+    asyncio.run(m.poll_status())
+
+    assert m.status.resumed_without_homing is True
+    assert m.status.state == MachineState.READY
+
+
+def test_poll_status_bez_pola_resumed_zostaje_false():
+    """Starszy mostek (bez tej zmiany) nie wysyła RESUMED — brak pola to
+    False, nie błąd parsowania."""
+    m = _machine()
+
+    async def fake_command(command: str) -> str:
+        if command == "STATUS":
+            return "OK STATE=READY EN=1 X=0.000 Y=0.000 Z=0.000 SP=0 REL=- OUT=00"
+        return "OK"
+
+    m._command = fake_command
+
+    asyncio.run(m.poll_status())
+
+    assert m.status.resumed_without_homing is False
+
+
 def test_go_to_zero_respects_soft_limits():
     axes_cfg = axes_mod.parse_axes(
         {

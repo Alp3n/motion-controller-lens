@@ -275,9 +275,17 @@ niżej; rozstrzygnąć **przed** rozpoczęciem tego tematu.
 przez istniejące komendy mostka (nie trzeba było C++ — MOVEZ/MOVEXY/SPINDLE
 już tam są), WYJSCIE dalej tylko w statusie (protokół nie ma tej komendy).
 Pierwsze testy automatyczne dla `SC4HubMachine` w ogóle (wcześniej klasa
-nie miała żadnych). **Nie zweryfikowane na fizycznym sterowniku** — do
-potwierdzenia przy najbliższym uruchomieniu sprzętowym (temat H). Szczegóły:
+nie miała żadnych). **Zweryfikowane na fizycznym sterowniku 2026-09-01** —
+cykl maszyny uruchomiony i działa poprawnie. Szczegóły:
 [`zmiany/cykl-na-sprzecie.md`](zmiany/cykl-na-sprzecie.md).
+
+**Znalezione przy tej okazji i naprawione (2026-09-01):** po STOP + RESET
+maszyna wymuszała pełne ponowne bazowanie, mimo że była już zbazowana i
+pozycja z enkodera zostawała wiarygodna (Global Stop na tym sprzęcie nie
+odcina zasilania serw — potwierdzone przez operatora). Teraz RESET na
+zbazowanej maszynie wraca do READY z żółtym ostrzeżeniem zamiast wymuszać
+bazowanie — nie trzeba angażować utrzymania ruchu przy zwykłym zacięciu
+materiału. Szczegóły: [`zmiany/wznowienie-bez-bazowania.md`](zmiany/wznowienie-bez-bazowania.md).
 
 Źródło: `zbyszek/NOTATKI_FUNKCJONALNE.md` §6.
 

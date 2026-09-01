@@ -155,5 +155,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/ekran-sila.md](zmiany/ekran-sila.md) — ekran `/sila`: podgląd
   momentu na żywo i ręczna kalibracja moment→siła (etap 2 tematu K,
   częściowo — bez automatycznej próby przejazdu, bo ta rusza maszyną).
+- [zmiany/wznowienie-bez-bazowania.md](zmiany/wznowienie-bez-bazowania.md) —
+  RESET po alarmie na już zbazowanej maszynie wraca do READY zamiast
+  wymuszać pełne bazowanie (Global Stop na tym sprzęcie nie odcina
+  zasilania serw); żółte ostrzeżenie na panelu, żeby obejrzeć maszynę.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

@@ -304,3 +304,44 @@ def test_api_homing_odrzuca_bledny_tryb(client):
 
 def test_ekran_bazowania_sie_serwuje(client):
     assert client.get("/homing").status_code == 200
+
+
+# --- RESET po alarmie: wznowienie bez ponownego bazowania -----------------
+
+
+def test_reset_po_bazowaniu_wraca_do_ready_z_ostrzezeniem():
+    m = SimulatedMachine()
+    m.apply_axis_config(_axes())
+    asyncio.run(_home_and_wait(m))
+    assert m.status.state is MachineState.READY
+
+    m.status.state = MachineState.ALARM
+    m.status.alarm_message = "zatrzymano przyciskiem STOP"
+    asyncio.run(m.reset())
+
+    assert m.status.state is MachineState.READY
+    assert m.status.resumed_without_homing is True
+    assert m.status.alarm_message == ""
+
+
+def test_reset_bez_wczesniejszego_bazowania_wymusza_not_homed():
+    m = SimulatedMachine()
+    m.status.state = MachineState.ALARM
+    asyncio.run(m.reset())
+
+    assert m.status.state is MachineState.NOT_HOMED
+    assert m.status.resumed_without_homing is False
+
+
+def test_kolejne_bazowanie_gasi_ostrzezenie_wznowienia():
+    m = SimulatedMachine()
+    m.apply_axis_config(_axes())
+    asyncio.run(_home_and_wait(m))
+    m.status.state = MachineState.ALARM
+    asyncio.run(m.reset())
+    assert m.status.resumed_without_homing is True
+
+    asyncio.run(_home_and_wait(m))
+
+    assert m.status.resumed_without_homing is False
+    assert m.status.state is MachineState.READY

@@ -46,6 +46,23 @@ function applyStatus(st) {
     alarm.className = "msg";
   }
 
+  /* RESET po alarmie na już zbazowanej maszynie wraca do READY zamiast
+     NOT_HOMED (pozycja z enkodera zostaje wiarygodna) — ale to nie zwalnia
+     operatora z obejrzenia maszyny, jeśli STOP przyszedł np. przez zacięty
+     materiał. Ostrzeżenie gaśnie dopiero po kolejnym bazowaniu (patrz
+     bridge/sc4hub_bridge.cpp i docs/zmiany/wznowienie-bez-bazowania.md). */
+  const resumedWarn = $("resumed-warn");
+  if (st.resumed_without_homing) {
+    resumedWarn.textContent =
+      "Uwaga: wznowiono po zatrzymaniu BEZ ponownego bazowania — pozycja pochodzi " +
+      "z ostatniego bazowania. Obejrzyj maszynę (np. czy materiał się nie zaciął), " +
+      "zanim użyjesz JEDŹ DO ZERA albo ruchu ręcznego. Zbazuj ponownie, jeśli masz " +
+      "jakiekolwiek wątpliwości co do pozycji osi.";
+    resumedWarn.className = "msg warn";
+  } else {
+    resumedWarn.className = "msg";
+  }
+
   $("order").textContent = st.order_id || "—";
   $("prog-number").textContent = st.program_number || "—";
   $("prog-name").textContent = st.program_name || "—";

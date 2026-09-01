@@ -78,6 +78,11 @@ class MachineStatus:
     # skąd pochodzi `torque`: "sterownik" (realny pomiar), "symulacja"
     # (wyliczone przez symulator — NIE jest pomiarem) albo "brak"
     torque_source: str = "brak"
+    # True po RESET, które wznowiło pracę bez ponownego bazowania (maszyna
+    # była już zbazowana wcześniej w tej sesji — pozycja z enkodera zostaje
+    # wiarygodna). Operator powinien obejrzeć maszynę, zanim użyje JEDŹ DO
+    # ZERA albo ruchu ręcznego. Gaśnie dopiero przy kolejnym bazowaniu.
+    resumed_without_homing: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -99,6 +104,7 @@ class MachineStatus:
             "active_profile": self.active_profile,
             "torque": {a: round(v, 1) for a, v in self.torque.items()},
             "torque_source": self.torque_source,
+            "resumed_without_homing": self.resumed_without_homing,
         }
 
 
@@ -389,6 +395,9 @@ class SimulatedMachine(Machine):
         self._run_task: asyncio.Task | None = None
         self._sim_load: dict[str, float] = {}
         self._settle_sim_torque()
+        # Czy symulator był kiedykolwiek zbazowany — jak `everHomed` w
+        # mostku, patrz `reset()` i docs/zmiany/wznowienie-bez-bazowania.md.
+        self._ever_homed = False
 
     def set_safety_enable(self, enabled: bool) -> None:
         self.status.safety_enable = enabled
@@ -456,6 +465,8 @@ class SimulatedMachine(Machine):
         finally:
             self._run_task = None
         self.status.state = MachineState.READY
+        self._ever_homed = True
+        self.status.resumed_without_homing = False
 
     async def go_to_zero(self) -> None:
         """Dojazd do zera po bazowaniu — ruch pozycyjny, NIE ponowne bazowanie.
@@ -530,7 +541,16 @@ class SimulatedMachine(Machine):
         if self.status.state == MachineState.ALARM:
             self.status.alarm_message = ""
             self.status.current_op = None
-            self.status.state = MachineState.NOT_HOMED
+            # Maszyna już zbazowana w tej sesji wraca do READY, nie do
+            # NOT_HOMED — pozycja zostaje wiarygodna (patrz `__init__` i
+            # docs/zmiany/wznowienie-bez-bazowania.md). Ten sam mechanizm co
+            # RESET w bridge/sc4hub_bridge.cpp — zamierzone lustro, nie
+            # przypadkowa zbieżność.
+            if self._ever_homed:
+                self.status.state = MachineState.READY
+                self.status.resumed_without_homing = True
+            else:
+                self.status.state = MachineState.NOT_HOMED
 
     async def set_released(self, axes: list[str], released: bool) -> None:
         if self.status.state in (MachineState.RUNNING, MachineState.HOMING):
@@ -1100,10 +1120,9 @@ class SC4HubMachine(Machine):
 
         # Obciążenie osi: TRQX/TRQY/TRQZ w procentach momentu maksymalnego
         # (`sFnd::IMotion::TrqMeasured`, jednostka PCT_MAX — potwierdzone
-        # w S-FoundationRef.chm). Mostek jeszcze tego nie wysyła; parser jest
-        # gotowy, żeby po dopisaniu w C++ (etap 0 tematu K) panel dostał realny
-        # pomiar bez zmiany w serwerze. Dopóki pól nie ma, źródłem jest "brak"
-        # — pusty wskaźnik jest uczciwszy niż zera udające pomiar.
+        # w S-FoundationRef.chm i fizycznie na sprzęcie, etap 0 tematu K).
+        # Dopóki pól nie ma (np. mostek starszy niż ta zmiana), źródłem jest
+        # "brak" — pusty wskaźnik jest uczciwszy niż zera udające pomiar.
         measured = False
         for axis in ("x", "y", "z"):
             raw = fields.get("TRQ" + axis.upper())
@@ -1115,6 +1134,12 @@ class SC4HubMachine(Machine):
                 continue
             measured = True
         self.status.torque_source = "sterownik" if measured else "brak"
+
+        # RESUMED=1: RESET wznowił pracę po alarmie bez ponownego bazowania
+        # (maszyna była już zbazowana — patrz RESET w bridge/sc4hub_bridge.cpp
+        # i docs/zmiany/wznowienie-bez-bazowania.md). Brak pola (starszy
+        # mostek) = False, nie błąd — zachowanie sprzed tej zmiany.
+        self.status.resumed_without_homing = fields.get("RESUMED") == "1"
 
     async def home(self) -> None:
         self._require_not_released(["x", "y", "z"])
