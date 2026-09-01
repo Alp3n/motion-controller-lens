@@ -62,6 +62,16 @@ no-op.
   w klasie bazowej, brak nagrywania w spoczynku, nagrywanie w
   RUNNING/PAUSED, reset przy nowym uruchomieniu, limit długości, API.
 
+## Poprawka (2026-09-01, po pierwszym użyciu)
+
+Skala wykresu momentu była na sztywno 0–100% — przy realnych wartościach
+rzędu kilku procent (typowe na tej maszynie) linie spłaszczały się przy
+samym dnie wykresu, praktycznie niewidoczne. Poprawione: skala dopasowuje
+się teraz do rzeczywistego maksimum w nagraniu (jak już miał wykres
+prędkości), z etykietami osi pokazującymi realne wartości, nie stałe
+0/50/100%. Dopisana też liczba próbek (`N=...`) wprost na obu wykresach —
+łatwo sprawdzić, czy przebieg w ogóle coś nagrał.
+
 ## Uwagi
 
 - **Rozdzielczość to 200 ms** — tyle, co reszta odpytywania statusu.

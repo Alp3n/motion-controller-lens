@@ -217,6 +217,15 @@ function _drawOpBoundaries(ctx, samples, X, padTop, plotBottom, muted) {
   ctx.restore();
 }
 
+function _sampleCountLabel(ctx, w, padTop, padRight, muted, samples, extra) {
+  ctx.save();
+  ctx.fillStyle = muted;
+  ctx.font = "11px sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(`N=${samples.length} próbek` + (extra || ""), w - padRight, padTop + 10);
+  ctx.restore();
+}
+
 function drawMomentChart(samples) {
   const c = $("przebieg-moment");
   if (!c) return;
@@ -232,23 +241,32 @@ function drawMomentChart(samples) {
     return;
   }
 
-  const pad = { l: 34, r: 8, t: 8, b: 18 };
+  // Skala dopasowana do rzeczywistego maksimum, nie na sztywno 0-100% —
+  // przy realnych wartościach rzędu kilku procent stały zakres 0-100%
+  // spłaszczał wszystko przy samym dnie wykresu (zgłoszone 2026-09-01).
+  const allVals = [];
+  samples.forEach((s) => {
+    for (const axis of ["x", "y", "z"]) allVals.push(Math.abs((s.torque && s.torque[axis]) || 0));
+  });
+  const tqMax = Math.max(1, ...allVals);
+
+  const pad = { l: 42, r: 8, t: 8, b: 18 };
   const plotW = w - pad.l - pad.r;
   const plotH = h - pad.t - pad.b;
   const tMax = Math.max(samples[samples.length - 1].t, 0.1);
   const X = (t) => pad.l + (t / tMax) * plotW;
-  const Y = (v) => pad.t + plotH - (Math.max(0, Math.min(100, Math.abs(v))) / 100) * plotH;
+  const Y = (v) => pad.t + plotH - (Math.max(0, Math.min(tqMax, Math.abs(v))) / tqMax) * plotH;
 
   ctx.strokeStyle = border;
   ctx.fillStyle = muted;
   ctx.font = "11px sans-serif";
-  [0, 50, 100].forEach((v) => {
+  [0, tqMax / 2, tqMax].forEach((v) => {
     const y = Y(v);
     ctx.beginPath();
     ctx.moveTo(pad.l, y);
     ctx.lineTo(w - pad.r, y);
     ctx.stroke();
-    ctx.fillText(v + "%", 2, y + 4);
+    ctx.fillText(v.toFixed(1) + "%", 2, y + 4);
   });
 
   _drawOpBoundaries(ctx, samples, X, pad.t, h - pad.b, muted);
@@ -265,6 +283,8 @@ function drawMomentChart(samples) {
     });
     ctx.stroke();
   }
+
+  _sampleCountLabel(ctx, w, pad.t, pad.r, muted, samples, `, skala do ${tqMax.toFixed(1)}%`);
 }
 
 /* Prędkość wypadkowa liczona z odległości między kolejnymi próbkami pozycji
@@ -327,6 +347,8 @@ function drawSpeedChart(samples, speeds) {
     else ctx.lineTo(px, py);
   });
   ctx.stroke();
+
+  _sampleCountLabel(ctx, w, pad.t, pad.r, muted, samples, `, skala do ${Math.round(vMax)} mm/min`);
 }
 
 function renderPrzebiegTabela(samples) {
