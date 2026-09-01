@@ -31,9 +31,13 @@ torque limiters such as the Global Torque Limit" jako przyczynę. Gdy
 `waitMoves()` łapie timeout, sprawdza ten bit dla zaangażowanych osi; jeśli
 prawda, komunikat alarmu brzmi: „przekroczono czas ruchu — oś osiągnęła
 limit momentu (TrqGlobal) i nie mogła dokończyć ruchu" zamiast gołego
-„przekroczono czas ruchu". Skompilowane, wdrożone. **Nie zweryfikowane
-jeszcze fizycznie** — do potwierdzenia przy następnym teście z niskim
-limitem, czy nowy tekst faktycznie się pojawia.
+„przekroczono czas ruchu". **Zweryfikowane fizycznie (2026-09-01):**
+powtórzony test JOG w opór z niskim limitem pokazał nowy, czytelny
+komunikat — działa zgodnie z oczekiwaniem.
+
+**Zakres testu potwierdzony przez użytkownika:** wszystkie ruchy maszyny
+(nie tylko pojedynczy JOG) sprawdzone pod kątem reakcji na limit momentu —
+zachowują się poprawnie.
 
 ## ⚠️ Pułapka przy teście fizycznym: skąd operator wie, jaki limit NAPRAWDĘ obowiązuje
 
@@ -132,7 +136,8 @@ ten nie zostanie zaktualizowany.
   po napisaniu kodu, z komentarzem TODO przywracającym go do czasu
   faktycznego wdrożenia, niż zostawiać go „tymczasowo", licząc że ktoś
   wróci i zaktualizuje.
-- Test fizyczny „czy `TrqGlobal` faktycznie zatrzymuje ruch" jest **w
-  trakcie** (2026-09-01) — pierwsza próba nie sprawdziła tego, co miała,
-  z powodu opisanego wyżej ("Pułapka przy teście fizycznym"). Wynik
-  poprawnie powtórzonego testu: do uzupełnienia tutaj.
+- Test fizyczny „czy `TrqGlobal` faktycznie zatrzymuje ruch" **zamknięty
+  (2026-09-01).** Pierwsza próba nie sprawdziła tego, co miała, z powodu
+  opisanego wyżej ("Pułapka przy teście fizycznym"). Użytkownik zbadał
+  wszystkie ruchy maszyny pod kątem reakcji na limit momentu i powtórzył
+  test JOG w opór — działa poprawnie, łącznie z nowym komunikatem alarmu.
