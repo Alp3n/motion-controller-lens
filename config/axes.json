@@ -21,7 +21,7 @@
       "soft_min": -90.0,
       "soft_max": 90.0,
       "mm_per_rev": 5.0,
-      "vel_jog": 500.0,
+      "vel_jog": 1000.0,
       "vel_home": 1000.0,
       "home_order": 2,
       "home_mode": "programowe",
