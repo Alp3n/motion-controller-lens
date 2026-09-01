@@ -1029,7 +1029,15 @@ async def machine_start(user=Depends(require_operator)):
 
 @app.post("/api/machine/stop")
 async def machine_stop():
-    await machine.stop()
+    """Zatrzymanie — musi zwrócić czytelny błąd, nie 500, jeśli komenda do
+    mostka się nie powiedzie (np. odrzucona przez sFoundation). To jedyny
+    endpoint sterowania, który wcześniej nie łapał MachineError — znalezione
+    2026-09-01, gdy błąd SDK na węźle osi ("Node @ 1 error") przy próbie
+    STOP wywalił nieobsłużony wyjątek zamiast komunikatu."""
+    try:
+        await machine.stop()
+    except MachineError as exc:
+        raise HTTPException(409, str(exc))
     return {"ok": True}
 
 

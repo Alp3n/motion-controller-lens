@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 os.environ["MACHINE_MODE"] = "sim"
 os.environ.setdefault("PROGRAMS_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "programs"))
 
+from app.machine import MachineError  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -190,6 +191,24 @@ def test_go_to_zero_requires_ready_state(client):
     res = client.post("/api/machine/go-to-zero")
     assert res.status_code == 409
     assert "READY" in res.json()["detail"]
+
+
+def test_stop_zwraca_409_nie_500_gdy_mostek_odrzuci_komende(client, monkeypatch):
+    """Regresja: STOP był jedynym endpointem sterowania bez obsługi
+    MachineError - błąd komunikacji z mostkiem (np. odrzucona komenda SDK)
+    wywalał nieobsłużony wyjątek (500) zamiast czytelnego komunikatu.
+    Znalezione przy maszynie 2026-09-01 ("Node @ 1 error" przy próbie STOP)."""
+    from app import main
+
+    async def failing_stop():
+        raise MachineError("mostek SC4-Hub odrzucił komendę: ERR Node @ 1 error")
+
+    monkeypatch.setattr(main.machine, "stop", failing_stop)
+
+    res = client.post("/api/machine/stop")
+
+    assert res.status_code == 409
+    assert "Node @ 1" in res.json()["detail"]
 
 
 def test_release_rejects_unknown_axis(client):

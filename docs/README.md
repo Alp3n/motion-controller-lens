@@ -162,5 +162,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/alarm-w-spoczynku.md](zmiany/alarm-w-spoczynku.md) — utrata
   sygnału zezwolenia (E-stop/Global Stop) w spoczynku teraz alarmuje jak
   w ruchu, zamiast być tylko cichym statusem; wymaga „Kasuj alarm".
+- [zmiany/stop-nie-lapal-bledu.md](zmiany/stop-nie-lapal-bledu.md) — STOP
+  zwracał 500 zamiast czytelnego błędu, gdy mostek odrzucił komendę;
+  opisuje też incydent „Node @ 1 error" i zamrożony status po utracie
+  łączności z mostkiem (nienaprawione, w kanbanie).
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

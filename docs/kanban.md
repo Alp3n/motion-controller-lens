@@ -127,6 +127,19 @@ Pomiary i testy:
       cichy status), teraz alarmuje jak w ruchu. Szczegóły:
       `zmiany/alarm-w-spoczynku.md`. **Zostaje:** ten sam test w trakcie
       ruchu (osobna, nieprzetestowana pozycja wyżej)
+- [x] **Naprawione (2026-09-01):** `POST /api/machine/stop` zwracał 500
+      zamiast czytelnego błędu, gdy mostek odrzucił komendę — jedyny
+      endpoint sterowania bez obsługi `MachineError`. Szczegóły:
+      `zmiany/stop-nie-lapal-bledu.md`
+- [ ] **Nowe, nienaprawione (znalezione 2026-09-01):** przy incydencie
+      „Node @ 1 error" (błąd SDK na węźle osi X, przyczyna źródłowa
+      nieustalona) `poll_status()` zaczął rzucać `MachineError` przy
+      **każdym** kolejnym `STATUS` — `_poll_loop()` łapie to cicho
+      (`contextlib.suppress`), więc panel zamroził się na starych danych
+      na kilka minut, bez żadnego oznaczenia, że komunikacja z mostkiem
+      jest zerwana. Potrzebny sygnał dla operatora (licznik nieudanych
+      prób / pole `bridge_ok` w statusie / baner na panelu). Szczegóły:
+      `zmiany/stop-nie-lapal-bledu.md`
 - [ ] Sprawdzić komendę `OUTPUT` mostka na sprzęcie — **skompilowana i
       wdrożona od 2026-09-01** (kolejne rebuildy mostka przy okazji etapów
       0/2b), ale nikt jeszcze nie przełączył `BRAKE_0`/`BRAKE_1` naprawdę
