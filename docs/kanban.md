@@ -183,12 +183,16 @@ Definicje wspólne dla programu technologa i cyklu maszyny.
 - [x] Etap 1: model definicji + `/api/smart` + **ekran `/smart`** (lista,
       edycja, „zapisz jako", usuwanie) — `zmiany/ekran-smart.md`
 - [~] Etap 2: **ekran `/sila`** — zrobione: podgląd momentu na żywo, ręczna
-      kalibracja siłomierzem (`config/kalibracja.json`). **Zostaje:**
-      automatyczna próba przejazdu (charakterystyka bazowa osi: tarcie,
-      ciężar, oba kierunki, kilka prędkości) — świadomie odłożona, bo rusza
-      maszyną i wymaga ustalenia profilu ruchu przy maszynie. Pomiar
-      częstotliwości próbkowania **zrobiony osobno, bez próby przejazdu**
-      (patrz Etap 0 wyżej) — nie wymagał ruchu. Szczegóły: `zmiany/ekran-sila.md`
+      kalibracja siłomierzem (`config/kalibracja.json`), **wykres przebiegu
+      momentu i prędkości w czasie z podziałem na operacje** (nagrywanie
+      podczas uruchomienia, zostaje widoczne po fakcie — zgłoszone
+      2026-09-01, bo na żywo dzieje się za szybko). **Zostaje:** automatyczna
+      próba przejazdu (charakterystyka bazowa osi: tarcie, ciężar, oba
+      kierunki, kilka prędkości) — świadomie odłożona, bo rusza maszyną i
+      wymaga ustalenia profilu ruchu przy maszynie. Pomiar częstotliwości
+      próbkowania **zrobiony osobno, bez próby przejazdu** (patrz Etap 0
+      wyżej) — nie wymagał ruchu. Szczegóły: `zmiany/ekran-sila.md`,
+      `zmiany/przebieg-nagrywanie.md`
 - [x] Etap 3: operacja `SMART` w `.prg` (format 5) + wybór z listy
       w edytorze — `zmiany/smart-w-programie-i-cyklu.md`. Na sprzęcie mostek
       **odmawia** wykonania (lepsze niż ruch bez kontroli siły), w symulatorze

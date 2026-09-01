@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import math
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -141,6 +142,15 @@ class Machine:
         self.smart: dict[str, SmartDefinition] = {}
         # przeznaczenie wyjść cyfrowych i co się z nimi dzieje przy STOP
         self.outputs: dict[str, OutputConfig] = default_outputs()
+        # Nagranie przebiegu momentu/pozycji ostatniego uruchomienia — do
+        # analizy PO FAKCIE, bo na żywo dzieje się za szybko (zgłoszone przy
+        # ekranie /sila, 2026-09-01). Zaczyna się od nowa przy każdym
+        # przejściu w RUNNING, zostaje widoczne po zakończeniu, żeby dało się
+        # przejrzeć. Ograniczony do ~20 minut przy próbkowaniu co 200 ms
+        # (`_poll_loop`), żeby nie rosnąć bez końca w pamięci.
+        self.recording: list[dict] = []
+        self._recording_t0: float | None = None
+        self._recording_was_running = False
 
     # --- konfiguracja wyjść (wspólna) -------------------------------------
 
@@ -306,6 +316,45 @@ class Machine:
         self.status.order_id = order_id
         self.status.total_ops = len(program.operations)
         self.status.current_op = None
+
+    # --- nagrywanie przebiegu (wspólne) ------------------------------------
+
+    async def poll_status(self) -> None:
+        """Domyślnie nic nie robi — tylko `SC4HubMachine` pyta zewnętrzny
+        mostek. Status symulatora aktualizuje się już synchronicznie w
+        miejscu ruchu (`_move_to`). Bez tej domyślnej wersji `_poll_loop`
+        w `main.py` wywalał się na `AttributeError` w trybie symulacji,
+        zanim doszedł do `_record_sample()` — znalezione przy budowaniu
+        nagrywania przebiegu, 2026-09-01."""
+        return
+
+    def _record_sample(self) -> None:
+        """Wywoływane z `_poll_loop` co 200 ms. Nagrywa tylko w trakcie
+        ruchu (RUNNING/PAUSED); nowe uruchomienie zaczyna nagranie od zera,
+        a po zakończeniu ruchu ostatnie nagranie zostaje widoczne do analizy
+        (`GET /api/przebieg`, ekran /sila)."""
+        running = self.status.state in (MachineState.RUNNING, MachineState.PAUSED)
+        if running and not self._recording_was_running:
+            self.recording = []
+            self._recording_t0 = time.monotonic()
+        self._recording_was_running = running
+        if not running or self._recording_t0 is None:
+            return
+        self.recording.append(
+            {
+                "t": round(time.monotonic() - self._recording_t0, 2),
+                "op": self.status.current_op,
+                "cycle_step": self.status.cycle_step,
+                "x": round(self.status.x, 3),
+                "y": round(self.status.y, 3),
+                "z": round(self.status.z, 3),
+                "torque": {a: round(v, 1) for a, v in self.status.torque.items()},
+            }
+        )
+        # ~20 minut przy 200 ms/próbkę — dłuższe uruchomienie i tak nie da
+        # się sensownie przejrzeć na jednym wykresie
+        if len(self.recording) > 6000:
+            del self.recording[0]
 
     # --- operacje (implementowane w podklasach) ---------------------------
 

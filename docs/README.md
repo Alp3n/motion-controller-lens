@@ -166,5 +166,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   zwracał 500 zamiast czytelnego błędu, gdy mostek odrzucił komendę;
   opisuje też incydent „Node @ 1 error" i zamrożony status po utracie
   łączności z mostkiem (nienaprawione, w kanbanie).
+- [zmiany/przebieg-nagrywanie.md](zmiany/przebieg-nagrywanie.md) —
+  nagrywanie przebiegu momentu i prędkości podczas uruchomienia, wykres
+  na ekranie /sila z podziałem na operacje/kroki, do analizy po fakcie.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

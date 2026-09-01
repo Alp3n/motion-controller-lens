@@ -47,6 +47,40 @@ wpisz parę niżej.</p>
     </section>
 
     <section class="panel">
+      <h2>Przebieg ostatniego uruchomienia</h2>
+      <p class="muted">
+        Moment i prędkość zmieniają się za szybko, żeby ocenić je z samych
+        liczb na żywo — to dotyczy zwłaszcza operacji SMART. Ten wykres
+        nagrywa przebieg podczas uruchomienia (program albo cykl) i
+        <b>zostaje widoczny po zakończeniu ruchu</b>, żeby dało się go
+        przejrzeć spokojnie. Przerywane pionowe linie i tabela niżej dzielą
+        przebieg na osobne operacje/kroki.
+      </p>
+      <div class="view-wrap">
+        <canvas id="przebieg-moment" style="height:220px"></canvas>
+      </div>
+      <p class="muted view-legend" style="margin-bottom:16px">
+        <span style="color:var(--accent)">■</span> X
+        <span style="color:var(--ok)">■</span> Y
+        <span style="color:var(--warn)">■</span> Z
+        — moment [% maks.]
+      </p>
+      <div class="view-wrap">
+        <canvas id="przebieg-predkosc" style="height:160px"></canvas>
+      </div>
+      <p class="muted view-legend">prędkość wypadkowa [mm/min], liczona z pozycji między próbkami</p>
+
+      <table style="margin-top:12px">
+        <thead><tr><th>Operacja</th><th>Czas</th><th>Moment X śr/max</th><th>Moment Y śr/max</th><th>Moment Z śr/max</th></tr></thead>
+        <tbody id="przebieg-tabela"></tbody>
+      </table>
+      <p class="muted" style="margin-top:6px">
+        Rozdzielczość próbkowania: 200 ms (tyle, co reszta odpytywania
+        statusu) — krótkie operacje SMART mogą mieć tylko kilka próbek.
+      </p>
+    </section>
+
+    <section class="panel">
       <h2>Kalibracja moment → siła</h2>
       <p class="muted">
         Dociśnij narzędzie do siłomierza, odczytaj moment z panelu wyżej,

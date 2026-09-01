@@ -207,6 +207,10 @@ async def _poll_loop() -> None:
     while True:
         with contextlib.suppress(MachineError):
             await machine.poll_status()
+        # Nagrywanie przebiegu (moment/pozycja) do analizy po fakcie —
+        # celowo POZA suppress() wyżej: ma nagrywać ostatni znany status
+        # nawet gdy poll_status() akurat zawiódł, nie tylko gdy się uda.
+        machine._record_sample()
         await asyncio.sleep(0.2)
 
 
@@ -996,6 +1000,14 @@ async def start_cycle(
 @app.get("/api/status")
 async def get_status():
     return machine.status.to_dict()
+
+
+@app.get("/api/przebieg")
+async def get_przebieg(user=Depends(require_operator)):
+    """Nagrany przebieg momentu/pozycji ostatniego uruchomienia (ekran
+    /sila) — próbki co 200 ms z `_poll_loop`, żeby dało się przeanalizować
+    po fakcie to, co na żywo dzieje się za szybko."""
+    return {"samples": machine.recording}
 
 
 @app.post("/api/machine/home")
