@@ -95,6 +95,13 @@ mam to założyć.
       (Global Stop na tym sprzęcie nie odcina zasilania serw, potwierdzone
       przez operatora). Żółte ostrzeżenie na panelu każe obejrzeć maszynę.
       Szczegóły: `zmiany/wznowienie-bez-bazowania.md`
+- [x] **Naprawione (2026-09-01):** `RESET` nie zerował znacznika „oś
+      załączona" w mostku (`axisEnabled[]`) — jeśli serwo samo się
+      wyłączyło (alert/fault), odrzucenie ruchu („Move blocked by drive
+      shutdown/disable/limit") powtarzało się w nieskończoność mimo wielu
+      RESET-ów i ponownych bazowań. Znalezione na 100% powtarzalnym
+      przypadku (oś Z, krok „PROGRAM" cyklu). Nie zweryfikowane jeszcze
+      fizycznie po naprawie. Szczegóły: `zmiany/reset-nie-czyscil-axisenabled.md`
 
 ### G. Ekrany i programy
 - [x] Ekran główny (nazwa poprawiona, miejsce na logo gotowe — czeka na plik)

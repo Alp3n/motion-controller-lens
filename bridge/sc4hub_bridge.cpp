@@ -578,6 +578,17 @@ static std::string handle(const std::string &line, int fd, std::string &pending)
                 port->Nodes(i).Status.AlertsClear();
                 port->Nodes(i).Motion.NodeStopClear();
             }
+            // Węzeł mógł się sam wyłączyć (alert/fault na serwie) bez wiedzy
+            // mostka — axisEnabled[] zostawałoby wtedy błędnie "true", a
+            // enableAxes() pomija ponowny EnableReq dla osi, którą już
+            // uważa za załączoną. Efekt: odrzucenie ruchu ("disable") potrafi
+            // powtarzać się w nieskończoność mimo RESET-u i ponownego
+            // bazowania, bo nikt nigdy nie prosi serwa o włączenie się od
+            // nowa. Zgłoszone przy maszynie 2026-09-01 (Node @ 0, oś Z,
+            // "Move blocked by drive shutdown/disable/limit", powtarzalne
+            // w 100% mimo wielu RESET+HOME). Wymuszamy ponowne EnableReq
+            // przy najbliższym ruchu każdej osi.
+            axisEnabled[0] = axisEnabled[1] = axisEnabled[2] = false;
             alarmMsg.clear();
             // Maszyna, która była już zbazowana w tej sesji mostka, wraca do
             // READY zamiast do NOT_HOMED — pozycja z enkodera zostaje

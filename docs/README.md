@@ -169,5 +169,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/przebieg-nagrywanie.md](zmiany/przebieg-nagrywanie.md) —
   nagrywanie przebiegu momentu i prędkości podczas uruchomienia, wykres
   na ekranie /sila z podziałem na operacje/kroki, do analizy po fakcie.
+- [zmiany/reset-nie-czyscil-axisenabled.md](zmiany/reset-nie-czyscil-axisenabled.md) —
+  RESET nie zerował znacznika „oś załączona" w mostku, więc odrzucenie
+  ruchu przez wyłączony węzeł powtarzało się w nieskończoność mimo
+  RESET-ów i ponownych bazowań.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.
