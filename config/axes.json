@@ -10,7 +10,7 @@
       "vel_home": 1000.0,
       "home_order": 1,
       "home_mode": "programowe",
-      "home_torque": 20.0,
+      "home_torque": 4.0,
       "home_offset": 0.0,
       "phys_min": -100.0,
       "phys_max": 100.0
@@ -25,7 +25,7 @@
       "vel_home": 1000.0,
       "home_order": 2,
       "home_mode": "programowe",
-      "home_torque": 20.0,
+      "home_torque": 4.0,
       "home_offset": 0.0,
       "phys_min": -100.0,
       "phys_max": 100.0
@@ -40,7 +40,7 @@
       "vel_home": 1000.0,
       "home_order": 3,
       "home_mode": "programowe",
-      "home_torque": 20.0,
+      "home_torque": 4.0,
       "home_offset": 0.0,
       "phys_min": -50.0,
       "phys_max": 50.0

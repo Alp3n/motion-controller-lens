@@ -7,13 +7,41 @@
           "vel_max": 3000.0,
           "accel": 500.0,
           "decel": 500.0,
-          "torque_pct": 20.0
+          "torque_pct": 10.0
         },
         "y": {
           "vel_max": 3000.0,
           "accel": 500.0,
           "decel": 500.0,
-          "torque_pct": 20.0
+          "torque_pct": 10.0
+        },
+        "z": {
+          "vel_max": 3000.0,
+          "accel": 500.0,
+          "decel": 500.0,
+          "torque_pct": 10.0
+        },
+        "w": {
+          "vel_max": 3000.0,
+          "accel": 500.0,
+          "decel": 500.0,
+          "torque_pct": 10.0
+        }
+      }
+    },
+    "cykl": {
+      "axes": {
+        "x": {
+          "vel_max": 3000.0,
+          "accel": 500.0,
+          "decel": 500.0,
+          "torque_pct": 8.0
+        },
+        "y": {
+          "vel_max": 3000.0,
+          "accel": 500.0,
+          "decel": 500.0,
+          "torque_pct": 8.0
         },
         "z": {
           "vel_max": 3000.0,
@@ -25,35 +53,7 @@
           "vel_max": 3000.0,
           "accel": 500.0,
           "decel": 500.0,
-          "torque_pct": 20.0
-        }
-      }
-    },
-    "cykl": {
-      "axes": {
-        "x": {
-          "vel_max": 3000.0,
-          "accel": 500.0,
-          "decel": 500.0,
-          "torque_pct": 15.0
-        },
-        "y": {
-          "vel_max": 3000.0,
-          "accel": 500.0,
-          "decel": 500.0,
-          "torque_pct": 15.0
-        },
-        "z": {
-          "vel_max": 3000.0,
-          "accel": 500.0,
-          "decel": 500.0,
-          "torque_pct": 15.0
-        },
-        "w": {
-          "vel_max": 3000.0,
-          "accel": 500.0,
-          "decel": 500.0,
-          "torque_pct": 15.0
+          "torque_pct": 8.0
         }
       }
     },
@@ -63,25 +63,25 @@
           "vel_max": 3000.0,
           "accel": 500.0,
           "decel": 500.0,
-          "torque_pct": 10.0
+          "torque_pct": 5.0
         },
         "y": {
           "vel_max": 3000.0,
           "accel": 500.0,
           "decel": 500.0,
-          "torque_pct": 10.0
+          "torque_pct": 5.0
         },
         "z": {
           "vel_max": 3000.0,
           "accel": 500.0,
           "decel": 500.0,
-          "torque_pct": 10.0
+          "torque_pct": 5.0
         },
         "w": {
           "vel_max": 3000.0,
           "accel": 500.0,
           "decel": 500.0,
-          "torque_pct": 10.0
+          "torque_pct": 5.0
         }
       }
     }
