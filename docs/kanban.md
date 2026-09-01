@@ -145,18 +145,19 @@ Definicje wspólne dla programu technologa i cyklu maszyny.
       **Działa na prawdziwym sprzęcie od 2026-08-31** — `torque_source:
       "sterownik"`, realne wartości. Symulator dalej podstawia wartości
       zmyślone, oznaczone jako „symulacja". SDK Teknica dostarczone trwale
-      do `vendor/teknic/` na hoście. Zostaje: zmierzyć koszt próbkowania
-      `TrqMeasured` przy trzech osiach (ryzyko 3 z `funkcje-smart.md`).
-      Szczegóły: `zmiany/symulacja-momentu.md`
+      do `vendor/teknic/` na hoście. **Koszt próbkowania zmierzony
+      (2026-09-01): ~7 ms na 3 osie** — 10 ms z materiału źródłowego
+      nierealne, 20 ms (obecna pętla) ma na to miejsce. Etap 0 zamknięty
+      w całości. Szczegóły: `zmiany/symulacja-momentu.md`
 - [x] Etap 1: model definicji + `/api/smart` + **ekran `/smart`** (lista,
       edycja, „zapisz jako", usuwanie) — `zmiany/ekran-smart.md`
 - [~] Etap 2: **ekran `/sila`** — zrobione: podgląd momentu na żywo, ręczna
       kalibracja siłomierzem (`config/kalibracja.json`). **Zostaje:**
       automatyczna próba przejazdu (charakterystyka bazowa osi: tarcie,
       ciężar, oba kierunki, kilka prędkości) — świadomie odłożona, bo rusza
-      maszyną i wymaga ustalenia profilu ruchu przy maszynie; pomiar
-      częstotliwości próbkowania (razem z próbą przejazdu). Szczegóły:
-      `zmiany/ekran-sila.md`
+      maszyną i wymaga ustalenia profilu ruchu przy maszynie. Pomiar
+      częstotliwości próbkowania **zrobiony osobno, bez próby przejazdu**
+      (patrz Etap 0 wyżej) — nie wymagał ruchu. Szczegóły: `zmiany/ekran-sila.md`
 - [x] Etap 3: operacja `SMART` w `.prg` (format 5) + wybór z listy
       w edytorze — `zmiany/smart-w-programie-i-cyklu.md`. Na sprzęcie mostek
       **odmawia** wykonania (lepsze niż ruch bez kontroli siły), w symulatorze
@@ -169,11 +170,12 @@ Definicje wspólne dla programu technologa i cyklu maszyny.
       `detekcja_kolizji`)
 - [ ] Etap 7 (opcjonalny): profil siły — jakość cięcia, zużycie noża
 
-Dwa ryzyka domyka etap 2 (ekran `/sila`), zamiast zostawiać je otwarte:
-- [ ] **Do zmierzenia na maszynie:** ile realnie kosztuje odczyt
-      `TrqMeasured` i jak gęsto da się próbkować przy trzech osiach
+Dwa ryzyka z etapu 2 (ekran `/sila`):
+- [x] **Zmierzone (2026-09-01):** odczyt `TrqMeasured` na 3 osiach kosztuje
+      ~7 ms — 10 ms z materiału źródłowego nierealne, 20 ms wystarcza.
 - [ ] **Do dobrania doświadczalnie:** przełożenie % momentu → siła na nożu
-      (wzór ze źródła pomija sprawność śruby)
+      (wzór ze źródła pomija sprawność śruby) — czeka na pierwsze pary
+      w ekranie `/sila` (kalibracja siłomierzem już dostępna)
 
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`

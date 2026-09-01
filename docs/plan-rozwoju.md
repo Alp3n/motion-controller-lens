@@ -473,7 +473,7 @@ w istniejącą pętlę `waitMoves()`, która już chodzi co 20 ms.
 cyklu, wybierany z listy jak każda inna operacja). Definicje są **wspólne**
 dla programu technologa i cyklu maszyny.
 
-- [~] **Etap 0:** `STATUS` z odczytem momentu (`TRQX/TRQY/TRQZ`) → panel
+- [x] **Etap 0 (zamknięte 2026-09-01):** `STATUS` z odczytem momentu (`TRQX/TRQY/TRQZ`) → panel
       operatora pokazuje obciążenie osi. Najmniejszy krok weryfikujący całą
       drogę odczytu na maszynie; pozwala zmierzyć realny koszt próbkowania.
       **Strona serwera i panelu gotowa:** `MachineStatus` niesie `torque`
@@ -487,8 +487,11 @@ dla programu technologa i cyklu maszyny.
       dostarczone trwale do `vendor/teknic/` na hoście (wcześniej brakowało
       tylko nagłówków — biblioteka runtime była już zainstalowana), mostek
       skompilowany i uruchomiony ponownie. `GET /api/status` zwraca
-      `torque_source: "sterownik"` z realnymi wartościami. Zostaje: zmierzyć
-      koszt próbkowania `TrqMeasured` przy trzech osiach.
+      `torque_source: "sterownik"` z realnymi wartościami. **Koszt
+      próbkowania zmierzony (2026-09-01): ~7 ms na 3 osie razem** (min
+      6,0 ms, max 8,2 ms) — 10 ms z materiału źródłowego nierealne przy
+      trzech osiach, 20 ms (obecna pętla `waitMoves`) ma na to miejsce.
+      Etap w całości zamknięty.
       [`zmiany/symulacja-momentu.md`](zmiany/symulacja-momentu.md)
 - [x] **Etap 1:** model definicji (`server/app/smart.py`, `config/smart.json`),
       `GET/PUT /api/smart` i **ekran `/smart`** — lista definicji, edycja,
@@ -498,12 +501,14 @@ dla programu technologa i cyklu maszyny.
 - [~] **Etap 2 (2026-08-31, częściowo):** **ekran `/sila` — kontrola siły
       i kalibracja.** Zrobione: podgląd obciążenia na żywo (WebSocket, jak
       panel operatora) i **kalibracja moment→siła siłomierzem** — ręczne pary
-      (moment %, siła N) w `config/kalibracja.json`. **Świadomie NIE
-      zrobione:** automatyczna **próba przejazdu wyznaczająca charakterystykę
-      bazową osi** (tarcie, ciężar, oba kierunki, kilka prędkości) i pomiar
-      realnej częstotliwości próbkowania — obie wymagają rzeczywistego ruchu
-      maszyny, więc profil ruchu (zakres, prędkość, `TrqGlobal` próby) trzeba
-      ustalić przy maszynie, nie zdalnie. Ten ekran daje progi siły do
+      (moment %, siła N) w `config/kalibracja.json`. Pomiar częstotliwości
+      próbkowania **zrobiony osobno (2026-09-01), bez ruchu maszyny** — patrz
+      etap 0 wyżej. **Świadomie NIE zrobione:** automatyczna **próba
+      przejazdu wyznaczająca charakterystykę bazową osi** (tarcie, ciężar,
+      oba kierunki, kilka prędkości) — to jedyna część wymagająca
+      rzeczywistego ruchu, więc profil ruchu (zakres, prędkość, `TrqGlobal`
+      próby) trzeba ustalić przy maszynie, nie zdalnie. Ten ekran daje progi
+      siły do
       definicji SMART już teraz (na ręcznie zmierzonych parach); bez próby
       przejazdu brakuje tylko systematycznej charakterystyki tarcia/ciężaru.
       13 nowych testów. Szczegóły: [`zmiany/ekran-sila.md`](zmiany/ekran-sila.md).

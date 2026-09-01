@@ -281,18 +281,37 @@ traktujemy jako **nastawę do dobrania doświadczalnie** (próba na odpadzie),
 a nie jako wyliczoną w niutonach siłę. Jeśli potrzebna jest realna liczba
 w N — trzeba zmierzyć siłomierzem.
 
-**3. Częstotliwość próbkowania — do zmierzenia, nie do założenia.**
-Każdy odczyt `TrqMeasured` to zapytanie do węzła po magistrali SC.
-Materiał źródłowy zakłada 10 ms; nasza pętla `waitMoves` chodzi dziś co
-20 ms. **Ile realnie kosztuje odczyt momentu i jak gęsto da się próbkować
-przy trzech osiach — trzeba zmierzyć na maszynie** przed projektowaniem
-progów reakcji.
+**3. Częstotliwość próbkowania — zmierzone (2026-09-01).** Każdy odczyt
+`TrqMeasured` to zapytanie do węzła po magistrali SC. Pomiar bezpośrednio na
+sprzęcie (instrukcja tymczasowa w `statusLine()`, `std::chrono::steady_clock`
+wokół trzech wywołań `Motion.TrqMeasured.Value()`, 200 próbek, maszyna w
+spoczynku — pomiar nie wymagał żadnego ruchu, bo STATUS leci co 200 ms z
+samego pollingu statusu):
 
-**4. Nie da się tego zbudować ani przetestować w tej sesji.** Mostek
-kompiluje się przeciw `vendor/teknic/` (SDK poza repozytorium) — katalogu
-`vendor/` tu nie ma. **Kod C++ powstaje tutaj, ale kompilacja i testy
-wyłącznie na Twoim mini PC przy maszynie.** Warstwę serwera, format `.prg`
-i edytor da się w pełni zrobić i przetestować bez sprzętu.
+    3 osie razem:  średnio 6,95 ms   (min 6,02 ms, max 8,17 ms)
+    per oś:        średnio ~2,3 ms
+
+**Wniosek:** materiał źródłowy zakłada próbkowanie co 10 ms — przy trzech
+osiach samo odczytanie momentu zajmuje prawie 7 ms, czyli **~70% budżetu
+10 ms**, nie licząc odczytu pozycji, sprawdzenia `MoveIsDone()` ani samej
+reakcji. **10 ms przy trzech osiach jest nierealne.** Obecna pętla
+`waitMoves`/`pollDuringMove` na 20 ms ma na to miejsce (~13 ms zostaje na
+resztę) — to sensowny punkt startowy dla progów reakcji w etapie 5.
+Zastrzeżenie: pomiar zrobiono na `STATUS` w spoczynku, nie w trakcie
+rzeczywistego ruchu wewnątrz `pollDuringMove` — fizycznie nie powinno się
+różnić (to ta sama operacja na magistrali SC), ale nie zweryfikowano tego
+osobno pod obciążeniem ruchu. Szczegóły procedury pomiaru:
+`docs/zmiany/symulacja-momentu.md`.
+
+**4. Środowisko do budowy i testów na sprzęcie już nie jest problemem.**
+Wcześniej: mostek kompiluje się przeciw `vendor/teknic/` (SDK poza
+repozytorium), a sesje pracowały zdalnie, nie na samej maszynie. **Od
+2026-08-31 to nieaktualne** — SDK jest trwale w `vendor/teknic/` na hoście
+produkcyjnym, a sesje Claude Code na tej maszynie łączą się bezpośrednio z
+`walkner-motion-controller` i mogą budować/wdrażać mostek na miejscu (patrz
+etapy 0 i 2b tego tematu, już zweryfikowane na sprzęcie). Pozostaje
+ograniczenie inne niż sprzętowe: zmiany dotykające realnego ruchu maszyny
+bez operatora przy niej nadal wymagają jego obecności do testu, nie SDK.
 
 **5. Zmiana charakteru maszyny.** Dziś maszyna jest sterowana pozycją —
 jedzie tam, gdzie każe program. Po tej zmianie część ruchu jest sterowana
@@ -313,13 +332,15 @@ krok (nic nie jeździ inaczej), a **od razu weryfikuje całą drogę odczytu na
 prawdziwej maszynie** i pozwala zmierzyć koszt próbkowania (ryzyko 3).
 Przydatny sam w sobie — operator widzi, czy nóż się nie zakleszcza.
 
-*Stan: strona serwera i panelu **gotowa** — `MachineStatus` ma `torque`
-i `torque_source`, `poll_status` czyta `TRQX/TRQY/TRQZ`, panel pokazuje
-obciążenie osi. Żeby nie wstrzymywać etapów 3 i 4, symulator wylicza
-obciążenie z własnego, **zmyślonego** modelu, oznaczonego w statusie jako
-`symulacja` — panel mówi to wprost. **Brakuje części w mostku (C++)**:
-dopisania pól `TRQ*` do odpowiedzi `STATUS`. Do zrobienia przy maszynie.
-Opis: `zmiany/symulacja-momentu.md`.*
+*Stan: **zamknięte 2026-08-31/09-01.** Strona serwera i panelu gotowa —
+`MachineStatus` ma `torque`/`torque_source`, `poll_status` czyta
+`TRQX/TRQY/TRQZ`, panel pokazuje obciążenie osi. Symulator dalej wylicza
+obciążenie z własnego, **zmyślonego** modelu (`symulacja`, panel mówi to
+wprost). Mostek dopisuje `TRQ*` do `STATUS` i działa na sprzęcie —
+`torque_source: "sterownik"` z realnymi wartościami. Koszt próbkowania
+zmierzony: **~7 ms na 3 osie** (ryzyko 3 wyżej) — 10 ms z materiału
+źródłowego nierealne przy trzech osiach, 20 ms (obecna pętla) ma na to
+miejsce. Opis: `zmiany/symulacja-momentu.md`.*
 
 **Etap 1 — model definicji + ekran `/smart`.** `server/app/smart.py`
 (definicja, rejestr procedur, walidacja, plik `config/smart.json`),

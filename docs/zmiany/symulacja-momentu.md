@@ -70,9 +70,34 @@ motion-controller-bridge.service`) — z koniecznym ponownym bazowaniem, bo
 restart mostka resetuje stan do `NOT_HOMED` — `torque_source` zaczął
 zwracać `"sterownik"` z realnymi wartościami.
 
-**Wciąż niezrobione:** zmierzenie kosztu próbkowania `TrqMeasured` przy
-trzech osiach (ryzyko 3 z `funkcje-smart.md`) — możliwe teraz, że odczyt
-działa, ale nikt jeszcze tego nie zmierzył.
+## Pomiar kosztu próbkowania `TrqMeasured` (2026-09-01)
+
+Zrobione po instalacji reguły `sudoers` (`NOPASSWD` dla restartu tych dwóch
+usług — patrz historia sesji) — restart mostka bez pytania o hasło pozwolił
+to domknąć od razu.
+
+**Metoda:** tymczasowa instrumentacja w `statusLine()` — `std::chrono::
+steady_clock` wokół pętli trzech wywołań `Motion.TrqMeasured.Value()`,
+licznik/średnia/min/max wypisywane co 100 próbek. Mostek zatrzymany,
+przebudowany, uruchomiony ponownie; pomiar zebrany na zwykłym pollingu
+`STATUS` co 200 ms **bez żadnego ruchu maszyny** (STATUS leci niezależnie od
+tego, czy coś jedzie). Po zebraniu 200 próbek instrumentacja usunięta,
+mostek przebudowany do czystej wersji i zrestartowany ponownie.
+
+**Wynik** (200 próbek, maszyna w spoczynku):
+
+    3 osie razem:  średnio 6,95–6,97 ms   min 6,02 ms   max 8,17 ms
+    per oś:        średnio ~2,3 ms
+
+**Wniosek:** 10 ms z materiału źródłowego jest nierealne przy trzech osiach
+— sam odczyt momentu zajmuje ~70% takiego budżetu. Obecna pętla
+`waitMoves`/`pollDuringMove` na 20 ms ma na to miejsce. Pełny wniosek i
+konsekwencje dla progów reakcji: `docs/funkcje-smart.md`, ryzyko 3.
+
+**Zastrzeżenie:** pomiar zrobiony na `STATUS` w spoczynku, nie w trakcie
+rzeczywistego ruchu wewnątrz `pollDuringMove` pod obciążeniem magistrali SC
+innymi komendami ruchu — fizycznie nie powinno się różnić, ale nie
+zweryfikowano tego osobno.
 
 ## Uwagi
 
