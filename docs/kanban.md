@@ -113,9 +113,12 @@ Pomiary i testy:
 - [ ] Zmierzyć domyślny watchdog sieciowy (czy w ogóle działa)
 - [ ] Test: utrata zezwolenia w ruchu
 - [ ] Test: komunikacja przy E-stopie
-- [ ] Sprawdzić komendę `OUTPUT` mostka na sprzęcie (napisana, nieskompilowana)
+- [ ] Sprawdzić komendę `OUTPUT` mostka na sprzęcie — **skompilowana i
+      wdrożona od 2026-09-01** (kolejne rebuildy mostka przy okazji etapów
+      0/2b), ale nikt jeszcze nie przełączył `BRAKE_0`/`BRAKE_1` naprawdę
 - [ ] Test: czy USB re-enumeracja załącza `BRAKE_x` (bez wrzeciona!)
-- [ ] Reguła udev — instalacja i weryfikacja
+- [x] ~~Reguła udev — instalacja i weryfikacja~~ — potwierdzona działająca
+      na hoście produkcyjnym 2026-08-30, patrz `sterownik-sc4-hub.md`
 - [x] Obciążalność wyjść `BRAKE_0`/`BRAKE_1` — 500 mA / 24 VDC
 
 ### J. Skąd I/O — decyzja podjęta, drobiazgi zostają
