@@ -6,13 +6,14 @@
       "kind": "RUCH",
       "profile": "cykl",
       "targets": {
-        "x": 88.0,
-        "y": 70.0,
+        "x": 30.0,
+        "y": 80.0,
         "z": 10.2
       },
       "feed": 400.0,
       "output": null,
       "output_on": null,
+      "smart": null,
       "note": "góra"
     },
     {
@@ -27,6 +28,7 @@
       "feed": 500.0,
       "output": null,
       "output_on": null,
+      "smart": null,
       "note": "srodek"
     },
     {
@@ -37,6 +39,7 @@
       "feed": null,
       "output": null,
       "output_on": null,
+      "smart": null,
       "note": "tech"
     },
     {
@@ -51,6 +54,7 @@
       "feed": 400.0,
       "output": null,
       "output_on": null,
+      "smart": null,
       "note": "wyrzut"
     },
     {
@@ -61,6 +65,7 @@
       "feed": null,
       "output": "wyjscie_0",
       "output_on": true,
+      "smart": null,
       "note": "out1"
     },
     {
@@ -75,6 +80,7 @@
       "feed": 400.0,
       "output": null,
       "output_on": null,
+      "smart": null,
       "note": ""
     },
     {
@@ -89,6 +95,7 @@
       "feed": 500.0,
       "output": null,
       "output_on": null,
+      "smart": null,
       "note": ""
     }
   ]
