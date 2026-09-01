@@ -83,14 +83,15 @@ Ustalony jako **następny krok** w `DECYZJE_2026-08-25.md`.
       ma komendy momentu; w trybie sprzętowym API zwraca o tym ostrzeżenie.
       21 nowych testów, 84/84 przechodzi. Szczegóły:
       [`zmiany/profile-parametrow-etap2.md`](zmiany/profile-parametrow-etap2.md).
-- [~] **Etap 2b (2026-08-31):** limit momentu do sprzętu — komenda
-      `TRQLIMIT` w protokole mostka + `ILimits.TrqGlobal` w
-      `bridge/sc4hub_bridge.cpp`, wysyłana z serwera przy zmianie profilu
-      (`SC4HubMachine._push_profile_limits`). Napisane i skompilowane
-      **osobno** (SDK jest teraz trwale na maszynie, `vendor/teknic/`), ale
-      **niewdrożone razem** — wymaga zrestartowania NAJPIERW mostka, potem
-      Pythona (odwrotna kolejność zrywa komunikację ze sprzętem). Rampy
-      dalej tylko przechowywane, poza zakresem tej zmiany. Szczegóły:
+- [x] **Etap 2b — zamknięte, fizycznie zweryfikowane (2026-09-01):** limit
+      momentu do sprzętu — komenda `TRQLIMIT` w protokole mostka +
+      `ILimits.TrqGlobal` w `bridge/sc4hub_bridge.cpp`, wysyłana z serwera
+      przy zmianie profilu (`SC4HubMachine._push_profile_limits`).
+      **Potwierdzone na maszynie**: limit 8% zatrzymał ruch pod
+      obciążeniem — `TrqGlobal` realnie ogranicza siłę. Poprawiony też
+      mylący komunikat alarmu przy zatrzymaniu przez limit (patrz
+      `CPMstatus::HadTorqueSaturation()` w opisie zmiany). Rampy dalej
+      tylko przechowywane, poza zakresem tej zmiany. Szczegóły:
       [`zmiany/limit-momentu-sprzet.md`](zmiany/limit-momentu-sprzet.md).
 - [x] **Etap 3:** `CycleStep`/`Cycle` w `server/app/cycle.py` (kroki `RUCH`,
       `PROGRAM`, `WYJSCIE`, `PAUZA`), plik `config/cycle.json`, endpointy

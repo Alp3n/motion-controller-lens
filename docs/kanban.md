@@ -18,11 +18,12 @@ mam to założyć.
       X/Y/Z zachowane; mostek dalej dostaje `AXCFG` tylko dla X/Y/Z
 - [x] Etap 2: `ParameterProfile` + `/api/profiles`; prędkość działa w symulatorze,
       moment na razie tylko po stronie serwera (ostrzeżenie w trybie sprzętowym)
-- [~] Etap 2b: moment do sprzętu — komenda `TRQLIMIT` napisana i skompilowana
-      osobno (2026-08-31), **niewdrożona**. Kolejność wdrożenia krytyczna:
-      mostek przed Pythonem, inaczej zrywa połączenie ze sprzętem (`ERR
-      nieznana komenda`). Rampy dalej tylko przechowywane. Szczegóły:
-      `zmiany/limit-momentu-sprzet.md`
+- [x] Etap 2b: moment do sprzętu — `TRQLIMIT` wdrożone i **fizycznie
+      zweryfikowane 2026-09-01**: limit 8% zatrzymał ruch pod obciążeniem.
+      Poprawiony też mylący komunikat alarmu (zatrzymanie przez limit
+      zgłaszało się jako gołe „przekroczono czas ruchu" — teraz nazywa
+      przyczynę, `HadTorqueSaturation()`). Rampy dalej tylko przechowywane.
+      Szczegóły: `zmiany/limit-momentu-sprzet.md`
 - [x] Etap 3: `CycleStep` + `/api/cycle` + snapshot/restore profilu w `try/finally`
       (wraca przy błędzie i przy STOP; `WYJSCIE` na razie tylko w symulatorze)
 - [x] Etap 4: ekran `/cycle` — tabela kroków, walidacja, uruchomienie

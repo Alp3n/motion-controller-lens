@@ -7,15 +7,33 @@ tylko dopracowuje zachowanie wewnątrz tego limitu, nigdy go nie zastępuje).
 Wcześniej wartość była tylko przechowywana po stronie serwera — na sprzęcie
 nic nie ograniczała (`docs/zmiany/profile-parametrow-etap2.md`).
 
-**Stan (2026-09-01): WDROŻONE i potwierdzone, że dociera do sprzętu.**
-Mostek przyjmuje komendę i loguje przyjętą wartość (`journalctl -u
-motion-controller-bridge.service | grep "limit momentu"`), np. `oś X: limit
-momentu 5.0%` — zaobserwowane realnie podczas testu fizycznego z
-użytkownikiem. **Wciąż niezweryfikowane w pełni:** czy `TrqGlobal`
-rzeczywiście zatrzymuje oś przy przekroczeniu limitu — pierwsza próba na
-5% i obciążeniu 10% nie zatrzymała ruchu, ale okazało się, że w chwili tej
-próby realnie obowiązywał limit 20% (patrz „Pułapka" niżej), nie 5% — test
-trzeba powtórzyć poprawnie.
+**Stan (2026-09-01): WDROŻONE, dociera do sprzętu, i fizycznie potwierdzone,
+że działa.** Mostek przyjmuje komendę i loguje przyjętą wartość
+(`journalctl -u motion-controller-bridge.service | grep "limit momentu"`).
+Pierwsza próba (5% przy realnie obowiązującym 20% — patrz „Pułapka" niżej)
+niczego nie potwierdzała ani nie obalała. **Druga, poprawna próba (limit 8%,
+JOG w opór) zatrzymała ruch** — maszyna „poczuła" opór i stanęła. `TrqGlobal`
+realnie ogranicza siłę na tej maszynie.
+
+### Efekt uboczny potwierdzony i naprawiony: mylący komunikat alarmu
+
+Zatrzymanie przez limit momentu **nie zgłasza się jako odrębny alarm
+„przekroczono moment"** — obiekt zgłasza `ALARM: przekroczono czas ruchu`.
+Mechanizm (`waitMoves()` w `sc4hub_bridge.cpp`): ruch, który nie może się
+dokończyć, bo oś jest ograniczona momentem, po prostu nigdy nie osiąga
+`MoveIsDone()` — po czasie `szacowany_czas × 1,5 + 3000 ms` mostek uznaje to
+za timeout, nie za limit momentu wprost.
+
+**Naprawione (2026-09-01):** dopisano sprawdzenie
+`CPMstatus::HadTorqueSaturation()` (bit `TrqSat` w rejestrze ostrzeżeń SDK,
+`pubCpmRegs.h`) — opis w nagłówku wprost wymienia „misapplication of any
+torque limiters such as the Global Torque Limit" jako przyczynę. Gdy
+`waitMoves()` łapie timeout, sprawdza ten bit dla zaangażowanych osi; jeśli
+prawda, komunikat alarmu brzmi: „przekroczono czas ruchu — oś osiągnęła
+limit momentu (TrqGlobal) i nie mogła dokończyć ruchu" zamiast gołego
+„przekroczono czas ruchu". Skompilowane, wdrożone. **Nie zweryfikowane
+jeszcze fizycznie** — do potwierdzenia przy następnym teście z niskim
+limitem, czy nowy tekst faktycznie się pojawia.
 
 ## ⚠️ Pułapka przy teście fizycznym: skąd operator wie, jaki limit NAPRAWDĘ obowiązuje
 
@@ -91,6 +109,10 @@ ten nie zostanie zaktualizowany.
   wpis.
 - `server/app/profiles.py` — docstring modułu poprawiony (nie odsyła już do
   nieistniejącego ograniczenia).
+- `bridge/sc4hub_bridge.cpp` — `waitMoves()`: przy timeoucie ruchu sprawdza
+  `nodeOf(a).Status.HadTorqueSaturation()` dla zaangażowanych osi; jeśli
+  którakolwiek zgłasza saturację, komunikat alarmu nazywa przyczynę (limit
+  momentu) zamiast gołego „przekroczono czas ruchu".
 
 ## Uwagi
 

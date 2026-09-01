@@ -19,7 +19,7 @@
           "vel_max": 3000.0,
           "accel": 500.0,
           "decel": 500.0,
-          "torque_pct": 20.0
+          "torque_pct": 8.0
         },
         "w": {
           "vel_max": 3000.0,

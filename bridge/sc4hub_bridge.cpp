@@ -265,8 +265,21 @@ static void waitMoves(const std::vector<int> &axisIdx, double timeoutMs, int fd,
             throw std::string("ruch przerwany");
         }
         if (mgr->TimeStampMsec() > deadline) {
-            stopAll("przekroczono czas ruchu");
-            throw std::string("przekroczono czas ruchu");
+            // Ruch, który nie dobiegł końca w spodziewanym czasie, to często
+            // oś zablokowana przez limit momentu (TrqGlobal), nie usterka —
+            // CPMstatus::HadTorqueSaturation() czyta bit ostrzeżenia TrqSat
+            // ("full torque was commanded"); opis w SDK wprost wymienia
+            // "misapplication of any torque limiters such as the Global
+            // Torque Limit" jako przyczynę (pubCpmRegs.h).
+            bool trqSat = false;
+            for (int a : axisIdx)
+                if (nodeOf(a).Status.HadTorqueSaturation()) trqSat = true;
+            std::string why = trqSat
+                ? "przekroczono czas ruchu — oś osiągnęła limit momentu "
+                  "(TrqGlobal) i nie mogła dokończyć ruchu"
+                : "przekroczono czas ruchu";
+            stopAll(why.c_str());
+            throw why;
         }
     }
 }
