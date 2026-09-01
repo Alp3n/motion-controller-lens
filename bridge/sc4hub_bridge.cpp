@@ -458,6 +458,17 @@ static void setSpindle(bool on) {
 // --- protokół --------------------------------------------------------------
 
 static std::string statusLine() {
+    // Utrata sygnału zezwolenia W TRAKCIE RUCHU już alarmuje (waitMoves).
+    // Tu domykamy drugi przypadek: E-stop/Global Stop zadziała, gdy maszyna
+    // stoi w spoczynku (READY/NOT_HOMED) — bez tego operator widział tylko
+    // cichy status "EN=0" na panelu, bez żadnego wymuszonego potwierdzenia,
+    // mimo że to ten sam sygnał bezpieczeństwa. Zgłoszone przy pierwszym
+    // realnym zadziałaniu E-stop na tej maszynie, 2026-09-01. STATUS jest
+    // odpytywany co 200 ms niezależnie od ruchu, więc to naturalne miejsce
+    // na wykrycie zmiany, nie tylko odczyt.
+    if (port && !safetyEnabled() && (state == State::READY || state == State::NOT_HOMED))
+        setAlarm("utrata sygnału zezwolenia — sprawdź maszynę (E-stop/Global Stop)");
+
     // REL: litery osi zluzowanych, "-" gdy żadna
     std::string rel;
     for (int a = 0; a < 3; a++)

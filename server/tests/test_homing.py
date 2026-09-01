@@ -345,3 +345,66 @@ def test_kolejne_bazowanie_gasi_ostrzezenie_wznowienia():
 
     assert m.status.resumed_without_homing is False
     assert m.status.state is MachineState.READY
+
+
+# --- utrata sygnału zezwolenia w spoczynku (E-stop/Global Stop) -----------
+
+
+def test_utrata_zezwolenia_w_spoczynku_alarmuje():
+    """Wcześniej: utrata zezwolenia alarmowała tylko w trakcie ruchu — w
+    spoczynku (READY) był tylko cichy status, bez wymuszonego potwierdzenia.
+    Zgłoszone przy pierwszym realnym zadziałaniu E-stop na sprzęcie."""
+    m = SimulatedMachine()
+    m.apply_axis_config(_axes())
+    asyncio.run(_home_and_wait(m))
+    assert m.status.state is MachineState.READY
+
+    m.set_safety_enable(False)
+
+    assert m.status.state is MachineState.ALARM
+    assert "sprawdź maszynę" in m.status.alarm_message
+
+
+def test_utrata_zezwolenia_not_homed_tez_alarmuje():
+    m = SimulatedMachine()
+    assert m.status.state is MachineState.NOT_HOMED
+
+    m.set_safety_enable(False)
+
+    assert m.status.state is MachineState.ALARM
+
+
+def test_utrata_zezwolenia_w_ruchu_ma_inny_komunikat():
+    """Komunikat w trakcie ruchu zostaje bez zmian — inny od tego w spoczynku,
+    bo to bardziej pilna sytuacja (przerwany ruch, nie tylko czekanie)."""
+    m = SimulatedMachine()
+    m.status.state = MachineState.RUNNING
+
+    m.set_safety_enable(False)
+
+    assert m.status.state is MachineState.ALARM
+    assert m.status.alarm_message == "utrata sygnału zezwolenia — zatrzymanie awaryjne"
+
+
+def test_odzyskanie_zezwolenia_nie_alarmuje():
+    m = SimulatedMachine()
+    m.apply_axis_config(_axes())
+    asyncio.run(_home_and_wait(m))
+
+    m.set_safety_enable(True)
+
+    assert m.status.state is MachineState.READY
+
+
+def test_powtorna_utrata_zezwolenia_w_alarmie_nie_nadpisuje_cicho():
+    """Już zaalarmowana maszyna nie startuje drugiego _abort() w kółko —
+    jeden alarm, jeden komunikat, dopóki ktoś nie zrobi RESET."""
+    m = SimulatedMachine()
+    m.apply_axis_config(_axes())
+    asyncio.run(_home_and_wait(m))
+    m.set_safety_enable(False)
+    first_message = m.status.alarm_message
+
+    m.set_safety_enable(False)
+
+    assert m.status.alarm_message == first_message

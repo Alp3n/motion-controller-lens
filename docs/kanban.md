@@ -120,7 +120,13 @@ Pomiary i testy:
 - [ ] Weryfikacja pomiarowa toru `LINIA` + próba grup wyzwalania
 - [ ] Zmierzyć domyślny watchdog sieciowy (czy w ogóle działa)
 - [ ] Test: utrata zezwolenia w ruchu
-- [ ] Test: komunikacja przy E-stopie
+- [x] Test: komunikacja przy E-stopie w spoczynku — **pierwsze realne
+      zadziałanie E-stop na sprzęcie, 2026-09-01.** Global Stop nie odcina
+      zasilania serw (sygnał logiczny), komunikacja działa. Znaleziona i
+      naprawiona luka: utrata zezwolenia w spoczynku nie alarmowała (tylko
+      cichy status), teraz alarmuje jak w ruchu. Szczegóły:
+      `zmiany/alarm-w-spoczynku.md`. **Zostaje:** ten sam test w trakcie
+      ruchu (osobna, nieprzetestowana pozycja wyżej)
 - [ ] Sprawdzić komendę `OUTPUT` mostka na sprzęcie — **skompilowana i
       wdrożona od 2026-09-01** (kolejne rebuildy mostka przy okazji etapów
       0/2b), ale nikt jeszcze nie przełączył `BRAKE_0`/`BRAKE_1` naprawdę

@@ -401,12 +401,21 @@ class SimulatedMachine(Machine):
 
     def set_safety_enable(self, enabled: bool) -> None:
         self.status.safety_enable = enabled
-        if not enabled and self.status.state in (
+        if enabled or self.status.state in (MachineState.ALARM, MachineState.INIT):
+            return
+        if self.status.state in (
             MachineState.RUNNING,
             MachineState.HOMING,
             MachineState.PAUSED,
         ):
             self._abort("utrata sygnału zezwolenia — zatrzymanie awaryjne")
+        else:
+            # READY/NOT_HOMED: maszyna stoi w spoczynku, ale to ten sam
+            # sygnał bezpieczeństwa (E-stop/Global Stop) — bez tego operator
+            # widziałby tylko cichy status "BRAK" bez wymuszonego
+            # potwierdzenia. Lustro bridge/sc4hub_bridge.cpp (statusLine()),
+            # zgłoszone przy pierwszym realnym zadziałaniu E-stop 2026-09-01.
+            self._abort("utrata sygnału zezwolenia — sprawdź maszynę (E-stop/Global Stop)")
 
     def _abort(self, message: str) -> None:
         if self._run_task:

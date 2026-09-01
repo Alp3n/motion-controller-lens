@@ -159,5 +159,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   RESET po alarmie na już zbazowanej maszynie wraca do READY zamiast
   wymuszać pełne bazowanie (Global Stop na tym sprzęcie nie odcina
   zasilania serw); żółte ostrzeżenie na panelu, żeby obejrzeć maszynę.
+- [zmiany/alarm-w-spoczynku.md](zmiany/alarm-w-spoczynku.md) — utrata
+  sygnału zezwolenia (E-stop/Global Stop) w spoczynku teraz alarmuje jak
+  w ruchu, zamiast być tylko cichym statusem; wymaga „Kasuj alarm".
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.
