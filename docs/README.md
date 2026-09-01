@@ -1,5 +1,11 @@
 # Dokumentacja
 
+Dla obsługi maszyny na co dzień — zacznij tutaj:
+
+- [instrukcja-obslugi.md](instrukcja-obslugi.md) — uruchomienie maszyny
+  krok po kroku, testy siły z konkretnym produktem, osobne rozdziały dla
+  technologa i operatora.
+
 Plan pracy:
 
 - [plan-rozwoju.md](plan-rozwoju.md) — tematy do zaimplementowania,
