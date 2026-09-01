@@ -61,3 +61,30 @@ axisEnabled[0] = axisEnabled[1] = axisEnabled[2] = false;
 - **Nie zweryfikowane jeszcze fizycznie** — wdrożone od razu po
   zdiagnozowaniu, żeby nie blokować dalszej pracy, ale kolejny cykl na tym
   samym programie powinien to potwierdzić albo obalić.
+
+## Aktualizacja (2026-09-01, po wdrożeniu): błąd wystąpił ponownie
+
+Po naprawie i restarcie mostka użytkownik uruchomił cykl automatyczny
+ponownie — **ten sam komunikat wystąpił znowu**, ale tym razem maszyna
+zaszła dalej: `z=-1.038` (bliżej celu -1.5, poprzednio zatrzymywało się
+bliżej z=0). To ważna nowa poszlaka:
+
+- Poprawka `axisEnabled[]` **nie rozwiązuje problemu w całości** — albo nie
+  jest jego jedyną przyczyną, albo naprawia tylko odzyskiwanie *między*
+  uruchomieniami (przez RESET), a nie zapobiega **ponownemu** wystąpieniu
+  w trakcie **tego samego, nieprzerwanego przebiegu** (jeśli oś zawiedzie
+  w połowie operacji 1, kolejna komenda MOVEZ w tym samym przebiegu i tak
+  zobaczy `axisEnabled[2]==true` sprzed chwili, bo RESET jeszcze się nie
+  odbył).
+- To, że maszyna zaszła głębiej (bliżej rzeczywistej głębokości cięcia
+  w materiale), pasuje do hipotezy **limitu momentu podczas cięcia**:
+  użytkownik testował bardzo niskie limity (5–8%) na profilach. Wejście
+  freza w materiał (PMMA) mogło przekroczyć taki limit i wywołać na serwie
+  twardy fault/wyłączenie (nie tylko łagodne zatrzymanie ruchu opisane w
+  `zmiany/limit-momentu-sprzet.md`) — kolejna próba ruchu (druga głębokość
+  przejścia, `PRZEJSCIA=2`) trafiałaby wtedy w węzeł już wyłączony.
+- **Nierozstrzygnięte, wymaga fizycznej obecności:** czy podniesienie
+  limitu momentu profilu „program"/„cykl" (dziś testowane na 5–8%) do
+  wyższej, ale wciąż bezpiecznej wartości usuwa problem. Do sprawdzenia
+  przy maszynie, nie zdalnie — zmiana limitu wpływa na rzeczywistą siłę
+  cięcia.

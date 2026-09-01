@@ -95,13 +95,15 @@ mam to założyć.
       (Global Stop na tym sprzęcie nie odcina zasilania serw, potwierdzone
       przez operatora). Żółte ostrzeżenie na panelu każe obejrzeć maszynę.
       Szczegóły: `zmiany/wznowienie-bez-bazowania.md`
-- [x] **Naprawione (2026-09-01):** `RESET` nie zerował znacznika „oś
-      załączona" w mostku (`axisEnabled[]`) — jeśli serwo samo się
-      wyłączyło (alert/fault), odrzucenie ruchu („Move blocked by drive
-      shutdown/disable/limit") powtarzało się w nieskończoność mimo wielu
-      RESET-ów i ponownych bazowań. Znalezione na 100% powtarzalnym
-      przypadku (oś Z, krok „PROGRAM" cyklu). Nie zweryfikowane jeszcze
-      fizycznie po naprawie. Szczegóły: `zmiany/reset-nie-czyscil-axisenabled.md`
+- [~] **Częściowo naprawione (2026-09-01):** `RESET` nie zerował znacznika
+      „oś załączona" w mostku (`axisEnabled[]`) — naprawione, ale ten sam
+      błąd („Node @ 0 error ... Move blocked by drive shutdown/disable/
+      limit", oś Z) **wystąpił ponownie po wdrożeniu**, tym razem głębiej
+      w ruchu (bliżej celu cięcia). Nowa hipoteza: limit momentu podczas
+      cięcia w materiale (testowane 5-8%, bardzo nisko) może wywoływać
+      twardy fault na serwie, nie tylko łagodne zatrzymanie. **Wymaga
+      fizycznej weryfikacji z wyższym limitem momentu** — nie do zrobienia
+      zdalnie. Szczegóły: `zmiany/reset-nie-czyscil-axisenabled.md`
 
 ### G. Ekrany i programy
 - [x] Ekran główny (nazwa poprawiona, miejsce na logo gotowe — czeka na plik)
