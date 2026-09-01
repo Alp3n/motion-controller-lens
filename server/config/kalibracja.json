@@ -1,0 +1,56 @@
+{
+  "x": {
+    "punkty": [
+      {
+        "moment_pct": 3.1,
+        "sila_n": 7.7,
+        "kierunek": "-",
+        "data": "2026-09-01T11:04:40+00:00",
+        "uwagi": "waga"
+      },
+      {
+        "moment_pct": 2.1,
+        "sila_n": 3.8,
+        "kierunek": "-",
+        "data": "2026-09-01T11:05:17+00:00",
+        "uwagi": "waga"
+      }
+    ]
+  },
+  "y": {
+    "punkty": [
+      {
+        "moment_pct": 2.7,
+        "sila_n": 6.8,
+        "kierunek": "+",
+        "data": "2026-09-01T11:01:28+00:00",
+        "uwagi": "waga HDWR"
+      },
+      {
+        "moment_pct": 1.7,
+        "sila_n": 3.6,
+        "kierunek": "+",
+        "data": "2026-09-01T11:02:57+00:00",
+        "uwagi": "waga"
+      }
+    ]
+  },
+  "z": {
+    "punkty": [
+      {
+        "moment_pct": 5.3,
+        "sila_n": 8.4,
+        "kierunek": "plus",
+        "data": "2026-09-01T10:57:16+00:00",
+        "uwagi": "docisk freza"
+      },
+      {
+        "moment_pct": 3.1,
+        "sila_n": 8.4,
+        "kierunek": "miny",
+        "data": "2026-09-01T10:58:48+00:00",
+        "uwagi": "waga HDWR"
+      }
+    ]
+  }
+}

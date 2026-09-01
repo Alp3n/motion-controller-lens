@@ -15,9 +15,11 @@ Trzy profile powstają domyślnie, z wartościami ustalonymi w
 Model zapisu jest celowo taki sam jak w `axes.py`: dataclass + `to_dict`/
 `from_dict`, plik JSON, zapis atomowy, komunikaty błędów po polsku.
 
-OGRANICZENIE, które trzeba znać: limit momentu **nie jest dziś wysyłany do
-sprzętu** — protokół mostka (`bridge/sc4hub_bridge.cpp`) nie ma komendy
-momentu. Patrz `docs/zmiany/profile-parametrow-etap2.md`.
+Limit momentu dociera do sprzętu (`TRQLIMIT`, `ILimits.TrqGlobal`) —
+`SC4HubMachine._push_profile_limits` w `machine.py` wysyła go do mostka przy
+każdej zmianie aktywnego profilu. Patrz `docs/zmiany/limit-momentu-sprzet.md`.
+Rampy (`accel`/`decel`) nadal są tylko przechowywane — mostek ich nie używa,
+patrz `docs/zmiany/profile-parametrow-etap2.md`.
 """
 
 from __future__ import annotations

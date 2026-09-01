@@ -7,10 +7,44 @@ tylko dopracowuje zachowanie wewnątrz tego limitu, nigdy go nie zastępuje).
 Wcześniej wartość była tylko przechowywana po stronie serwera — na sprzęcie
 nic nie ograniczała (`docs/zmiany/profile-parametrow-etap2.md`).
 
-**Stan (2026-08-31): kod napisany po obu stronach i skompilowany osobno
-(sprawdzone), ale NIEWDROŻONY na produkcji.** Ani Python, ani mostek nie
-zostały zrestartowane z tym kodem — zrobione bez obecności przy maszynie,
-świadomie odłożone do wspólnej weryfikacji.
+**Stan (2026-09-01): WDROŻONE i potwierdzone, że dociera do sprzętu.**
+Mostek przyjmuje komendę i loguje przyjętą wartość (`journalctl -u
+motion-controller-bridge.service | grep "limit momentu"`), np. `oś X: limit
+momentu 5.0%` — zaobserwowane realnie podczas testu fizycznego z
+użytkownikiem. **Wciąż niezweryfikowane w pełni:** czy `TrqGlobal`
+rzeczywiście zatrzymuje oś przy przekroczeniu limitu — pierwsza próba na
+5% i obciążeniu 10% nie zatrzymała ruchu, ale okazało się, że w chwili tej
+próby realnie obowiązywał limit 20% (patrz „Pułapka" niżej), nie 5% — test
+trzeba powtórzyć poprawnie.
+
+## ⚠️ Pułapka przy teście fizycznym: skąd operator wie, jaki limit NAPRAWDĘ obowiązuje
+
+`_push_profile_limits()` wysyła `TRQLIMIT` przy **każdej** zmianie aktywnego
+profilu i przy każdym reconnect z mostkiem — i wysyła wartość **zapisaną w
+`config/profiles.json` dla aktywnego profilu**, nie żadną wartość ustawioną
+gdzie indziej. Konsekwencje, potwierdzone podczas testu 2026-09-01:
+
+- Jeśli ktoś ustawi `TrqGlobal` bezpośrednio w ClearView (z pominięciem
+  naszego panelu), serwer **cicho to nadpisze** przy najbliższej okazji
+  (przełączenie profilu, restart usługi, utrata i odzyskanie połączenia
+  z mostkiem) — z powrotem na wartość z pliku.
+- Kilka szybkich zapisów pod rząd w ekranie `/profiles` (np. eksperymentalne
+  poprawki: 5% → zapis → 10% → zapis → 20% → zapis) zostawia **tylko
+  ostatnią** wartość jako realnie obowiązującą — mostek loguje `oś X: limit
+  momentu 5.0%`, chwilę później `10.0%`, potem `20.0%`, i to ta ostatnia się
+  liczy. Log mostka jest jedynym pewnym źródłem prawdy o tym, co **teraz**
+  obowiązuje — nie pamięć operatora o tym, co wpisał kilka minut wcześniej.
+
+**Przed testem fizycznym zawsze sprawdź obowiązujący limit dwoma
+niezależnymi źródłami:**
+
+```bash
+curl -s http://127.0.0.1:8000/api/profiles | python3 -m json.tool   # co serwer MA wysłać
+journalctl -u motion-controller-bridge.service --no-pager | grep "limit momentu" | tail -5  # co mostek NAPRAWDĘ dostał
+```
+
+Obie liczby muszą się zgadzać z tym, co zamierzano testować, **zanim**
+zacznie się JOG-ować w opór.
 
 ## ⚠️ Kolejność wdrożenia — inaczej maszyna przestaje odpowiadać
 
@@ -48,22 +82,35 @@ ten nie zostanie zaktualizowany.
   wysyłka przy pierwszej komendzie, brak powtórki bez zmiany, ponowna
   wysyłka po zmianie profilu, pominięcie osi bez wpisu w profilu.
 
+## Pliki (uzupełnienie 2026-09-01)
+
+- `server/app/main.py` — `_profile_warnings()`: usunięte ostrzeżenie „limit
+  momentu nie jest wysyłany do sprzętu" — było **nieaktualne i myliło
+  operatora w trakcie testu fizycznego** (test opisany niżej). Diagnostyka
+  (`/api/diagnostics`, sekcja `safety.brak`): usunięty ten sam nieaktualny
+  wpis.
+- `server/app/profiles.py` — docstring modułu poprawiony (nie odsyła już do
+  nieistniejącego ograniczenia).
+
 ## Uwagi
 
-- Kompilacja mostka sprawdzona osobno (`g++` do pliku tymczasowego, nie
-  nadpisując działającej binarki) — składnia poprawna, linkuje się czysto.
-  **Nie uruchomione na sprzęcie** — `TrqGlobal` nie zostało jeszcze
-  zweryfikowane fizycznie (czy faktycznie ogranicza ruch przy przekroczeniu
-  limitu). Do zrobienia przy maszynie: ustawić bardzo niski limit (np. 5%)
-  na jednej osi, spróbować JOG-iem wjechać w przeszkodę i sprawdzić, czy
-  serwo faktycznie się zatrzymuje, zanim się to zaufa jako zabezpieczenie.
 - Oś bez wpisu w aktywnym profilu **nie dostaje żadnej komendy** — zostaje
   na ostatnio wysłanym limicie (albo na tym z ClearView, jeśli serwer nigdy
   nic nie wysłał), nie zeruje się i nie blokuje. Zgodne z tym, jak profile
   już traktują brakujące osie (`profile-parametrow-etap2.md`).
-- `docs/zmiany/profile-parametrow-etap2.md` i ostrzeżenie w
-  `main.py::_profile_warnings` mówiły dotąd wprost „limit momentu nie
-  działa na sprzęcie" — to nieaktualne od tej zmiany, ale ostrzeżenie w
-  API **zostawione bez zmian**, bo kod wciąż nie jest wdrożony: usunięcie
-  go teraz zmyliłoby operatora, sugerując działanie, którego jeszcze nie ma
-  na tej maszynie. Do aktualizacji dopiero po wdrożeniu obu stron.
+- **Błąd procesu, odnotowany żeby się nie powtórzył:** ostrzeżenie „limit
+  momentu nie dociera do sprzętu" zostało świadomie zostawione w API po
+  napisaniu kodu (2026-08-31), bo autor zmiany sądził, że kod jest
+  niewdrożony. Kod **był już wdrożony** (deploy poszedł automatycznie przy
+  najbliższym restarcie usługi), więc ostrzeżenie stało się nieaktualne
+  bez żadnej notatki o tym w kodzie — i realnie zmyliło operatora podczas
+  testu fizycznego limitu 2026-09-01. Wniosek: ostrzeżenie warunkowe na
+  „to jeszcze niewdrożone" jest kruche, jeśli deployment może nastąpić bez
+  wiedzy autora tekstu ostrzeżenia — bezpieczniej usuwać taki tekst od razu
+  po napisaniu kodu, z komentarzem TODO przywracającym go do czasu
+  faktycznego wdrożenia, niż zostawiać go „tymczasowo", licząc że ktoś
+  wróci i zaktualizuje.
+- Test fizyczny „czy `TrqGlobal` faktycznie zatrzymuje ruch" jest **w
+  trakcie** (2026-09-01) — pierwsza próba nie sprawdziła tego, co miała,
+  z powodu opisanego wyżej ("Pułapka przy teście fizycznym"). Wynik
+  poprawnie powtórzonego testu: do uzupełnienia tutaj.

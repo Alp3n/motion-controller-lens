@@ -382,15 +382,13 @@ def _profile_warnings(current: dict) -> list[str]:
             + ", ".join(a.upper() for a in absent)
             + " — te osie nie będą przez niego ograniczone"
         )
-    # Limit momentu jest dziś parametrem wyłącznie po stronie serwera. Na
-    # sprzęcie nie zadziała, dopóki protokół mostka nie dostanie komendy
-    # momentu — a operator, który ustawia 10% „żeby było delikatnie", musi
-    # wiedzieć, że na maszynie to nic nie zmienia.
-    if config.MACHINE_MODE != "sim":
-        warnings.append(
-            "limit momentu nie jest wysyłany do sprzętu — protokół mostka nie ma "
-            "jeszcze komendy momentu; wartość działa tylko w symulatorze"
-        )
+    # Limit momentu dociera do sprzętu (TRQLIMIT, etap 2b tematu B,
+    # zweryfikowane 2026-09-01: mostek odbiera i stosuje wartość). Wcześniej
+    # był tu odwrotny komunikat ("nie dociera do sprzętu") — nieaktualny od
+    # czasu wdrożenia etapu 2b, zostawiony przez pomyłkę i mylący operatora
+    # podczas testu fizycznego. Usunięty, zamiast podmieniony na nowy: sam
+    # transport do serwa nie jest już czymś, co trzeba operatorowi tłumaczyć
+    # przy każdym zapisie profilu.
     return warnings
 
 
@@ -1105,7 +1103,6 @@ async def get_diagnostics(user=Depends(require_admin)):
             # Świadomie wymieniamy, czego NIE mamy — patrz docstring.
             "brak": [
                 "sygnał drzwi/osłony nie jest czytany przez serwer (temat E)",
-                "limit momentu nie dociera do sprzętu (etap 2b tematu B)",
                 "zatrzymanie awaryjne realizuje wyłącznie obwód sprzętowy "
                 "(E-stop / Global Stop) — nie ten panel",
             ],

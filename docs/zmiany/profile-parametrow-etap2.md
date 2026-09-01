@@ -27,15 +27,11 @@ Drugi z czterech etapów tematu B — kontekst w
 
 ## Uwagi
 
-- **Limit momentu nie działa dziś na sprzęcie.** Protokół mostka
-  (`bridge/sc4hub_bridge.cpp`) nie ma komendy momentu — mostek w ogóle nie
-  dotyka `ILimits.TrqGlobal`. Wartość jest przechowywana i widoczna, ale do
-  serw nie trafia. W trybie sprzętowym `/api/profiles` zwraca o tym
-  ostrzeżenie wprost: operator, który ustawia 10% „żeby było delikatnie",
-  musi wiedzieć, że na maszynie to nic nie zmienia. **Doprowadzenie momentu
-  do sprzętu to osobne zadanie** — wymaga rozszerzenia protokołu i zmiany
-  w C++, której nie da się tu skompilować ani przetestować (`vendor/` z SDK
-  Teknica nie jest częścią repo).
+- **Limit momentu działa na sprzęcie od 2026-09-01** (etap 2b,
+  `docs/zmiany/limit-momentu-sprzet.md`) — komenda `TRQLIMIT` w protokole
+  mostka ustawia `ILimits.TrqGlobal` na serwie. Ten plik i to zdanie
+  wcześniej mówiły odwrotnie („nie działa") — zostawione jako historia
+  etapu 2, nie jako aktualny stan.
 - Prędkość maksymalna **działa w symulatorze** — `_capped_feed` obniża posuw
   do limitu najwolniejszej z osi biorących udział w ruchu. Test
   `test_profile_caps_jog_speed` sprawdza to pomiarem czasu i został
