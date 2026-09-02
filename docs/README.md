@@ -188,5 +188,12 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   RESET nie zerował znacznika „oś załączona" w mostku, więc odrzucenie
   ruchu przez wyłączony węzeł powtarzało się w nieskończoność mimo
   RESET-ów i ponownych bazowań.
+- [zmiany/reset-nie-lapal-bledu.md](zmiany/reset-nie-lapal-bledu.md) —
+  RESET (Kasuj alarm) był ostatnim endpointem sterowania bez obsługi
+  `MachineError`, zwracał 500 zamiast czytelnego błędu.
+- [zmiany/ostrzezenie-brak-momentu.md](zmiany/ostrzezenie-brak-momentu.md) —
+  ostrzeżenie w edytorze programu, gdy operacja skrawająca nie ma własnego
+  MOMENT (bo wtedy dziedziczy limit z profilu, który bywa różny zależnie
+  od tego, czy program jedzie wprost, czy jako krok cyklu).
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.
