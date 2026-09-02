@@ -30,6 +30,7 @@ from .program import (
     ProgramError,
     parse_program,
     smart_warnings,
+    torque_warnings,
     validate_work_area,
 )
 
@@ -538,7 +539,7 @@ async def get_program(number: str, user=Depends(require_technolog)):
     try:
         program = parse_program(text, expected_number=number)
         result["parsed"] = program.to_dict()
-        result["warnings"] = smart_warnings(program, smart_cfg.keys())
+        result["warnings"] = smart_warnings(program, smart_cfg.keys()) + torque_warnings(program)
     except ProgramError as exc:
         result["error"] = str(exc)
     return result
@@ -571,10 +572,10 @@ async def save_program(
         "ok": True,
         "number": number,
         "name": program.name,
-        # brakująca definicja SMART nie blokuje zapisu (plik .prg jest
-        # samodzielny), ale technolog musi ją zobaczyć od razu, a nie dopiero
-        # przy starcie na maszynie
-        "warnings": smart_warnings(program, smart_cfg.keys()),
+        # brakująca definicja SMART albo MOMENT nie blokuje zapisu (plik .prg
+        # jest samodzielny), ale technolog musi to zobaczyć od razu, a nie
+        # dopiero przy starcie na maszynie
+        "warnings": smart_warnings(program, smart_cfg.keys()) + torque_warnings(program),
     }
 
 

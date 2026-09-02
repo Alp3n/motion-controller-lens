@@ -7,6 +7,7 @@ from app.program import (
     ProgramError,
     parse_program,
     serialize_program,
+    torque_warnings,
     validate_work_area,
 )
 
@@ -346,3 +347,38 @@ def test_format_1_upgrade_has_no_torque_override():
     """Stare pliki nie znają MOMENT — po awansie do formatu 4 musi zostać puste."""
     p = parse_program(VALID)
     assert all(op.torque_pct is None for op in p.operations)
+
+
+# --- ostrzeżenie o braku MOMENT na operacji skrawającej --------------------
+#
+# Zgłoszone przy maszynie 2026-09-02: ta sama operacja bez własnego MOMENT
+# dostaje inny limit momentu zależnie od tego, czy program jedzie wprost,
+# czy jako krok cyklu (patrz docs/kanban.md). torque_warnings() ma to
+# sygnalizować technologowi, żeby świadomie ustawił MOMENT albo świadomie
+# zdecydował, że poleganie na profilu jest OK.
+
+
+def test_torque_warning_gdy_operacja_skrawajaca_bez_momentu():
+    bad = FORMAT4.replace("1;PUNKT;5;5;-1;;;;;8;;;delikatnie",
+                          "1;PUNKT;5;5;-1;;;;;;;;bez momentu")
+    p = parse_program(bad, "583912004711")
+    warnings = torque_warnings(p)
+    assert len(warnings) == 1
+    assert "LP=1" in warnings[0]
+    assert "PUNKT" in warnings[0]
+
+
+def test_brak_ostrzezenia_gdy_moment_ustawiony():
+    p = parse_program(FORMAT4, "583912004711")
+    assert torque_warnings(p) == []
+
+
+def test_brak_ostrzezenia_dla_operacji_nieskrawajacych_bez_momentu():
+    """SZYBKI i WRZECIONO nie skrawają — MOMENT ich nie dotyczy, więc brak
+    wartości nie jest problemem (i tak nie wolno go tam wpisać, patrz
+    test_torque_rejected_on_non_moving_operation)."""
+    p = parse_program(FORMAT4, "583912004711")
+    assert p.operations[1].op_type == "SZYBKI"
+    assert p.operations[2].op_type == "WRZECIONO"
+    warnings = torque_warnings(p)
+    assert not any("LP=2" in w or "LP=3" in w for w in warnings)

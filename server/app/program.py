@@ -573,6 +573,29 @@ def smart_warnings(program: Program, known_names) -> list[str]:
     return out
 
 
+def torque_warnings(program: Program) -> list[str]:
+    """Operacje skrawające bez własnego MOMENT — dziedziczą limit z profilu
+    AKTUALNIE aktywnego w chwili wykonania, a nie zawsze tego samego.
+
+    Zgłoszone przy maszynie 2026-09-02: ten sam program uruchomiony wprost
+    (aktywny profil „globalny") i jako krok cyklu (cykl przełącza na profil
+    kroku, np. „program", zwykle niższy) dostawał RÓŻNY limit momentu na tej
+    samej operacji — bez własnego MOMENT nie ma gwarancji, że wystarczy siły
+    na zagłębienie w materiał. Świadomie ostrzeżenie, nie błąd: czasem
+    poleganie na profilu jest zamierzone (np. szybkie, płytkie operacje).
+    """
+    out: list[str] = []
+    for op in program.operations:
+        if op.op_type in CUTTING_TYPES and op.torque_pct is None:
+            out.append(
+                f"operacja LP={op.lp} ({op.op_type}): brak własnego MOMENT — "
+                "użyje limitu z profilu aktywnego w chwili uruchomienia, "
+                "a ten bywa różny zależnie od tego, czy program jedzie "
+                "bezpośrednio, czy jako krok cyklu"
+            )
+    return out
+
+
 def pass_depths(op: Operation, surface: float = 0.0) -> list[float]:
     """Kolejne głębokości Z dla operacji — ostatnia zawsze równa zadanej.
 
