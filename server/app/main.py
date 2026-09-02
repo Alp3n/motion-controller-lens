@@ -1055,7 +1055,14 @@ async def machine_stop():
 
 @app.post("/api/machine/reset")
 async def machine_reset(user=Depends(require_operator)):
-    await machine.reset()
+    """Kasuje alarm — musi zwrócić czytelny błąd, nie 500, jeśli mostek
+    odrzuci komendę (ten sam brakujący wzorzec co przy STOP, znaleziony
+    2026-09-01 — RESET był jedynym pozostałym endpointem sterowania bez
+    tej obsługi, znalezione 2026-09-02 gdy Kasuj alarm nic nie robił)."""
+    try:
+        await machine.reset()
+    except MachineError as exc:
+        raise HTTPException(409, str(exc))
     return {"ok": True}
 
 

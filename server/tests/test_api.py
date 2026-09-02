@@ -211,5 +211,23 @@ def test_stop_zwraca_409_nie_500_gdy_mostek_odrzuci_komende(client, monkeypatch)
     assert "Node @ 1" in res.json()["detail"]
 
 
+def test_reset_zwraca_409_nie_500_gdy_mostek_odrzuci_komende(client, monkeypatch):
+    """Ten sam brakujący wzorzec co przy STOP (zobacz test wyżej) - RESET
+    był jedynym pozostałym endpointem sterowania bez obsługi MachineError.
+    Znalezione przy maszynie 2026-09-02, gdy "Kasuj alarm" nic nie robił
+    ("Node @ 1 error" ponownie, tym razem przy próbie RESET)."""
+    from app import main
+
+    async def failing_reset():
+        raise MachineError("mostek SC4-Hub odrzucił komendę: ERR Node @ 1 error")
+
+    monkeypatch.setattr(main.machine, "reset", failing_reset)
+
+    res = client.post("/api/machine/reset")
+
+    assert res.status_code == 409
+    assert "Node @ 1" in res.json()["detail"]
+
+
 def test_release_rejects_unknown_axis(client):
     assert client.post("/api/machine/release", json={"axis": "q", "released": True}).status_code == 422
