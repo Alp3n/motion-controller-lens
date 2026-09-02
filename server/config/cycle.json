@@ -34,7 +34,7 @@
     {
       "lp": 3,
       "kind": "PROGRAM",
-      "profile": "program",
+      "profile": "cykl",
       "targets": {},
       "feed": null,
       "output": null,
