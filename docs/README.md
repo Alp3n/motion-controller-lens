@@ -191,6 +191,10 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/reset-nie-lapal-bledu.md](zmiany/reset-nie-lapal-bledu.md) —
   RESET (Kasuj alarm) był ostatnim endpointem sterowania bez obsługi
   `MachineError`, zwracał 500 zamiast czytelnego błędu.
+- [zmiany/stop-czekal-za-pushem-profilu.md](zmiany/stop-czekal-za-pushem-profilu.md) —
+  STOP na cyklu potrafił czekać kilka sekund (do końca bieżącego ruchu),
+  bo trafiał w kolejce za pushem TRQLIMIT/AXCFG, który mostek w trakcie
+  ruchu ignoruje. Naprawione: STOP omija tę kolejkę.
 - [zmiany/ostrzezenie-brak-momentu.md](zmiany/ostrzezenie-brak-momentu.md) —
   ostrzeżenie w edytorze programu, gdy operacja skrawająca nie ma własnego
   MOMENT (bo wtedy dziedziczy limit z profilu, który bywa różny zależnie

@@ -402,6 +402,53 @@ def test_trqlimit_pomija_os_bez_wpisu_w_profilu():
     assert not any(c.startswith("TRQLIMIT Z") for c in m.calls)
 
 
+# --- STOP musi trafić na gniazdo natychmiast, nie za kolejką pushy --------
+#
+# Zgłoszone przy maszynie 2026-09-02: przy dłuższym ruchu STOP zatrzymywał
+# osie dopiero po kilku sekundach. Przyczyna: zwykłe `_command()` przed
+# wysłaniem STOP próbowałoby najpierw wypchnąć TRQLIMIT/AXCFG, jeśli
+# `_profile_pending`/`_axes_pending` akurat było True (np. bo `finally:` w
+# `_execute_cycle_step` przywraca profil po przerwanym kroku) - a mostek w
+# trakcie ruchu ignoruje wszystko poza STOP/STATUS, więc taki push nigdy nie
+# dostałby odpowiedzi i blokowałby STOP aż do naturalnego końca ruchu.
+
+
+def test_stop_pomija_push_profilu_mimo_pending():
+    m = _connected_machine()
+    m.apply_profiles(default_profiles(["x", "y", "z"]), "globalny")
+    m._profile_pending = True
+
+    asyncio.run(m.stop())
+
+    assert m.calls == ["STOP"]
+
+
+def test_stop_pomija_push_osi_mimo_pending():
+    m = _connected_machine(axes_cfg=None)
+    m._axes_pending = True
+
+    asyncio.run(m.stop())
+
+    assert m.calls == ["STOP"]
+
+
+def test_stop_anuluje_run_task():
+    m = _connected_machine()
+
+    async def never_ends():
+        await asyncio.sleep(100)
+
+    async def run():
+        m._run_task = asyncio.create_task(never_ends())
+        await asyncio.sleep(0)
+        await m.stop()
+
+    asyncio.run(run())
+
+    assert m.calls == ["STOP"]
+    assert m._run_task is None
+
+
 # --- RESUMED=1 w STATUS (wznowienie po alarmie bez ponownego bazowania) ----
 
 

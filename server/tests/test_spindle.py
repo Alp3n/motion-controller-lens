@@ -201,11 +201,25 @@ def _bridge(cfg):
         calls.append(command)
         return "OK"
 
+    async def fake_exchange(command: str) -> str:
+        calls.append(command)
+        return "OK"
+
     m._command = fake_command
+    # stop() omija _command (patrz SC4HubMachine.stop) — bez tego trafiłby
+    # w prawdziwe gniazdo, gdyby jakiś test wołał .stop() na tym fixture.
+    m._exchange = fake_exchange
+    m._writer = _FakeWriter()
+    m._reader = object()
     m.calls = calls
     m.status.state = MachineState.READY
     m.load_program(_program(_cut()), None)
     return m
+
+
+class _FakeWriter:
+    def is_closing(self) -> bool:
+        return False
 
 
 def test_mostek_zapala_wrzeciono_przy_starcie_maszyny():

@@ -1260,10 +1260,32 @@ class SC4HubMachine(Machine):
         self._run_task = asyncio.create_task(self._run_program())
 
     async def stop(self) -> None:
+        """STOP musi trafić na gniazdo natychmiast — omija `_command()`.
+
+        Zgłoszone przy maszynie 2026-09-02: przy dłuższym ruchu STOP
+        zatrzymywał osie dopiero po kilku sekundach, mimo że mostek nasłuchuje
+        STOP w trakcie ruchu co ~20ms (`pollDuringMove` w bridge). Przyczyna:
+        `_run_task.cancel()` przerywa bieżącą komendę ruchu w środku
+        `_execute_cycle_step`, którego `finally:` przywraca poprzedni profil
+        (`_set_profile`) i ustawia `_profile_pending = True` — a zwykłe
+        `_command()` przed wysłaniem STOP próbowałoby najpierw wypchnąć
+        TRQLIMIT. Mostek w trakcie ruchu **ignoruje** wszystko poza
+        STOP/STATUS (`pollDuringMove`), więc taki TRQLIMIT nigdy nie dostaje
+        odpowiedzi — `_exchange()` wisiał na `readline()`, aż ruch skończył
+        się sam, i dopiero wtedy STOP w ogóle trafiał na gniazdo. Efekt:
+        STOP działał, ale zawsze spóźniony o czas pozostały do końca ruchu.
+
+        Świadomie bez reconnectu: STOP przerywa ruch na JUŻ otwartym łączu
+        (bo tylko takie łącze mogło ten ruch zlecić) — próba reconnectu
+        dodałaby tu do 3 s zwłoki w rzadkim przypadku zerwanego połączenia,
+        czyli dokładnie to, co ta poprawka ma eliminować. Gdy łącza nie ma,
+        `_exchange()` i tak da czytelny błąd „brak połączenia".
+        """
         if self._run_task:
             self._run_task.cancel()
             self._run_task = None
-        await self._command("STOP")
+        async with self._lock:
+            await self._exchange("STOP")
 
     async def reset(self) -> None:
         await self._command("RESET")
