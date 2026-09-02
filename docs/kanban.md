@@ -117,8 +117,11 @@ mam to założyć.
 
 ### H. Uruchomienie sprzętowe
 Jedna sesja w ClearView (Windows) domyka pierwsze pięć pozycji:
-- [ ] Auto-Tune osi pod obciążeniem — wczytywanie `.mtr` z Linuksa
-      potwierdzone jako gotowy mechanizm SDK: `przyklady-sdk-teknica.md` §7
+- [ ] Auto-Tune osi pod obciążeniem — instrukcja krok po kroku (warunki
+      wstępne, jak przełączyć USB na Windows, co zrobić z `.mtr`) gotowa:
+      `auto-tune-osi.md`. Wczytywanie `.mtr` z powrotem na Linuksie dalej
+      niezaimplementowane, mechanizm SDK potwierdzony:
+      `przyklady-sdk-teknica.md` §7
 - [ ] Homing HardStop + Offset Move
 - [ ] Soft limits w silnikach
 - [ ] Warunkowe limitowanie momentu (Move Done, Absolute Position)

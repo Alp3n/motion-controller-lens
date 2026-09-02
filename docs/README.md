@@ -30,6 +30,10 @@ Ustalenia i analizy:
   zbioru operacji `.prg`, format 2, przebudowa edytora technologa.
 - [konfiguracja-osi.md](konfiguracja-osi.md) — model osi: długość, punkt
   bazowania, limity programowe, przełożenie posuwu; komenda `AXCFG`.
+- [auto-tune-osi.md](auto-tune-osi.md) — Auto-Tune osi krok po kroku:
+  warunki wstępne i ostrzeżenia z manuala Teknica, specyfika naszej
+  instalacji (jeden port USB, mostek trzeba zatrzymać), co zrobić z
+  plikiem `.mtr` po zakończeniu.
 - [przyklady-sdk-teknica.md](przyklady-sdk-teknica.md) — analiza oficjalnych
   przykładów beta C++ Teknica (`zbyszek/ClearPath_SC_Beta_Examples.zip`):
   jak czytać konkretne alerty węzła (przydatne do problemu „Node @ 0/1
