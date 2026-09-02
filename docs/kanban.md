@@ -73,7 +73,9 @@ mam to założyć.
 - [ ] Konfiguracja rozpędzania/hamowania na regulatorze PWM
 
 ### E. Drzwi/osłona i uprawnienia
-- [ ] Wejście sygnału drzwi (PWM/binarny), aktywne tylko w trybie auto
+- [ ] Wejście sygnału drzwi (PWM/binarny), aktywne tylko w trybie auto —
+      konkretny przepis na odczyt w kodzie (`cpm.InA`/`cpm.InB`):
+      `przyklady-sdk-teknica.md` §5
 - [x] Warstwa ról i logowania (admin/technolog/operator) — **osobne konta**
       (Twoja decyzja), `tools/konta.py`, dziennik zmian „kto co zmienił"
 - [x] `POST /api/mes/select-order` — opcjonalny token `X-MES-Token`
@@ -115,7 +117,8 @@ mam to założyć.
 
 ### H. Uruchomienie sprzętowe
 Jedna sesja w ClearView (Windows) domyka pierwsze pięć pozycji:
-- [ ] Auto-Tune osi pod obciążeniem
+- [ ] Auto-Tune osi pod obciążeniem — wczytywanie `.mtr` z Linuksa
+      potwierdzone jako gotowy mechanizm SDK: `przyklady-sdk-teknica.md` §7
 - [ ] Homing HardStop + Offset Move
 - [ ] Soft limits w silnikach
 - [ ] Warunkowe limitowanie momentu (Move Done, Absolute Position)
@@ -126,7 +129,9 @@ Pomiary i testy:
 - [x] Zweryfikować cykl maszyny (`SC4HubMachine.start_cycle`) na sprzęcie —
       **2026-09-01, działa poprawnie.** Przy okazji znaleziony i naprawiony
       problem: wymuszone bazowanie po RESET, patrz temat F wyżej
-- [ ] Weryfikacja pomiarowa toru `LINIA` + próba grup wyzwalania
+- [ ] Weryfikacja pomiarowa toru `LINIA` + próba grup wyzwalania —
+      `TriggerGroup`/`TriggerMovesInGroup` potwierdzone w naszym SDK,
+      gotowy wzorzec: `przyklady-sdk-teknica.md` §6
 - [ ] Zmierzyć domyślny watchdog sieciowy (czy w ogóle działa)
 - [ ] Test: utrata zezwolenia w ruchu
 - [x] Test: komunikacja przy E-stopie w spoczynku — **pierwsze realne

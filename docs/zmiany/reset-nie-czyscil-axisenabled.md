@@ -88,3 +88,11 @@ bliżej z=0). To ważna nowa poszlaka:
   wyższej, ale wciąż bezpiecznej wartości usuwa problem. Do sprawdzenia
   przy maszynie, nie zdalnie — zmiana limitu wpływa na rzeczywistą siłę
   cięcia.
+- **Lepsza diagnoza dostępna, nieużyta jeszcze:** przykłady beta SDK
+  Teknica pokazują, jak odczytać **nazwę konkretnego alertu** węzła
+  (`Status.Alerts.Value().StateStr()`) zamiast zgadywać między
+  shutdown/disable/limit z samego tekstu wyjątku SDK — i jak sprawdzać
+  realny stan „włączona" ze sprzętu (`Status.RT.Value().cpm.Enabled`)
+  zamiast tylko naszej zmiennej `axisEnabled[]`. Szczegóły i cytaty z
+  nagłówków: [`../przyklady-sdk-teknica.md`](../przyklady-sdk-teknica.md)
+  §1 i §3 — warto to dopisać przy następnej iteracji tego problemu.

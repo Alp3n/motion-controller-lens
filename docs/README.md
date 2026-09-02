@@ -30,6 +30,11 @@ Ustalenia i analizy:
   zbioru operacji `.prg`, format 2, przebudowa edytora technologa.
 - [konfiguracja-osi.md](konfiguracja-osi.md) — model osi: długość, punkt
   bazowania, limity programowe, przełożenie posuwu; komenda `AXCFG`.
+- [przyklady-sdk-teknica.md](przyklady-sdk-teknica.md) — analiza oficjalnych
+  przykładów beta C++ Teknica (`zbyszek/ClearPath_SC_Beta_Examples.zip`):
+  jak czytać konkretne alerty węzła (przydatne do problemu „Node @ 0/1
+  error"), wejścia InA/InB pod sygnał drzwi, grupy wyzwalania pod
+  jednoczesny start osi, wczytywanie plików `.mtr` z Auto-Tune.
 - [inspiracje-mic488.md](inspiracje-mic488.md) — co warto przenieść z kontrolera
   WObit MIC488 (tablica pozycji, przerwania, tryby bazowania) i znalezione
   ryzyko: SC4-Hub nie ma I/O wymaganego przez plany (PWM wrzeciona).
