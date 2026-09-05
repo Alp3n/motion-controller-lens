@@ -62,13 +62,14 @@ eliminować. Gdy łącza nie ma, `_exchange()` i tak zwraca czytelny błąd
 
 ## Uwagi
 
-- **Nie zweryfikowane jeszcze na fizycznym sprzęcie** — poprawka oparta o
-  dokładną analizę kodu (ścieżka Pythona i mostka), pokryta testami
-  jednostkowymi z podstawionym `_exchange` (bez TCP), ale zachowanie
-  rzeczywistego czasu zatrzymania trzeba potwierdzić przy maszynie: kliknąć
-  STOP w trakcie długiego przejazdu i sprawdzić, że osie stają w ułamku
-  sekundy, nie po kilku sekundach. Do zrobienia przy najbliższej obecności
-  operatora przy maszynie.
+- **Ta poprawka sama w sobie okazała się niewystarczająca** — operator
+  zgłosił 2026-09-05, że STOP na cyklu nadal czeka kilka sekund. Prawdziwą,
+  pełną przyczynę (inna komenda, zakolejkowana PRZED STOP-em, utykająca za
+  tym samym pushem) opisuje
+  [`stop-czekal-za-statusem.md`](stop-czekal-za-statusem.md) — dopiero ta
+  druga poprawka, potwierdzona fizycznie, naprawiła problem do końca. Ta
+  poprawka (STOP omija własny push) zostaje w kodzie jako nadal potrzebny,
+  ale niewystarczający sam z siebie, element rozwiązania.
 - Znalezisko przy okazji tej naprawy (patrz wyżej, `test_spindle.py`) warto
   zapamiętać przy pisaniu kolejnych testów `SC4HubMachine`: fejkowanie
   wyłącznie `_command` nie izoluje od sieci, jeśli testowany kod (albo

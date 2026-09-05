@@ -71,9 +71,8 @@ nieprzerwanego ruchu.
 
 ## Uwagi
 
-- **Nie zweryfikowane jeszcze fizycznie po tej konkretnej poprawce** — do
-  potwierdzenia przy najbliższym teście STOP na cyklu w trakcie dłuższego
-  kroku.
+- **Potwierdzone fizycznie przy maszynie 2026-09-05** — operator: „stop
+  dział dobrze” po tej poprawce, na cyklu pojedynczym i automatycznym.
 - Diagnostyka (printy z `time.monotonic()`, `flush=True`) zostaje na stałe
   w kodzie — tania (log tylko gdy komenda trwa >0.3s) i była kluczowa do
   namierzenia tego błędu; warto ją zachować na wypadek podobnych
