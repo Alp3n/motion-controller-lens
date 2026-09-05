@@ -1280,12 +1280,23 @@ class SC4HubMachine(Machine):
         dodałaby tu do 3 s zwłoki w rzadkim przypadku zerwanego połączenia,
         czyli dokładnie to, co ta poprawka ma eliminować. Gdy łącza nie ma,
         `_exchange()` i tak da czytelny błąd „brak połączenia".
+        Loguje czas, jeśli przekroczy 0.3 s — rozbite na czekanie na zamek
+        (Python) i czas do odpowiedzi mostka (sprzęt/SDK), żeby przy kolejnym
+        zgłoszeniu opóźnienia było od razu widać, po której stronie szukać.
         """
+        t0 = time.monotonic()
         if self._run_task:
             self._run_task.cancel()
             self._run_task = None
         async with self._lock:
+            t1 = time.monotonic()
             await self._exchange("STOP")
+            t2 = time.monotonic()
+        if t2 - t0 > 0.3:
+            print(
+                f"STOP: czekanie na zamek {t1 - t0:.2f}s, "
+                f"odpowiedź mostka {t2 - t1:.2f}s"
+            )
 
     async def reset(self) -> None:
         await self._command("RESET")
