@@ -356,38 +356,60 @@ def _connected_machine(axes_cfg=None):
 
 
 def test_trqlimit_wyslany_przed_pierwsza_komenda():
+    """TRQLIMIT/AXCFG pchane są tylko przed komendą ruchu (MOVEZ/MOVEXY/JOG/
+    HOME) - nigdy przed STATUS/SPINDLE/OUTPUT/RESET/STOP. Naprawa
+    2026-09-05: taki push przed „niewinną" komendą potrafił utknąć za
+    mostkiem wciąż zajętym cudzym, jeszcze nieprzerwanym ruchem (mostek go
+    po cichu ignoruje), blokując kolejkę zamka przed STOP-em - patrz
+    docstring `SC4HubMachine._command` i `docs/zmiany/stop-czekal-za-statusem.md`."""
+    m = _connected_machine()
+    m.apply_profiles(default_profiles(["x", "y", "z"]), "globalny")
+
+    asyncio.run(m._command("MOVEZ 1.000 1000"))
+
+    assert m.calls == [
+        "TRQLIMIT X 20.00", "TRQLIMIT Y 20.00", "TRQLIMIT Z 20.00", "MOVEZ 1.000 1000",
+    ]
+
+
+def test_trqlimit_nie_pchany_przed_status_spindle_output():
+    """Regresja 2026-09-05 - patrz docstring testu wyżej."""
     m = _connected_machine()
     m.apply_profiles(default_profiles(["x", "y", "z"]), "globalny")
 
     asyncio.run(m._command("STATUS"))
+    asyncio.run(m._command("SPINDLE 0"))
+    asyncio.run(m._command("OUTPUT 0 1"))
 
-    assert m.calls == ["TRQLIMIT X 20.00", "TRQLIMIT Y 20.00", "TRQLIMIT Z 20.00", "STATUS"]
+    assert not any(c.startswith("TRQLIMIT") for c in m.calls)
+    assert m.calls == ["STATUS", "SPINDLE 0", "OUTPUT 0 1"]
 
 
 def test_trqlimit_nie_wysylany_ponownie_bez_zmiany():
     m = _connected_machine()
     m.apply_profiles(default_profiles(["x", "y", "z"]), "globalny")
 
-    asyncio.run(m._command("STATUS"))
-    asyncio.run(m._command("STATUS"))
+    asyncio.run(m._command("MOVEZ 1.000 1000"))
+    asyncio.run(m._command("MOVEZ 2.000 1000"))
 
-    assert m.calls.count("STATUS") == 2
+    assert m.calls.count("MOVEZ 1.000 1000") == 1
+    assert m.calls.count("MOVEZ 2.000 1000") == 1
     assert sum(1 for c in m.calls if c.startswith("TRQLIMIT")) == 3
 
 
 def test_trqlimit_wyslany_ponownie_po_zmianie_profilu():
     m = _connected_machine()
     m.apply_profiles(default_profiles(["x", "y", "z"]), "globalny")
-    asyncio.run(m._command("STATUS"))
+    asyncio.run(m._command("MOVEZ 1.000 1000"))
 
     m.set_active_profile("program")
-    asyncio.run(m._command("STATUS"))
+    asyncio.run(m._command("MOVEZ 2.000 1000"))
 
     assert m.calls[-4:] == [
         "TRQLIMIT X 10.00",
         "TRQLIMIT Y 10.00",
         "TRQLIMIT Z 10.00",
-        "STATUS",
+        "MOVEZ 2.000 1000",
     ]
 
 
@@ -395,7 +417,7 @@ def test_trqlimit_pomija_os_bez_wpisu_w_profilu():
     m = _connected_machine()
     m.apply_profiles(default_profiles(["x", "y"]), "globalny")  # brak Z
 
-    asyncio.run(m._command("STATUS"))
+    asyncio.run(m._command("MOVEZ 1.000 1000"))
 
     assert "TRQLIMIT X 20.00" in m.calls
     assert "TRQLIMIT Y 20.00" in m.calls

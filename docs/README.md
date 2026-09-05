@@ -195,6 +195,11 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   STOP na cyklu potrafił czekać kilka sekund (do końca bieżącego ruchu),
   bo trafiał w kolejce za pushem TRQLIMIT/AXCFG, który mostek w trakcie
   ruchu ignoruje. Naprawione: STOP omija tę kolejkę.
+- [zmiany/stop-czekal-za-statusem.md](zmiany/stop-czekal-za-statusem.md) —
+  poprawka wyżej okazała się niewystarczająca: to STATUS/SPINDLE
+  zakolejkowane PRZED STOP-em utykały za tym samym pushem. Naprawione u
+  źródła: push tylko przed komendą ruchu, nigdy przed STATUS/SPINDLE/
+  OUTPUT/RESET/STOP.
 - [zmiany/ostrzezenie-brak-momentu.md](zmiany/ostrzezenie-brak-momentu.md) —
   ostrzeżenie w edytorze programu, gdy operacja skrawająca nie ma własnego
   MOMENT (bo wtedy dziedziczy limit z profilu, który bywa różny zależnie

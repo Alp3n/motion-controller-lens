@@ -1075,13 +1075,35 @@ class SC4HubMachine(Machine):
                 f"LEN={cfg.length:.4f} HOME={cfg.home}"
             )
 
+    # Tylko te komendy realnie poruszają osiami — tylko przed nimi ma sens
+    # (i jest bezpieczne) wypychanie AXCFG/TRQLIMIT, patrz komentarz niżej.
+    _MOVE_COMMAND_PREFIXES = ("MOVEZ ", "MOVEXY ", "JOG ", "HOME")
+
     async def _command(self, command: str) -> str:
         """Wysyła jedną komendę i zwraca linię odpowiedzi (OK ... / ERR ...).
 
-        Diagnostyka czasu (2026-09-05, zgłoszenie: STOP na cyklu nadal czeka
-        kilka sekund mimo poprawki w `stop()`) — loguje czekanie na zamek i
-        czas wykonania każdej komendy poza STATUS (zbyt częsta, zaśmieciłaby
-        log), żeby złapać, KTÓRA komenda trzyma zamek, gdy to się powtórzy.
+        Prawdziwa przyczyna zgłoszenia z 2026-09-05 (STOP na cyklu czekał
+        kilka sekund mimo poprawki w `stop()`, która sama komendę STOP już
+        wysyłała od razu): winowajcą był INNY, wcześniej zakolejkowany
+        oczekujący na TEN SAM `self._lock` - odpytywanie STATUS z
+        `_poll_loop()` (co 0.2 s w `main.py`) albo sprzątanie `_run_cycle`
+        (SPINDLE 0 w `finally`). Tylko krok cyklu ustawia `_profile_pending`
+        (przywrócenie profilu po kroku, `_execute_cycle_step`) - dlatego bug
+        objawiał się WYŁĄCZNIE na cyklu, nigdy przy zwykłym uruchomieniu
+        programu z ekranu operatora. Gdy taki oczekujący dostawał zamek
+        PRZED STOP-em (kolejka FIFO), a `_profile_pending` było akurat
+        True, próbował wypchnąć TRQLIMIT - a mostek wciąż zajęty PRAWDZIWYM,
+        jeszcze nieprzerwanym ruchem (bo STOP nie zdążył jeszcze dotrzeć na
+        gniazdo) taką komendę po cichu ignoruje (`pollDuringMove` w bridge:
+        "pozostałe komendy w trakcie ruchu są ignorowane") - `_exchange()`
+        wisiał więc na `readline()` AŻ ruch zakończył się sam. STOP, mimo
+        własnej poprawki, i tak czekał w kolejce za tym zawieszonym pushem.
+
+        Naprawa: AXCFG/TRQLIMIT mają sens tylko przed komendą, która faktycznie
+        rusza osiami - więc push wykonuje się TYLKO przed MOVEZ/MOVEXY/JOG/HOME,
+        nigdy przed STATUS/SPINDLE/OUTPUT/RESET/STOP. Dzięki temu żadna z tych
+        "niewinnych" komend nie może już utknąć za ignorowanym przez mostek
+        pushem w trakcie cudzego ruchu.
         """
         t_wait0 = time.monotonic()
         async with self._lock:
@@ -1103,10 +1125,11 @@ class SC4HubMachine(Machine):
                 # mostkiem, który nie zna jeszcze limitów osi ani momentu
                 self._axes_pending = True
                 self._profile_pending = True
-            if self._axes_pending:
-                await self._push_axis_config()
-            if self._profile_pending:
-                await self._push_profile_limits()
+            if command.startswith(self._MOVE_COMMAND_PREFIXES):
+                if self._axes_pending:
+                    await self._push_axis_config()
+                if self._profile_pending:
+                    await self._push_profile_limits()
             t0 = time.monotonic()
             if command != "STATUS":
                 print(f"[{t0:.2f}] _command {command!r}: start (zamek {t_wait:.2f}s)", flush=True)
