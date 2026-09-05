@@ -1471,6 +1471,7 @@ class SC4HubMachine(Machine):
             while True:
                 for step in self.cycle.steps:
                     self.status.cycle_step = step.lp
+                    print(f"[{time.monotonic():.2f}] _run_cycle: krok {step.lp} ({step.kind}) start", flush=True)
                     await self._execute_cycle_step(step)
                     await asyncio.sleep(0)  # patrz komentarz w SimulatedMachine
                 self.status.cycle_step = None
@@ -1479,15 +1480,18 @@ class SC4HubMachine(Machine):
                     break
             self.status.state = MachineState.READY
         except asyncio.CancelledError:
+            print(f"[{time.monotonic():.2f}] _run_cycle: CancelledError złapany", flush=True)
             raise
         except MachineError as exc:
             self.status.state = MachineState.ALARM
             self.status.alarm_message = str(exc)
         finally:
+            print(f"[{time.monotonic():.2f}] _run_cycle: finally start (SPINDLE 0)", flush=True)
             try:
                 await self._command("SPINDLE 0")
             except MachineError:
                 pass
+            print(f"[{time.monotonic():.2f}] _run_cycle: finally po SPINDLE 0", flush=True)
             # Wyjścia oznaczone „gaś przy STOP" — osobno od wrzeciona i osobno
             # od siebie: błąd jednego nie może zablokować gaszenia następnego.
             for name in self.outputs_to_clear():
@@ -1498,6 +1502,7 @@ class SC4HubMachine(Machine):
                     pass
             self.status.cycle_loop = False
             self._run_task = None
+            print(f"[{time.monotonic():.2f}] _run_cycle: finally koniec, _run_task=None", flush=True)
 
     async def _execute_cycle_step(self, step: CycleStep) -> None:
         """Snapshot/restore profilu — jak w symulatorze, patrz tam po opis."""
@@ -1507,6 +1512,7 @@ class SC4HubMachine(Machine):
         try:
             await self._run_cycle_step_body(step)
         finally:
+            print(f"[{time.monotonic():.2f}] _execute_cycle_step: finally (przywróć profil {previous_profile!r})", flush=True)
             self._set_profile(previous_profile)
 
     async def _run_cycle_step_body(self, step: CycleStep) -> None:
