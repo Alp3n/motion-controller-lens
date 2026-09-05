@@ -226,6 +226,24 @@ def test_output_step_sets_output():
     assert m.status.state == MachineState.READY
 
 
+def test_program_step_nie_wraca_do_zera():
+    """Regresja 2026-09-05: krok PROGRAM cyklu wracał do (0,0) po każdym
+    uruchomieniu programu detalu, mimo że zaraz potem jedzie kolejny krok
+    cyklu - zbędny nawrót przez zero marnował czas. Powrót do zera ma sens
+    tylko przy samodzielnym uruchomieniu programu (`_run_program`)."""
+    from app.program import Operation, Program
+
+    program = Program(
+        number="1", name="test", spindle_rpm=12000,
+        feed_work=300, feed_travel=3000, z_safe=10,
+        operations=[Operation(lp=1, op_type="PUNKT", x=5, y=5, z=-1)],
+    )
+    m = _machine_with_cycle([{"lp": 1, "kind": "PROGRAM"}])
+    m._program = program
+    asyncio.run(_drive(m))
+    assert (round(m.status.x, 3), round(m.status.y, 3)) == (5.0, 5.0)
+
+
 def test_move_step_moves_only_named_axes():
     m = _machine_with_cycle([_move(1, x=5)])
     m.status.y = 3.0

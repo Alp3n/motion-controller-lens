@@ -215,6 +215,17 @@ def test_cycle_program_step_runs_program_operations():
     assert m.status.state == MachineState.READY
 
 
+def test_cycle_program_step_nie_wraca_do_zera():
+    """Regresja 2026-09-05: krok PROGRAM cyklu wracał do (0,0) po każdym
+    uruchomieniu, mimo że zaraz potem i tak jedzie kolejny krok cyklu -
+    zbędny nawrót marnował czas. Powrót do zera ma sens tylko przy
+    samodzielnym uruchomieniu programu (`_run_program`), nie w cyklu."""
+    m = _cycle_machine([{"lp": 1, "kind": "PROGRAM"}])
+    m._program = _program()
+    asyncio.run(_drive(m))
+    assert not any(c.startswith("MOVEXY 0.000 0.000") for c in m.calls)
+
+
 def test_cycle_program_step_without_loaded_program_is_an_error():
     m = _cycle_machine([{"lp": 1, "kind": "PROGRAM"}])
     with pytest.raises(MachineError) as exc:

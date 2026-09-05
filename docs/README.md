@@ -200,6 +200,10 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   zakolejkowane PRZED STOP-em utykały za tym samym pushem. Naprawione u
   źródła: push tylko przed komendą ruchu, nigdy przed STATUS/SPINDLE/
   OUTPUT/RESET/STOP.
+- [zmiany/program-cyklu-bez-powrotu-do-zera.md](zmiany/program-cyklu-bez-powrotu-do-zera.md) —
+  krok PROGRAM cyklu maszyny wracał do (0,0) po każdym uruchomieniu, mimo
+  że zaraz potem jedzie kolejny krok cyklu — zbędny nawrót marnował czas.
+  Powrót do zera zostaje tylko przy samodzielnym uruchomieniu programu.
 - [zmiany/ostrzezenie-brak-momentu.md](zmiany/ostrzezenie-brak-momentu.md) —
   ostrzeżenie w edytorze programu, gdy operacja skrawająca nie ma własnego
   MOMENT (bo wtedy dziedziczy limit z profilu, który bywa różny zależnie

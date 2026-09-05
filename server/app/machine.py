@@ -641,6 +641,7 @@ class SimulatedMachine(Machine):
         assert program is not None
         try:
             await self._run_operations(program)
+            await self._move_to(0.0, 0.0, program.z_safe, program.feed_travel)
             self.status.current_op = None
             self.status.state = MachineState.READY
         except asyncio.CancelledError:
@@ -652,11 +653,12 @@ class SimulatedMachine(Machine):
             self._run_task = None
 
     async def _run_operations(self, program: Program) -> None:
-        """Same operacje programu detalu + odjazd do pozycji bezpiecznej.
+        """Same operacje programu detalu + odjazd na Z bezpieczne.
 
         Wydzielone z `_run_program`, bo krok PROGRAM cyklu maszyny wykonuje
         dokładnie to samo, ale nie kończy pracy maszyny — po nim idą kolejne
-        kroki cyklu.
+        kroki cyklu. Powrót do (0,0) NIE jest tu wykonywany — patrz
+        `_run_program()`.
         """
         # Załączenie wrzeciona na starcie programu — jedno miejsce, tak jak
         # w SC4HubMachine (komenda SPINDLE przed pierwszą operacją). Wcześniej
@@ -671,7 +673,10 @@ class SimulatedMachine(Machine):
         await self._move_to(
             self.status.x, self.status.y, program.z_safe, program.feed_travel
         )
-        await self._move_to(0.0, 0.0, program.z_safe, program.feed_travel)
+        # Powrót do (0,0) NIE jest wykonywany tutaj — robi go tylko
+        # `_run_program()` (samodzielne uruchomienie). Krok PROGRAM cyklu
+        # wywołuje tę funkcję wprost i po nim jedzie kolejny krok cyklu —
+        # zbędny nawrót przez zero marnowałby czas (zgłoszone 2026-09-05).
         # Wyłączenie po programie dotyczy granicy programu detalu, nie końca
         # pracy maszyny — ten drugi gasi wrzeciono zawsze i bezwarunkowo,
         # w `finally` _run_program/_run_cycle, także przy błędzie i STOP.
@@ -1433,8 +1438,12 @@ class SC4HubMachine(Machine):
                     await self._command(
                         f"MOVEXY {op.x:.3f} {op.y:.3f} {program.feed_travel:.0f}"
                     )
-        await self._command(f"MOVEXY 0 0 {program.feed_travel:.0f}")
-        # jak w symulatorze: granica programu detalu, nie koniec pracy maszyny
+        # UWAGA: żadnego powrotu do (0,0) tutaj — to jest granica programu
+        # detalu, nie koniec pracy maszyny. Powrót do zera robi TYLKO
+        # `_run_program()` (samodzielne uruchomienie), bo krok PROGRAM cyklu
+        # (`_run_cycle_step_body`) wywołuje tę funkcję wprost i po nim jedzie
+        # kolejny krok cyklu — zbędny nawrót przez zero marnowałby czas
+        # (zgłoszone przy maszynie 2026-09-05).
         if self.spindle.stop_after_program:
             await self._command("SPINDLE 0")
 
@@ -1443,6 +1452,7 @@ class SC4HubMachine(Machine):
         assert program is not None
         try:
             await self._run_program_operations(program)
+            await self._command(f"MOVEXY 0 0 {program.feed_travel:.0f}")
             self.status.current_op = None
             self.status.state = MachineState.READY
         except asyncio.CancelledError:
