@@ -3,62 +3,6 @@
   "steps": [
     {
       "lp": 1,
-      "kind": "RUCH",
-      "profile": "cykl",
-      "targets": {
-        "x": 30.0,
-        "y": 80.0,
-        "z": 10.2
-      },
-      "feed": 400.0,
-      "output": null,
-      "output_on": null,
-      "smart": null,
-      "note": "góra"
-    },
-    {
-      "lp": 2,
-      "kind": "RUCH",
-      "profile": "cykl",
-      "targets": {
-        "x": -10.0,
-        "y": 10.0,
-        "z": -2.0
-      },
-      "feed": 500.0,
-      "output": null,
-      "output_on": null,
-      "smart": null,
-      "note": "srodek"
-    },
-    {
-      "lp": 3,
-      "kind": "PROGRAM",
-      "profile": "cykl",
-      "targets": {},
-      "feed": null,
-      "output": null,
-      "output_on": null,
-      "smart": null,
-      "note": "tech"
-    },
-    {
-      "lp": 4,
-      "kind": "RUCH",
-      "profile": "cykl",
-      "targets": {
-        "x": -20.0,
-        "y": 10.0,
-        "z": -4.0
-      },
-      "feed": 400.0,
-      "output": null,
-      "output_on": null,
-      "smart": null,
-      "note": "wyrzut"
-    },
-    {
-      "lp": 5,
       "kind": "WYJSCIE",
       "profile": null,
       "targets": {},
@@ -69,22 +13,22 @@
       "note": "out1"
     },
     {
-      "lp": 6,
+      "lp": 2,
       "kind": "RUCH",
       "profile": "cykl",
       "targets": {
-        "x": 12.0,
-        "y": 54.0,
-        "z": 33.0
+        "x": 0.0,
+        "y": 80.0,
+        "z": 0.0
       },
-      "feed": 400.0,
+      "feed": 5000.0,
       "output": null,
       "output_on": null,
       "smart": null,
-      "note": ""
+      "note": "góra"
     },
     {
-      "lp": 7,
+      "lp": 3,
       "kind": "RUCH",
       "profile": "cykl",
       "targets": {
@@ -92,11 +36,52 @@
         "y": 0.0,
         "z": 0.0
       },
-      "feed": 500.0,
+      "feed": 5000.0,
       "output": null,
       "output_on": null,
       "smart": null,
-      "note": ""
+      "note": "srodek"
+    },
+    {
+      "lp": 4,
+      "kind": "PROGRAM",
+      "profile": "cykl",
+      "targets": {},
+      "feed": null,
+      "output": null,
+      "output_on": null,
+      "smart": null,
+      "note": "tech"
+    },
+    {
+      "lp": 5,
+      "kind": "RUCH",
+      "profile": "cykl",
+      "targets": {
+        "x": 15.0,
+        "y": -82.0,
+        "z": 0.0
+      },
+      "feed": 5000.0,
+      "output": null,
+      "output_on": null,
+      "smart": null,
+      "note": "wyrzut"
+    },
+    {
+      "lp": 6,
+      "kind": "RUCH",
+      "profile": "globalny",
+      "targets": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "feed": 6000.0,
+      "output": null,
+      "output_on": null,
+      "smart": null,
+      "note": "zero"
     }
   ]
 }
