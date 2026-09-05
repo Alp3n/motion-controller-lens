@@ -1076,8 +1076,16 @@ class SC4HubMachine(Machine):
             )
 
     async def _command(self, command: str) -> str:
-        """Wysyła jedną komendę i zwraca linię odpowiedzi (OK ... / ERR ...)."""
+        """Wysyła jedną komendę i zwraca linię odpowiedzi (OK ... / ERR ...).
+
+        Diagnostyka czasu (2026-09-05, zgłoszenie: STOP na cyklu nadal czeka
+        kilka sekund mimo poprawki w `stop()`) — loguje czekanie na zamek i
+        czas wykonania każdej komendy poza STATUS (zbyt częsta, zaśmieciłaby
+        log), żeby złapać, KTÓRA komenda trzyma zamek, gdy to się powtórzy.
+        """
+        t_wait0 = time.monotonic()
         async with self._lock:
+            t_wait = time.monotonic() - t_wait0
             # is_closing(): po restarcie sterownika gniazdo jest martwe, a samo
             # write() rzuciłoby wtedy RuntimeError zamiast błędu sieciowego
             if self._writer is None or self._writer.is_closing():
@@ -1099,7 +1107,19 @@ class SC4HubMachine(Machine):
                 await self._push_axis_config()
             if self._profile_pending:
                 await self._push_profile_limits()
-            return await self._exchange(command)
+            t0 = time.monotonic()
+            if command != "STATUS":
+                print(f"[{t0:.2f}] _command {command!r}: start (zamek {t_wait:.2f}s)", flush=True)
+            try:
+                return await self._exchange(command)
+            finally:
+                dt = time.monotonic() - t0
+                if command != "STATUS" and (t_wait > 0.3 or dt > 0.3):
+                    print(
+                        f"[{time.monotonic():.2f}] _command {command!r}: czekanie na zamek {t_wait:.2f}s, "
+                        f"wykonanie {dt:.2f}s",
+                        flush=True,
+                    )
 
     async def _exchange(self, command: str) -> str:
         """Jedna wymiana po otwartym już łączu — bez zamka i bez łączenia."""
@@ -1285,6 +1305,7 @@ class SC4HubMachine(Machine):
         zgłoszeniu opóźnienia było od razu widać, po której stronie szukać.
         """
         t0 = time.monotonic()
+        print(f"[{t0:.2f}] STOP: wywołane, _run_task={self._run_task!r}", flush=True)
         if self._run_task:
             self._run_task.cancel()
             self._run_task = None
@@ -1292,11 +1313,11 @@ class SC4HubMachine(Machine):
             t1 = time.monotonic()
             await self._exchange("STOP")
             t2 = time.monotonic()
-        if t2 - t0 > 0.3:
-            print(
-                f"STOP: czekanie na zamek {t1 - t0:.2f}s, "
-                f"odpowiedź mostka {t2 - t1:.2f}s"
-            )
+        print(
+            f"[{t2:.2f}] STOP: czekanie na zamek {t1 - t0:.2f}s, "
+            f"odpowiedź mostka {t2 - t1:.2f}s",
+            flush=True,
+        )
 
     async def reset(self) -> None:
         await self._command("RESET")
