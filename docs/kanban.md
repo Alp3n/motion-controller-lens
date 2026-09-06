@@ -123,7 +123,12 @@ Jedna sesja w ClearView (Windows) domyka pierwsze pięć pozycji:
       **niepotrzebne**: kreator zapisuje wyniki strojenia bezpośrednio w
       nieulotnej pamięci samego nośnika ClearPath-SC, potwierdzone w SDK
       (`PT_CFG_T` w `mnParamDefs.h`) — szczegóły w `auto-tune-osi.md` §4.3.
-- [ ] Homing HardStop + Offset Move
+- [ ] Homing HardStop + Offset Move — **zablokowane 2026-09-06**: HardStop
+      wymaga dojazdu do fizycznego końca osi, a na tej maszynie po drodze
+      można zaczepić o inne elementy. Czeka na przygotowanie dodatkowych
+      blokad/ograniczników mechanicznych (Zbyszek), zanim da się to zrobić
+      bezpiecznie. Bazowanie programowe (obecne rozwiązanie) zostaje w
+      użyciu do tego czasu.
 - [ ] Soft limits w silnikach
 - [ ] Warunkowe limitowanie momentu (Move Done, Absolute Position)
 - [ ] Wejścia A/B węzłów („Input Actions")
