@@ -124,18 +124,26 @@ ruchu, nie błąd samego oprogramowania.
    (np. `os-X-90406231.mtr`).
 2. Zrób to dla każdej osi osobno, zanim przełączysz kabel z powrotem na
    Linux (punkt 2.3).
-3. **Wczytanie `.mtr` z powrotem na Linuksie nie jest dziś zautomatyzowane
-   w naszym projekcie** — to osobny, wciąż otwarty punkt w `kanban.md`.
-   Mechanizm SDK do tego istnieje i jest potwierdzony:
-   `sFnd::INode::Motion` ma odpowiednik `LoadingConfigFile.cpp` z paczki
-   przykładów (`docs/przyklady-sdk-teknica.md` §7) — wczytanie pliku `.mtr`
-   z poziomu C++/Linux. Zanim to zaimplementujemy w mostku, plik `.mtr`
-   przechowaj (np. w `vendor/teknic/` albo osobno) — będzie potrzebny.
+3. **Aktualizacja 2026-09-06 — wczytywanie `.mtr` na Linuksie NIE jest
+   potrzebne.** Sam kreator Auto-Tune zapisuje wyniki (wzmocnienia PID,
+   przyspieszenie/opóźnienie) bezpośrednio w **nieulotnej pamięci samego
+   nośnika** ClearPath-SC — nie tylko w pliku `.mtr` na PC. Potwierdzone
+   w SDK: `mnParamDefs.h` definiuje typ parametru `PT_CFG_T = PT_CFG |
+   PT_TUNE` („Non-vol R/W in config file item with tune write access") —
+   dokładnie taki typ mają parametry strojenia. Nośnik pamięta te wartości
+   sam, niezależnie od tego, co robi mostek po stronie Linuksa — plik
+   `.mtr` to tylko kopia/rekord po stronie ClearView, przydatny do
+   odtworzenia ustawień na innym nośniku, ale nie jest wymagany do
+   normalnej pracy. **Punkt „wczytywanie .mtr do mostka" w `kanban.md`
+   zamknięty jako niepotrzebny**, nie jako zrobiony.
 
 ## Źródła
 
 - `zbyszek/Clearpath-SC User Manual.pdf`, rev. 1.45: str. 6, 10, 19, 23,
   29, 61, 62, 64, 67 (cytaty jak oznaczono wyżej).
+- `vendor/teknic/Linux_Software/sFoundation/inc/inc-pub/mnParamDefs.h` —
+  typ parametru `PT_CFG_T` (nieulotny zapis na nośniku + dostęp do zapisu
+  przy strojeniu), źródło stwierdzenia w punkcie 4.3 wyżej.
 - `docs/przyklady-sdk-teknica.md` §7 — mechanizm wczytywania `.mtr` z
   Linuksa.
 - `bridge/machine.env` — mapowanie osi po numerach seryjnych.
