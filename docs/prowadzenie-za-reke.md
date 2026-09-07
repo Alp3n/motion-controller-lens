@@ -5,6 +5,13 @@ serwo płynnie podąża za pchnięciem) i decyzja o faktycznie zbudowanym
 zakresie. Powiązane: [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md),
 [`sterownik-sc4-hub.md`](sterownik-sc4-hub.md), [`zmiany/luzowanie-osi.md`](zmiany/luzowanie-osi.md).
 
+**Ryzyko sprzętowe potwierdzone 2026-09-07: zbyt niski limit momentu
+(np. 2%) potrafi wywołać twardy fault serwa** ("Node ... Move blocked by
+drive shutdown/disable/limit", ten sam błąd co wcześniej przy cięciu na
+bardzo niskich limitach) — wymaga Kasuj alarm. Szczegóły i zalecenia:
+[`zmiany/reset-nie-czyscil-axisenabled.md`](zmiany/reset-nie-czyscil-axisenabled.md),
+aktualizacja 2026-09-07. Zacznij od wyższego limitu (8-10%).
+
 ## Cel zgłoszony przez użytkownika (2026-09-06)
 
 Operator chce fizycznie pchać oś w jednym z kierunków, maszyna ma to

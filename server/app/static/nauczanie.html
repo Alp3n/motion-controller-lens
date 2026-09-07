@@ -19,14 +19,21 @@
       <h2>Jak to działa</h2>
       <p class="muted" style="margin:0">
         Silnik zostaje <b>włączony</b>, z niskim limitem momentu (ustaw
-        poniżej, np. 5%) — na tyle niskim, żeby dało się oś przeważyć ręką.
-        Gdy naciśniesz, sterownik wykrywa, że rzeczywista pozycja odjeżdża
-        od zadanej, i „dogania” to ruchem w tym samym kierunku, z prędkością
-        zależną od tego, jak mocno naciskasz. To NIE jest prawdziwy tryb
-        podatny sprzętu (SDK Teknica go nie udostępnia — szczegóły w
-        <code>docs/prowadzenie-za-reke.md</code>), tylko przybliżenie —
-        może być mniej płynne, zwłaszcza przy pierwszym teście. Puszczenie
-        osi po prostu przestaje generować ruch (jak przytrzymanie JOG).
+        poniżej) — na tyle niskim, żeby dało się oś przeważyć ręką. Ruch
+        doganiający (stały krok) startuje dopiero, gdy zmierzony moment
+        sięgnie tego limitu — to jest sygnał „ktoś naciska”. To NIE jest
+        prawdziwy tryb podatny sprzętu (SDK Teknica go nie udostępnia —
+        szczegóły w <code>docs/prowadzenie-za-reke.md</code>), tylko
+        przybliżenie. Puszczenie osi po prostu przestaje generować ruch
+        (jak przytrzymanie JOG).
+      </p>
+      <p class="msg err" style="margin-top:10px">
+        <b>Zbyt niski limit momentu (np. 1-3%) potrafi wywołać twardy błąd
+        serwa</b> ("Node ... Move blocked by drive shutdown/disable/limit")
+        wymagający Kasuj alarm — potwierdzone przy maszynie 2026-09-07,
+        szczegóły w <code>docs/zmiany/reset-nie-czyscil-axisenabled.md</code>.
+        Zacznij od wyższej wartości (8-10%) i schodź niżej dopiero, jeśli
+        oś zbyt łatwo się przesuwa — nie odwrotnie.
       </p>
     </section>
 
@@ -52,7 +59,7 @@
       <div class="grid-3" style="max-width:620px; margin-top:12px; gap:16px">
         <div class="field">
           <label>Limit momentu na czas prowadzenia [%]</label>
-          <input id="f-torque" type="number" value="5" min="0.5" max="20" step="0.5">
+          <input id="f-torque" type="number" value="8" min="0.5" max="20" step="0.5">
         </div>
         <div class="field">
           <label>Posuw kroku doganiania [mm/min]</label>

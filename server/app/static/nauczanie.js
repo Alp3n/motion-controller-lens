@@ -69,7 +69,10 @@ async function tick() {
     $(`pos-${r.axis}`).textContent = fmt(r.position);
     showMsg($("guide-msg"), `moment: ${fmt(r.torque)}%` + (r.moving ? " — w ruchu" : ""), true);
   } catch (e) {
-    showMsg($("guide-msg"), "przerwano: " + e.message);
+    const hint = /shutdown|disable|limit/i.test(e.message)
+      ? " — to znany błąd serwa przy zbyt niskim limicie momentu (patrz ostrzeżenie wyżej); podnieś limit i kliknij Kasuj alarm na panelu operatora"
+      : "";
+    showMsg($("guide-msg"), "przerwano: " + e.message + hint);
     await stopGuiding(false);
     return;
   }

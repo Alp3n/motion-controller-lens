@@ -88,6 +88,45 @@ bliżej z=0). To ważna nowa poszlaka:
   wyższej, ale wciąż bezpiecznej wartości usuwa problem. Do sprawdzenia
   przy maszynie, nie zdalnie — zmiana limitu wpływa na rzeczywistą siłę
   cięcia.
+## Aktualizacja (2026-09-07): silna nowa poszlaka — potwierdzone przy prowadzeniu za rękę
+
+Ten sam dokładny komunikat wystąpił ponownie, tym razem **poza programem
+technologa, w zupełnie innym kontekście** — na ekranie `/nauczanie`
+(prowadzenie za rękę, `docs/prowadzenie-za-reke.md`), przy limicie momentu
+ustawionym na **2%** na osi Y (`Node @ 2` w tym mapowaniu osi):
+
+```
+błąd sFoundation: Node @ 2 error. Reported by function:
+virtual size_t sFnd::CPMmotion::MovePosnStart(int32_t, bool, bool, bool, bool).
+Error: Node Reject: Move blocked by drive shutdown/disable/limit.
+```
+
+Operator opisał dokładnie to zdarzenie: ustawił limit na 2%, oś ledwo dała
+się przeważyć, a **gdy w końcu pokonał opór wystarczająco, żeby wywołać
+kolejny krok doganiania (JOG), ten krok skończył się tym błędem**. To
+**silnie potwierdza hipotezę z aktualizacji 2026-09-01 wyżej**: bardzo
+niski limit momentu (`TrqGlobal`) pod realnym obciążeniem zewnętrznym
+(ręka operatora, tak samo jak wcześniej opór materiału przy cięciu)
+wywołuje na serwie twardy fault/wyłączenie węzła (nie tylko łagodne
+zatrzymanie ruchu), który odrzuca **kolejną** komendę ruchu tym właśnie
+komunikatem — niezależnie od tego, czy obciążenie pochodzi z cięcia
+materiału, czy z ręki na ekranie `/nauczanie`. To nie jest błąd w kodzie
+mostka/serwera — to zachowanie samego serwa/drive'u pod przeciążeniem
+względem ustawionego (bardzo niskiego) limitu.
+
+**Praktyczny wniosek na już:** limity momentu w okolicach 2% są zbyt
+niskie na tym sprzęcie — obciążenie zewnętrzne (ręka, materiał) niemal
+gwarantowanie je przekroczy i wywoła ten fault. Na ekranie `/nauczanie`
+warto zacząć od wyższej wartości (np. 8-10%) i dopiero schodzić niżej,
+jeśli oś zbyt łatwo się przesuwa — nie odwrotnie.
+
+**Nadal nierozstrzygnięte:** dokładny próg, poniżej którego fault staje
+się prawdopodobny, oraz czy da się go w ogóle uniknąć przy naprawdę niskich
+limitach (potrzebnych np. do bardzo delikatnego prowadzenia za rękę) —
+może wymagać innego mechanizmu ograniczania siły niż `TrqGlobal`, albo
+akceptacji, że bardzo niskie limity zawsze niosą ryzyko tego faultu i
+trzeba po prostu liczyć się z RESET-em, gdy się pojawi.
+
 - **Lepsza diagnoza dostępna, nieużyta jeszcze:** przykłady beta SDK
   Teknica pokazują, jak odczytać **nazwę konkretnego alertu** węzła
   (`Status.Alerts.Value().StateStr()`) zamiast zgadywać między
