@@ -215,6 +215,34 @@ etap 5, dalej niezaimplementowany). Krok i posuw są teraz parametrami
 ustawianymi przez operatora właśnie po to, żeby dało się ten kompromis
 dostroić osobno dla każdej osi bez zmiany kodu.
 
+## Trzecia wersja (2026-09-07): moment względem spoczynku, nie limitu
+
+Po fault-cie opisanym wyżej operator zaakceptował, że RELEASE/HOLD
+wystarcza do samego pozycjonowania, ale chciał jeszcze przetestować
+prowadzenie z wyczuwaniem siły — z inną koncepcją: **silniki zostają na
+normalnym (pełnym) limicie momentu przez cały czas**, nigdy go nie
+obniżamy. Zamiast tego program zapamiętuje odczyt momentu w spoczynku
+(w chwili startu) i wyłapuje **małą zmianę** względem niego (bufor
+histerezy, np. 0.3%) — nawet przy pełnym momencie realny nacisk ręką
+lekko podnosi obciążenie, bo serwo się mu przeciwstawia. To strukturalnie
+wyklucza fault z drugiej wersji: TrqGlobal nigdy nie schodzi poniżej
+normalnej, bezpiecznej wartości z profilu.
+
+**Mechanizm typu "jedno naciśnięcie = jeden krok" (edge-triggered):**
+- Stan „uzbrojony" (armed): czekamy na PIERWSZE przekroczenie progu.
+- Przekroczenie progu → jeden krok JOG (stały dystans + posuw, kierunek ze
+  znaku zmiany) → stan „rozbrojony" (nie reagujemy na dalsze trzymanie).
+- Powrót momentu w okolice spoczynku → ponowne uzbrojenie → gotowe na
+  KOLEJNE, osobne naciśnięcie.
+
+To odpowiada wprost opisowi operatora: "jak wyczujemy że siła wzrasta lub
+maleje to robimy ruch... jak siła spadnie to się zatrzymujemy... dopiero
+kolejne naciśnięcie powoduje następną iterację." Implementacja:
+`hand_guide_step()` w `app/machine.py` (czysta funkcja, edge detection),
+`Machine.hand_guide_start/tick/stop` — bez żadnych nadpisań w
+`SC4HubMachine` (nie ma już nic związanego z TRQLIMIT do wysyłania/
+przywracania, więc kod jest teraz prostszy niż w drugiej wersji).
+
 ## Uwagi
 
 - **Nie zweryfikowane jeszcze fizycznie po tej poprawce** — logika (kiedy reagować, w którą

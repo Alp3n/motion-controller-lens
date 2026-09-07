@@ -38,50 +38,55 @@ from .program import Operation, Program, cut_path, pass_depths
 #
 # Prawdziwy tryb podatny (torque mode sterowany z hosta) nie istnieje w SDK
 # Teknica dla ClearPath-SC — potwierdzone wyczerpująco, docs/prowadzenie-za-reke.md.
-# To przybliżenie, doprecyzowane przez operatora po pierwszym teście na
-# sprzęcie (2026-09-07): niski limit momentu (operator ustawia, np. 5%) +
-# GŁÓWNY sygnał „czy ktoś naciska” to sam ODCZYT MOMENTU względem tego
-# limitu (nie przesunięcie pozycji — pierwsza wersja nie reagowała na osi Z,
-# bo sztywniejsza mechanika mogła nie dawać wystarczającego przesunięcia,
-# mimo że moment już się nasycał na limicie). Przesunięcie pozycji zostaje
-# tylko do ustalenia KIERUNKU (potrzebny choćby ślad ruchu, żeby wiedzieć,
-# w którą stronę jechać). Krok ma stały dystans i stały posuw, oba
-# ustawiane przez operatora (zgłoszenie: różne osie potrzebują różnych
-# wartości) — bez skalowania „prędkość proporcjonalna do odchylenia”
-# z pierwszej wersji, bo raz nasycony moment i tak nie niesie dalszej
-# informacji o tym, jak mocno ktoś naciska.
-HAND_GUIDE_DIRECTION_DEAD_BAND_MM = 0.01
-HAND_GUIDE_TORQUE_THRESHOLD_FRACTION = 0.8
+# Dwie wcześniejsze wersje odrzucone po testach na sprzęcie:
+#   1) RELEASE/HOLD (zdjęcie momentu) — działa, ale to zwykłe luzowanie,
+#      nie „wyczuwanie” nacisku.
+#   2) Niski TrqGlobal (np. 2-5%) + doganianie — **wywoływał twardy fault
+#      serwa** („Move blocked by drive shutdown/disable/limit”) pod realnym
+#      oporem ręki, ten sam błąd co przy zbyt niskim limicie w cięciu,
+#      patrz docs/zmiany/reset-nie-czyscil-axisenabled.md.
+#
+# Trzecia wersja (2026-09-07, propozycja operatora): silniki zostają na
+# NORMALNYM limicie momentu z aktywnego profilu — nigdy nie obniżamy
+# TrqGlobal, więc fault z wersji 2 jest strukturalnie wykluczony. Zamiast
+# tego wykrywamy MAŁĄ ZMIANĘ odczytu momentu względem wartości w spoczynku
+# (próg/histereza, np. 0.3%) — nawet przy pełnym momencie nacisk ręką lekko
+# podnosi obciążenie, bo serwo się mu przeciwstawia. Jedno wykryte
+# przekroczenie progu = JEDEN krok JOG w stronę wskazaną znakiem zmiany.
+# Żeby ciągły nacisk nie generował kroku za krokiem bez końca, po ruchu
+# blokujemy kolejne aż siła wróci w okolice spoczynku („uzbrojenie” na
+# następne naciśnięcie) — dopiero wtedy nowe przekroczenie progu liczy się
+# jako nowe zdarzenie.
+HAND_GUIDE_TORQUE_THRESHOLD_PCT = 0.3
 HAND_GUIDE_STEP_MM = 1.0
 HAND_GUIDE_FEED = 400.0
 
 
 def hand_guide_step(
-    deviation_mm: float,
-    torque_measured_pct: float,
-    torque_limit_pct: float,
-    direction_dead_band_mm: float = HAND_GUIDE_DIRECTION_DEAD_BAND_MM,
-    torque_threshold_fraction: float = HAND_GUIDE_TORQUE_THRESHOLD_FRACTION,
+    torque_delta_pct: float,
+    armed: bool,
+    threshold_pct: float = HAND_GUIDE_TORQUE_THRESHOLD_PCT,
     step_mm: float = HAND_GUIDE_STEP_MM,
-    feed: float = HAND_GUIDE_FEED,
-) -> tuple[float, float] | None:
-    """Decyduje, czy wykonać krok doganiania, i w którą stronę.
+) -> tuple[float | None, bool]:
+    """Wykrywa POJEDYNCZE naciśnięcie i decyduje o jednym kroku ruchu.
 
-    Rusza tylko gdy OBA warunki są spełnione: zmierzony moment sięga co
-    najmniej `torque_threshold_fraction` ustawionego limitu (to jest
-    „ktoś naciska”), ORAZ jest jakiekolwiek przesunięcie pozycji poza
-    martwą strefę kierunku (to jest „w którą stronę”). Zwraca zawsze ten
-    sam `(dystans_ze_znakiem, posuw)` — stały krok, nie skalowany, albo
-    `None`. Czysta funkcja — testowalna bez maszyny.
+    `torque_delta_pct` to (zmierzony moment - moment w spoczynku), ze
+    znakiem. `armed` mówi, czy siła zdążyła wrócić w okolice spoczynku od
+    ostatniego ruchu — bez tego jedno przytrzymane naciśnięcie wywołałoby
+    kroki w nieskończoność, zamiast czekać na kolejne osobne naciśnięcie.
+
+    Zwraca `(dystans_ze_znakiem_albo_None, nowy_stan_armed)`. Czysta
+    funkcja — testowalna bez maszyny.
     """
-    if not math.isfinite(deviation_mm) or not math.isfinite(torque_measured_pct):
-        return None
-    if abs(deviation_mm) <= direction_dead_band_mm:
-        return None
-    if abs(torque_measured_pct) < torque_threshold_fraction * torque_limit_pct:
-        return None
-    distance = math.copysign(step_mm, deviation_mm)
-    return distance, feed
+    if not math.isfinite(torque_delta_pct):
+        return None, armed
+    beyond = abs(torque_delta_pct) >= threshold_pct
+    if not armed:
+        # czekamy, aż siła wróci w okolice spoczynku, zanim uzbroimy ponownie
+        return None, not beyond
+    if beyond:
+        return math.copysign(step_mm, torque_delta_pct), False
+    return None, True
 
 
 class MachineState(str, Enum):
@@ -312,32 +317,23 @@ class Machine:
         return cfg.vel_jog if cfg is not None else 500.0
 
     # --- prowadzenie za rękę (wspólne, ekran /nauczanie) -------------------
-
-    async def _hand_guide_set_torque(self, axis: str, pct: float) -> None:
-        """Ustawia niski limit momentu na czas prowadzenia — no-op domyślnie.
-
-        Symulator nie ma realnej siły zewnętrznej do przeciwstawienia się,
-        więc obniżanie limitu nic by tu nie testowało; nadpisane w
-        `SC4HubMachine`, gdzie realnie wysyła TRQLIMIT do serwa.
-        """
-        return
-
-    async def _hand_guide_restore_torque(self) -> None:
-        """Przywraca limit momentu z aktywnego profilu — no-op domyślnie."""
-        return
+    #
+    # Świadomie NIE dotyka TrqGlobal — silniki zostają na normalnym limicie
+    # momentu z aktywnego profilu przez cały czas. Zobacz komentarz nad
+    # `hand_guide_step()` po historię dwóch odrzuconych wersji.
 
     async def hand_guide_start(
         self,
         axis: str,
-        torque_pct: float,
+        threshold_pct: float = HAND_GUIDE_TORQUE_THRESHOLD_PCT,
         feed: float = HAND_GUIDE_FEED,
         step_mm: float = HAND_GUIDE_STEP_MM,
     ) -> None:
         """Rozpoczyna prowadzenie za rękę jednej osi.
 
-        Wymaga READY (jak JOG) i osi niezluzowanej — prowadzenie za rękę to
-        NIE luzowanie (RELEASE): silnik zostaje włączony, tylko z niskim
-        limitem momentu, żeby dało się go przeważyć ręką. `feed`/`step_mm`
+        Wymaga READY (jak JOG) i osi niezluzowanej. Zapamiętuje bieżący
+        odczyt momentu jako „spoczynek” — kolejne odczyty porównujemy do
+        NIEGO, nie do żadnego limitu. `threshold_pct`/`feed`/`step_mm`
         operator ustawia sam na ekranie — różne osie mają różne tarcie
         i potrzebują innych wartości (zgłoszenie 2026-09-07).
         """
@@ -349,76 +345,68 @@ class Machine:
                 f"(obecnie: {self.status.state.value})"
             )
         self._require_not_released([axis])
-        if not (0.5 <= torque_pct <= 20.0):
+        if not (0.05 <= threshold_pct <= 20.0):
             raise MachineError(
-                f"limit momentu do prowadzenia za rękę: 0.5-20%, jest {torque_pct}"
+                f"próg wykrycia nacisku: 0.05-20%, jest {threshold_pct}"
             )
         if not (10.0 <= feed <= 3000.0):
-            raise MachineError(
-                f"posuw doganiania: 10-3000 mm/min, jest {feed}"
-            )
+            raise MachineError(f"posuw kroku: 10-3000 mm/min, jest {feed}")
         if not (0.05 <= step_mm <= 10.0):
-            raise MachineError(f"krok doganiania: 0.05-10 mm, jest {step_mm}")
-        await self._hand_guide_set_torque(axis, torque_pct)
+            raise MachineError(f"dystans kroku: 0.05-10 mm, jest {step_mm}")
         await self.poll_status()
         self._hand_guide = {
             "axis": axis,
-            "target": getattr(self.status, axis),
-            "torque_pct": torque_pct,
+            "baseline": self.status.torque.get(axis, 0.0),
+            "threshold_pct": threshold_pct,
             "feed": feed,
             "step_mm": step_mm,
+            "armed": True,
         }
 
     async def hand_guide_tick(self) -> dict:
-        """Jedno wywołanie pętli: sprawdza moment i odchylenie, ewentualnie dogania.
+        """Jedno wywołanie pętli: sprawdza zmianę momentu, ewentualnie robi krok.
 
         Wołane wielokrotnie przez przeglądarkę (jak przytrzymanie JOG) —
         to jest zabezpieczenie „martwego człowieka”: przerwanie wywołań
         (zamknięcie karty, utrata sieci) po prostu kończy prowadzenie, bez
         żadnego wątku działającego dalej po stronie serwera.
 
-        `poll_status()` PRZED odczytem i PO ruchu jest kluczowe na sprzęcie:
-        `SC4HubMachine.jog()` nie aktualizuje `self.status` sam (robi to
-        dopiero osobna pętla `_poll_loop`, co 200 ms, niezależnie od tego
-        wywołania) — bez wymuszenia świeżego odczytu tutaj `target`
-        zapamiętywał nieaktualną pozycję, więc kolejne porównania wychodziły
-        z przestarzałych danych i oś potrafiła jechać dalej „bez kontroli”,
-        zatrzymując się dopiero, gdy `_poll_loop` w końcu doń dogonił
-        (zgłoszone przy maszynie 2026-09-07). W symulatorze `poll_status()`
-        jest no-opem, bo tam pozycja jest zawsze świeża.
+        `poll_status()` przed odczytem i po ruchu daje świeży odczyt momentu
+        i pozycji na sprzęcie (`SC4HubMachine.jog()` sam nie aktualizuje
+        `self.status` — robi to dopiero osobna pętla `_poll_loop`, co 200 ms,
+        niezależnie od tego wywołania). W symulatorze to no-op.
         """
         if self._hand_guide is None:
             raise MachineError("prowadzenie za rękę nie jest aktywne")
         await self.poll_status()
         axis = self._hand_guide["axis"]
-        target = self._hand_guide["target"]
-        torque_pct = self._hand_guide["torque_pct"]
+        baseline = self._hand_guide["baseline"]
+        threshold_pct = self._hand_guide["threshold_pct"]
         feed = self._hand_guide["feed"]
         step_mm = self._hand_guide["step_mm"]
-        current = getattr(self.status, axis)
+        armed = self._hand_guide["armed"]
         measured = self.status.torque.get(axis, 0.0)
-        step = hand_guide_step(
-            current - target, measured, torque_pct, step_mm=step_mm, feed=feed
+        delta = measured - baseline
+        distance, armed = hand_guide_step(
+            delta, armed, threshold_pct=threshold_pct, step_mm=step_mm
         )
-        moving = step is not None
-        if step is not None:
-            distance, feed_used = step
-            await self.jog(axis, distance, feed_used)
+        self._hand_guide["armed"] = armed
+        moving = distance is not None
+        if distance is not None:
+            await self.jog(axis, distance, feed)
             await self.poll_status()
-            self._hand_guide["target"] = getattr(self.status, axis)
         return {
             "axis": axis,
             "position": getattr(self.status, axis),
             "torque": self.status.torque.get(axis),
+            "torque_delta": delta,
             "moving": moving,
+            "armed": armed,
         }
 
     async def hand_guide_stop(self) -> None:
-        """Kończy prowadzenie za rękę i przywraca normalny limit momentu."""
-        if self._hand_guide is None:
-            return
+        """Kończy prowadzenie za rękę."""
         self._hand_guide = None
-        await self._hand_guide_restore_torque()
 
     def home_groups(self) -> list[list[str]]:
         """Osie do zbazowania w kolejności z konfiguracji (ekran /homing).
@@ -1220,22 +1208,6 @@ class SC4HubMachine(Machine):
             if params is None:
                 continue
             await self._exchange(f"TRQLIMIT {axis.upper()} {params.torque_pct:.2f}")
-
-    async def _hand_guide_set_torque(self, axis: str, pct: float) -> None:
-        """Ustawia niski limit momentu na czas prowadzenia za rękę (ekran
-        /nauczanie) — realna komenda TRQLIMIT, przez `_command()` (własny
-        zamek), nie `_exchange()` (to nie jest wołane spod zamka `_command`)."""
-        await self._command(f"TRQLIMIT {axis.upper()} {pct:.2f}")
-
-    async def _hand_guide_restore_torque(self) -> None:
-        """Przywraca limit momentu aktywnego profilu na wszystkich osiach —
-        to samo co `_push_profile_limits()`, ale przez `_command()` (własny
-        zamek), bo wołane poza jego blokiem."""
-        for axis in REQUIRED_AXES:
-            params = self.axis_params(axis)
-            if params is None:
-                continue
-            await self._command(f"TRQLIMIT {axis.upper()} {params.torque_pct:.2f}")
 
     async def _push_axis_config(self) -> None:
         """Wysyła limity i przełożenia osi do mostka (wołane spod zamka).

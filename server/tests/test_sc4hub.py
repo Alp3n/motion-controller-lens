@@ -483,35 +483,34 @@ def test_stop_anuluje_run_task():
 
 
 # --- prowadzenie za rękę (ekran /nauczanie) --------------------------------
+#
+# Trzecia wersja (2026-09-07) świadomie NIE dotyka TrqGlobal — dwie
+# poprzednie próby (RELEASE, niski limit momentu) odrzucone po testach na
+# sprzęcie, patrz komentarz nad hand_guide_step() w machine.py. Start/stop
+# nie wysyłają już żadnych komend do mostka poza odczytem STATUS.
 
 
-def test_hand_guide_start_wysyla_niski_limit_momentu():
+def test_hand_guide_start_nie_dotyka_limitu_momentu():
     m = _connected_machine()
     m.apply_profiles(default_profiles(["x", "y", "z"]), "globalny")
     m.status.state = MachineState.READY
 
-    asyncio.run(m.hand_guide_start("x", 5.0))
+    asyncio.run(m.hand_guide_start("x"))
 
-    # STATUS na końcu: świeży odczyt pozycji do zapamiętania jako cel
-    # doganiania (bez tego "target" ruszałby ze starych danych, patrz
-    # docstring hand_guide_tick w machine.py)
-    assert m.calls == ["TRQLIMIT X 5.00", "STATUS"]
+    # tylko świeży odczyt pozycji/momentu do zapamiętania jako "spoczynek"
+    # (bez tego porównania w tick() wychodziłyby ze starych danych)
+    assert m.calls == ["STATUS"]
 
 
-def test_hand_guide_stop_przywraca_limit_profilu():
+def test_hand_guide_stop_nie_wysyla_zadnej_komendy():
     m = _connected_machine()
     m.apply_profiles(default_profiles(["x", "y", "z"]), "globalny")
     m.status.state = MachineState.READY
 
-    asyncio.run(m.hand_guide_start("x", 5.0))
+    asyncio.run(m.hand_guide_start("x"))
     asyncio.run(m.hand_guide_stop())
 
-    # ostatnie trzy komendy to przywrócenie limitu profilu na wszystkich osiach
-    assert m.calls[-3:] == [
-        "TRQLIMIT X 20.00",
-        "TRQLIMIT Y 20.00",
-        "TRQLIMIT Z 20.00",
-    ]
+    assert m.calls == ["STATUS"]
 
 
 # --- RESUMED=1 w STATUS (wznowienie po alarmie bez ponownego bazowania) ----

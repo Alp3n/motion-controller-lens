@@ -67,10 +67,14 @@ mam to założyć.
       2026-09-07** w zakresie technicznie osiągalnym: prawdziwy tryb
       podatny (torque mode z hosta) okazał się **nieosiągalny na tym
       sprzęcie** (brak takiego API w SDK Teknica, potwierdzone wyczerpująco
-      — `prowadzenie-za-reke.md`). Zbudowane przybliżenie, doprecyzowane
-      przez operatora: niski limit momentu (TRQLIMIT, np. 5%) + wykrycie
-      odjeżdżania rzeczywistej pozycji od zadanej + doganianie ruchem JOG
-      proporcjonalnym do siły (`hand_guide_step()`, ekran `/nauczanie`).
+      — `prowadzenie-za-reke.md`). Trzy iteracje przybliżenia: RELEASE/HOLD
+      (działa, ale to zwykłe luzowanie) → niski TrqGlobal + doganianie
+      (wywoływał twardy fault serwa pod realnym oporem, patrz
+      `zmiany/reset-nie-czyscil-axisenabled.md`) → **finalnie: normalny
+      limit momentu przez cały czas + wykrycie małej zmiany odczytu
+      momentu względem spoczynku, jedno naciśnięcie = jeden krok JOG**
+      (`hand_guide_step()`, ekran `/nauczanie`) — bez ryzyka faultu, bo
+      TrqGlobal nigdy nie schodzi poniżej normalnej wartości.
       Osobno: baza punktów z pełnym CRUD (`/punkty`, `app/punkty.py`),
       picker punktów w operacji PUNKT edytora (jednorazowe wypełnienie
       X/Y/Z, bez trwałego wiązania po nazwie). **Nie zweryfikowane

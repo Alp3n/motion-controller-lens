@@ -18,22 +18,19 @@
     <section class="panel" id="warn-panel">
       <h2>Jak to działa</h2>
       <p class="muted" style="margin:0">
-        Silnik zostaje <b>włączony</b>, z niskim limitem momentu (ustaw
-        poniżej) — na tyle niskim, żeby dało się oś przeważyć ręką. Ruch
-        doganiający (stały krok) startuje dopiero, gdy zmierzony moment
-        sięgnie tego limitu — to jest sygnał „ktoś naciska”. To NIE jest
-        prawdziwy tryb podatny sprzętu (SDK Teknica go nie udostępnia —
-        szczegóły w <code>docs/prowadzenie-za-reke.md</code>), tylko
-        przybliżenie. Puszczenie osi po prostu przestaje generować ruch
-        (jak przytrzymanie JOG).
-      </p>
-      <p class="msg err" style="margin-top:10px">
-        <b>Zbyt niski limit momentu (np. 1-3%) potrafi wywołać twardy błąd
-        serwa</b> ("Node ... Move blocked by drive shutdown/disable/limit")
-        wymagający Kasuj alarm — potwierdzone przy maszynie 2026-09-07,
-        szczegóły w <code>docs/zmiany/reset-nie-czyscil-axisenabled.md</code>.
-        Zacznij od wyższej wartości (8-10%) i schodź niżej dopiero, jeśli
-        oś zbyt łatwo się przesuwa — nie odwrotnie.
+        Silnik zostaje na <b>normalnym</b> limicie momentu przez cały czas —
+        nic tu nie osłabiamy, więc nie ma ryzyka twardego błędu serwa, jakie
+        dawało wcześniejsze podejście z niskim limitem (potwierdzone przy
+        maszynie 2026-09-07, <code>docs/zmiany/reset-nie-czyscil-axisenabled.md</code>).
+        Zamiast tego program pamięta odczyt momentu w spoczynku i wyłapuje
+        jego <b>małą zmianę</b> (próg poniżej) — nawet przy pełnym momencie
+        nacisk ręką lekko podnosi obciążenie, bo serwo się mu przeciwstawia.
+        Jedno wykryte naciśnięcie = jeden krok ruchu w tę stronę. Żeby
+        ciągłe trzymanie nie generowało kroku za krokiem, po ruchu trzeba
+        <b>puścić</b> (moment wraca w okolice spoczynku) — dopiero wtedy
+        kolejne naciśnięcie zrobi następny krok. To NIE jest prawdziwy tryb
+        podatny sprzętu (SDK Teknica go nie udostępnia — szczegóły w
+        <code>docs/prowadzenie-za-reke.md</code>), tylko przybliżenie.
       </p>
     </section>
 
@@ -58,11 +55,11 @@
       </div>
       <div class="grid-3" style="max-width:620px; margin-top:12px; gap:16px">
         <div class="field">
-          <label>Limit momentu na czas prowadzenia [%]</label>
-          <input id="f-torque" type="number" value="8" min="0.5" max="20" step="0.5">
+          <label>Próg wykrycia nacisku [% zmiany momentu]</label>
+          <input id="f-threshold" type="number" value="0.3" min="0.05" max="20" step="0.05">
         </div>
         <div class="field">
-          <label>Posuw kroku doganiania [mm/min]</label>
+          <label>Posuw kroku [mm/min]</label>
           <input id="f-feed" type="number" value="400" min="10" max="3000" step="10">
         </div>
         <div class="field">
@@ -71,13 +68,13 @@
         </div>
       </div>
       <p class="muted" style="margin-top:8px">
-        Ruch startuje dopiero, gdy zmierzony moment sięgnie limitu (naciskasz
-        wystarczająco mocno) — jeśli oś w ogóle nie daje się przeważyć,
-        podnieś limit momentu. Mniejszy krok = częstsze sprawdzanie, szybsze
-        zatrzymanie, ale bardziej "szarpane". Większy krok = płynniej, ale
-        wolniejsza reakcja na puszczenie. Dobiera się osobno dla każdej osi.
+        Za niski próg reaguje na szum odczytu (ruszy samo, bez nacisku) —
+        za wysoki wymaga mocnego naciśnięcia. Mniejszy krok = delikatniej,
+        więcej kroków na to samo przesunięcie. Dobiera się osobno dla
+        każdej osi (różne tarcie/obciążenie).
       </p>
-      <p id="guide-msg" class="msg" style="margin-top:10px"></p>
+      <p class="muted" id="guide-status" style="margin-top:10px"></p>
+      <p id="guide-msg" class="msg"></p>
     </section>
 
     <section class="panel">

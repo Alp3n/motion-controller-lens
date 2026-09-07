@@ -237,12 +237,12 @@ def test_release_rejects_unknown_axis(client):
 
 
 def test_hand_guide_start_rejects_bad_axis(client):
-    res = client.post("/api/machine/hand-guide/start", json={"axis": "q", "torque_pct": 5})
+    res = client.post("/api/machine/hand-guide/start", json={"axis": "q", "threshold_pct": 0.3})
     assert res.status_code == 422
 
 
-def test_hand_guide_start_rejects_torque_out_of_range(client):
-    res = client.post("/api/machine/hand-guide/start", json={"axis": "x", "torque_pct": 50})
+def test_hand_guide_start_rejects_threshold_out_of_range(client):
+    res = client.post("/api/machine/hand-guide/start", json={"axis": "x", "threshold_pct": 50})
     assert res.status_code == 422
 
 
@@ -250,7 +250,7 @@ def test_hand_guide_start_requires_ready_state(client):
     """Maszyna w tym pliku testów nie jest zbazowana — prowadzenie za rękę
     musi to odrzucić, tak samo jak start programu (patrz test wyżej)."""
     client.post("/api/machine/reset")
-    res = client.post("/api/machine/hand-guide/start", json={"axis": "x", "torque_pct": 5})
+    res = client.post("/api/machine/hand-guide/start", json={"axis": "x", "threshold_pct": 0.3})
     assert res.status_code == 409
     assert "READY" in res.json()["detail"]
 

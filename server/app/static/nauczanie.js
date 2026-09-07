@@ -1,9 +1,12 @@
 /* Ekran "prowadzenie za rękę" — przybliżenie trybu podatnego bez trybu
- * momentu w SDK (docs/prowadzenie-za-reke.md): niski limit momentu +
- * doganianie wykrytego odchylenia pozycji. Przeglądarka woła
- * /api/machine/hand-guide/tick w pętli, dopóki przycisk osi jest aktywny —
- * to jest zabezpieczenie "martwego człowieka" (jak przytrzymanie JOG):
- * zamknięcie karty albo utrata sieci po prostu kończy prowadzenie.
+ * momentu w SDK (docs/prowadzenie-za-reke.md): silnik zostaje na NORMALNYM
+ * limicie momentu, wykrywamy tylko małą zmianę odczytu momentu względem
+ * spoczynku (histereza) — jedno naciśnięcie = jeden krok, trzeba puścić
+ * (powrót do spoczynku) zanim kolejne naciśnięcie zrobi następny krok.
+ * Przeglądarka woła /api/machine/hand-guide/tick w pętli, dopóki przycisk
+ * osi jest aktywny — to jest zabezpieczenie "martwego człowieka" (jak
+ * przytrzymanie JOG): zamknięcie karty albo utrata sieci po prostu kończy
+ * prowadzenie, bez żadnego wątku działającego dalej po stronie serwera.
  */
 
 const $ = (id) => document.getElementById(id);
@@ -67,12 +70,11 @@ async function tick() {
   try {
     const r = await api("POST", "/api/machine/hand-guide/tick");
     $(`pos-${r.axis}`).textContent = fmt(r.position);
-    showMsg($("guide-msg"), `moment: ${fmt(r.torque)}%` + (r.moving ? " — w ruchu" : ""), true);
+    $("guide-status").textContent =
+      `moment: ${fmt(r.torque)}% (zmiana: ${fmt(r.torque_delta)}%) — ` +
+      (r.moving ? "krok wykonany" : r.armed ? "gotowy na naciśnięcie" : "czeka na puszczenie");
   } catch (e) {
-    const hint = /shutdown|disable|limit/i.test(e.message)
-      ? " — to znany błąd serwa przy zbyt niskim limicie momentu (patrz ostrzeżenie wyżej); podnieś limit i kliknij Kasuj alarm na panelu operatora"
-      : "";
-    showMsg($("guide-msg"), "przerwano: " + e.message + hint);
+    showMsg($("guide-msg"), "przerwano: " + e.message);
     await stopGuiding(false);
     return;
   }
@@ -80,13 +82,13 @@ async function tick() {
 }
 
 async function startGuiding(axis) {
-  const torque = Number($("f-torque").value);
+  const threshold = Number($("f-threshold").value);
   const feed = Number($("f-feed").value);
   const stepMm = Number($("f-step").value);
   try {
     await api("POST", "/api/machine/hand-guide/start", {
       axis,
-      torque_pct: torque,
+      threshold_pct: threshold,
       feed,
       step_mm: stepMm,
     });
@@ -104,6 +106,7 @@ async function stopGuiding(callServer = true) {
   clearTimeout(tickTimer);
   activeAxis = null;
   setButtonsUi();
+  $("guide-status").textContent = "";
   if (callServer) {
     try {
       await api("POST", "/api/machine/hand-guide/stop");
