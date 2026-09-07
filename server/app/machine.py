@@ -34,6 +34,46 @@ from .spindle import SpindleConfig
 from .program import Operation, Program, cut_path, pass_depths
 
 
+# --- prowadzenie za rękę (ekran /nauczanie) --------------------------------
+#
+# Prawdziwy tryb podatny (torque mode sterowany z hosta) nie istnieje w SDK
+# Teknica dla ClearPath-SC — potwierdzone wyczerpująco, docs/prowadzenie-za-reke.md.
+# To przybliżenie: niski limit momentu (operator ustawia, np. 5%) + wykrycie,
+# że rzeczywista pozycja odjechała od ostatnio zadanej (serwo "przegrywa" z
+# naciskiem) + doganianie tego odchylenia nowym, małym ruchem JOG z prędkością
+# zależną od wielkości odchylenia. Wartości progowe niżej są PROWIZORYCZNE —
+# do dostrojenia przy pierwszym teście na sprzęcie, nie są parametrem
+# bezpieczeństwa (tym jest sam niski limit momentu, ustawiany osobno).
+HAND_GUIDE_DEAD_BAND_MM = 0.05
+HAND_GUIDE_MAX_DEVIATION_MM = 3.0
+HAND_GUIDE_STEP_MM = 0.3
+HAND_GUIDE_MIN_FEED = 50.0
+HAND_GUIDE_MAX_FEED = 600.0
+
+
+def hand_guide_step(
+    deviation_mm: float,
+    dead_band_mm: float = HAND_GUIDE_DEAD_BAND_MM,
+    max_deviation_mm: float = HAND_GUIDE_MAX_DEVIATION_MM,
+    step_mm: float = HAND_GUIDE_STEP_MM,
+    min_feed: float = HAND_GUIDE_MIN_FEED,
+    max_feed: float = HAND_GUIDE_MAX_FEED,
+) -> tuple[float, float] | None:
+    """Decyduje, czy i jak „gonić” wykryte odchylenie pozycji od zadanej.
+
+    `deviation_mm` to (pozycja rzeczywista - ostatnio zadana), ze znakiem.
+    Zwraca `(dystans_ze_znakiem, posuw)` do wysłania jako JOG, albo `None`,
+    gdy odchylenie mieści się w martwej strefie (szum odczytu, nie realne
+    pchnięcie). Czysta funkcja — testowalna bez maszyny.
+    """
+    if not math.isfinite(deviation_mm) or abs(deviation_mm) <= dead_band_mm:
+        return None
+    factor = min(abs(deviation_mm) / max_deviation_mm, 1.0)
+    distance = math.copysign(step_mm, deviation_mm)
+    feed = min_feed + factor * (max_feed - min_feed)
+    return distance, feed
+
+
 class MachineState(str, Enum):
     INIT = "INIT"
     NOT_HOMED = "NOT_HOMED"
@@ -151,6 +191,8 @@ class Machine:
         self.recording: list[dict] = []
         self._recording_t0: float | None = None
         self._recording_was_running = False
+        # prowadzenie za rękę (ekran /nauczanie) — None = nieaktywne
+        self._hand_guide: dict | None = None
 
     # --- konfiguracja wyjść (wspólna) -------------------------------------
 
@@ -258,6 +300,80 @@ class Machine:
         """Domyślna prędkość JOG skonfigurowana dla osi (ekran /axes)."""
         cfg = self.axes.get(axis)
         return cfg.vel_jog if cfg is not None else 500.0
+
+    # --- prowadzenie za rękę (wspólne, ekran /nauczanie) -------------------
+
+    async def _hand_guide_set_torque(self, axis: str, pct: float) -> None:
+        """Ustawia niski limit momentu na czas prowadzenia — no-op domyślnie.
+
+        Symulator nie ma realnej siły zewnętrznej do przeciwstawienia się,
+        więc obniżanie limitu nic by tu nie testowało; nadpisane w
+        `SC4HubMachine`, gdzie realnie wysyła TRQLIMIT do serwa.
+        """
+        return
+
+    async def _hand_guide_restore_torque(self) -> None:
+        """Przywraca limit momentu z aktywnego profilu — no-op domyślnie."""
+        return
+
+    async def hand_guide_start(self, axis: str, torque_pct: float) -> None:
+        """Rozpoczyna prowadzenie za rękę jednej osi.
+
+        Wymaga READY (jak JOG) i osi niezluzowanej — prowadzenie za rękę to
+        NIE luzowanie (RELEASE): silnik zostaje włączony, tylko z niskim
+        limitem momentu, żeby dało się go przeważyć ręką.
+        """
+        if axis not in ("x", "y", "z"):
+            raise MachineError(f"nieznana oś: {axis}")
+        if self.status.state != MachineState.READY:
+            raise MachineError(
+                f"prowadzenie za rękę możliwe tylko w stanie READY "
+                f"(obecnie: {self.status.state.value})"
+            )
+        self._require_not_released([axis])
+        if not (0.5 <= torque_pct <= 20.0):
+            raise MachineError(
+                f"limit momentu do prowadzenia za rękę: 0.5-20%, jest {torque_pct}"
+            )
+        await self._hand_guide_set_torque(axis, torque_pct)
+        self._hand_guide = {
+            "axis": axis,
+            "target": getattr(self.status, axis),
+            "torque_pct": torque_pct,
+        }
+
+    async def hand_guide_tick(self) -> dict:
+        """Jedno wywołanie pętli: sprawdza odchylenie, ewentualnie dogania.
+
+        Wołane wielokrotnie przez przeglądarkę (jak przytrzymanie JOG) —
+        to jest zabezpieczenie „martwego człowieka”: przerwanie wywołań
+        (zamknięcie karty, utrata sieci) po prostu kończy prowadzenie, bez
+        żadnego wątku działającego dalej po stronie serwera.
+        """
+        if self._hand_guide is None:
+            raise MachineError("prowadzenie za rękę nie jest aktywne")
+        axis = self._hand_guide["axis"]
+        target = self._hand_guide["target"]
+        current = getattr(self.status, axis)
+        step = hand_guide_step(current - target)
+        moving = step is not None
+        if step is not None:
+            distance, feed = step
+            await self.jog(axis, distance, feed)
+            self._hand_guide["target"] = getattr(self.status, axis)
+        return {
+            "axis": axis,
+            "position": getattr(self.status, axis),
+            "torque": self.status.torque.get(axis),
+            "moving": moving,
+        }
+
+    async def hand_guide_stop(self) -> None:
+        """Kończy prowadzenie za rękę i przywraca normalny limit momentu."""
+        if self._hand_guide is None:
+            return
+        self._hand_guide = None
+        await self._hand_guide_restore_torque()
 
     def home_groups(self) -> list[list[str]]:
         """Osie do zbazowania w kolejności z konfiguracji (ekran /homing).
@@ -1059,6 +1175,22 @@ class SC4HubMachine(Machine):
             if params is None:
                 continue
             await self._exchange(f"TRQLIMIT {axis.upper()} {params.torque_pct:.2f}")
+
+    async def _hand_guide_set_torque(self, axis: str, pct: float) -> None:
+        """Ustawia niski limit momentu na czas prowadzenia za rękę (ekran
+        /nauczanie) — realna komenda TRQLIMIT, przez `_command()` (własny
+        zamek), nie `_exchange()` (to nie jest wołane spod zamka `_command`)."""
+        await self._command(f"TRQLIMIT {axis.upper()} {pct:.2f}")
+
+    async def _hand_guide_restore_torque(self) -> None:
+        """Przywraca limit momentu aktywnego profilu na wszystkich osiach —
+        to samo co `_push_profile_limits()`, ale przez `_command()` (własny
+        zamek), bo wołane poza jego blokiem."""
+        for axis in REQUIRED_AXES:
+            params = self.axis_params(axis)
+            if params is None:
+                continue
+            await self._command(f"TRQLIMIT {axis.upper()} {params.torque_pct:.2f}")
 
     async def _push_axis_config(self) -> None:
         """Wysyła limity i przełożenia osi do mostka (wołane spod zamka).

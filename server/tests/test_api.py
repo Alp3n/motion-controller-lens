@@ -231,3 +231,34 @@ def test_reset_zwraca_409_nie_500_gdy_mostek_odrzuci_komende(client, monkeypatch
 
 def test_release_rejects_unknown_axis(client):
     assert client.post("/api/machine/release", json={"axis": "q", "released": True}).status_code == 422
+
+
+# --- prowadzenie za rękę (ekran /nauczanie) --------------------------------
+
+
+def test_hand_guide_start_rejects_bad_axis(client):
+    res = client.post("/api/machine/hand-guide/start", json={"axis": "q", "torque_pct": 5})
+    assert res.status_code == 422
+
+
+def test_hand_guide_start_rejects_torque_out_of_range(client):
+    res = client.post("/api/machine/hand-guide/start", json={"axis": "x", "torque_pct": 50})
+    assert res.status_code == 422
+
+
+def test_hand_guide_start_requires_ready_state(client):
+    """Maszyna w tym pliku testów nie jest zbazowana — prowadzenie za rękę
+    musi to odrzucić, tak samo jak start programu (patrz test wyżej)."""
+    client.post("/api/machine/reset")
+    res = client.post("/api/machine/hand-guide/start", json={"axis": "x", "torque_pct": 5})
+    assert res.status_code == 409
+    assert "READY" in res.json()["detail"]
+
+
+def test_hand_guide_tick_bez_startu_zwraca_409(client):
+    res = client.post("/api/machine/hand-guide/tick")
+    assert res.status_code == 409
+
+
+def test_hand_guide_stop_bez_startu_nie_jest_bledem(client):
+    assert client.post("/api/machine/hand-guide/stop").status_code == 200

@@ -67,13 +67,15 @@ mam to założyć.
       2026-09-07** w zakresie technicznie osiągalnym: prawdziwy tryb
       podatny (torque mode z hosta) okazał się **nieosiągalny na tym
       sprzęcie** (brak takiego API w SDK Teknica, potwierdzone wyczerpująco
-      — `prowadzenie-za-reke.md`). Zbudowane: ekran `/nauczanie` (zwolnienie
-      X/Y/Z przez już istniejący RELEASE/HOLD — bezpieczne, osie
-      samohamowne, nie opadają), baza punktów z pełnym CRUD (`/punkty`,
-      `app/punkty.py`), picker punktów w operacji PUNKT edytora (jednorazowe
-      wypełnienie X/Y/Z, bez trwałego wiązania po nazwie). **Nie
-      zweryfikowane fizycznie** — do zrobienia przy najbliższej obecności
-      operatora. Szczegóły: `zmiany/baza-nazwanych-punktow.md`.
+      — `prowadzenie-za-reke.md`). Zbudowane przybliżenie, doprecyzowane
+      przez operatora: niski limit momentu (TRQLIMIT, np. 5%) + wykrycie
+      odjeżdżania rzeczywistej pozycji od zadanej + doganianie ruchem JOG
+      proporcjonalnym do siły (`hand_guide_step()`, ekran `/nauczanie`).
+      Osobno: baza punktów z pełnym CRUD (`/punkty`, `app/punkty.py`),
+      picker punktów w operacji PUNKT edytora (jednorazowe wypełnienie
+      X/Y/Z, bez trwałego wiązania po nazwie). **Nie zweryfikowane
+      fizycznie** — progi doganiania są prowizoryczne, do dostrojenia przy
+      najbliższej obecności operatora. Szczegóły: `zmiany/baza-nazwanych-punktow.md`.
 
 ### D. Wrzeciono
 - [x] Włączenie przy starcie maszyny — przełącznik na panelu operatora

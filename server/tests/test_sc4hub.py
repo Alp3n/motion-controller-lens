@@ -482,6 +482,35 @@ def test_stop_anuluje_run_task():
     assert m._run_task is None
 
 
+# --- prowadzenie za rękę (ekran /nauczanie) --------------------------------
+
+
+def test_hand_guide_start_wysyla_niski_limit_momentu():
+    m = _connected_machine()
+    m.apply_profiles(default_profiles(["x", "y", "z"]), "globalny")
+    m.status.state = MachineState.READY
+
+    asyncio.run(m.hand_guide_start("x", 5.0))
+
+    assert m.calls == ["TRQLIMIT X 5.00"]
+
+
+def test_hand_guide_stop_przywraca_limit_profilu():
+    m = _connected_machine()
+    m.apply_profiles(default_profiles(["x", "y", "z"]), "globalny")
+    m.status.state = MachineState.READY
+
+    asyncio.run(m.hand_guide_start("x", 5.0))
+    asyncio.run(m.hand_guide_stop())
+
+    # ostatnie trzy komendy to przywrócenie limitu profilu na wszystkich osiach
+    assert m.calls[-3:] == [
+        "TRQLIMIT X 20.00",
+        "TRQLIMIT Y 20.00",
+        "TRQLIMIT Z 20.00",
+    ]
+
+
 # --- RESUMED=1 w STATUS (wznowienie po alarmie bez ponownego bazowania) ----
 
 

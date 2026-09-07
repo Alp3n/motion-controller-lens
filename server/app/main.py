@@ -244,6 +244,14 @@ class ReleaseRequest(BaseModel):
     released: bool
 
 
+class HandGuideStartRequest(BaseModel):
+    """Start prowadzenia za rękę (ekran /nauczanie) — niski limit momentu
+    na jedną oś, tak żeby dało się ją przeważyć ręką."""
+
+    axis: str = Field(..., pattern="^[xyzXYZ]$")
+    torque_pct: float = Field(..., ge=0.5, le=20.0)
+
+
 class SaveProgramRequest(BaseModel):
     content: str = Field(..., description="pełna treść pliku .prg")
 
@@ -1137,6 +1145,36 @@ async def machine_release(req: ReleaseRequest, user=Depends(require_operator)):
     except MachineError as exc:
         raise HTTPException(409, str(exc))
     return {"ok": True, "released_axes": sorted(machine.status.released_axes)}
+
+
+@app.post("/api/machine/hand-guide/start")
+async def hand_guide_start(req: HandGuideStartRequest, user=Depends(require_admin)):
+    """Rozpoczyna prowadzenie za rękę jednej osi — patrz docs/prowadzenie-za-reke.md.
+
+    Wymaga uprawnień admina jak reszta ekranu /nauczanie — to nie jest
+    zwykły ruch operatora, tylko narzędzie do przygotowania punktów.
+    """
+    try:
+        await machine.hand_guide_start(req.axis.lower(), req.torque_pct)
+    except MachineError as exc:
+        raise HTTPException(409, str(exc))
+    return {"ok": True}
+
+
+@app.post("/api/machine/hand-guide/tick")
+async def hand_guide_tick(user=Depends(require_admin)):
+    """Jedno wywołanie pętli — przeglądarka woła je wielokrotnie, jak
+    przytrzymanie JOG. Przerwanie wywołań po prostu kończy prowadzenie."""
+    try:
+        return await machine.hand_guide_tick()
+    except MachineError as exc:
+        raise HTTPException(409, str(exc))
+
+
+@app.post("/api/machine/hand-guide/stop")
+async def hand_guide_stop(user=Depends(require_admin)):
+    await machine.hand_guide_stop()
+    return {"ok": True}
 
 
 @app.post("/api/sim/safety-enable")

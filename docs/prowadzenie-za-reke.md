@@ -48,20 +48,56 @@ operatora (admittance/compliant control z hosta) na tym sprzęcie przez
 sFoundation SDK.** To ograniczenie API/architektury drive'u, nie kwestia
 nakładu pracy.
 
-## Co jest dostępne i bezpieczne: RELEASE/HOLD
+## Doprecyzowanie operatora (2026-09-07): przybliżenie przez niski limit momentu
 
-Jedyny istniejący mechanizm zdjęcia oporu to **RELEASE/HOLD**
-(`zmiany/luzowanie-osi.md`) — całkowite zdjęcie momentu z serwa, oś
-kręci się całkiem swobodnie. To NIE jest "podążanie" ani regulowany opór —
-zero oporu, tyle. Enkoder liczy dalej, więc po ponownym HOLD nie trzeba
-bazować.
+Pierwsza wersja tego ekranu (opisana niżej w historii zmian) użyła
+**RELEASE/HOLD** — pełne zdjęcie momentu. Operator doprecyzował, że nie
+o to mu chodziło: silnik ma zostać **włączony**, tylko z **niskim limitem
+momentu** (np. 5%). Dokładny opis: "gdy wybiorę jakąś oś to silnik ma być
+włączony i ustawmy mały moment np 5%, jak nacisnę na oś to odczytasz
+zwiększenie siły, jak pozycja zmieni się to zaczynasz jechać z prędkością
+proporcjonalną do siły i sprawdzasz ustawienia limitu dla tego kierunku."
 
-**Ustalone z operatorem 2026-09-07: wszystkie trzy osie tej maszyny są
-samohamowne** — nie opadają pod własnym ciężarem po zwolnieniu momentu
-(mechaniczna cecha przekładni/śruby, niezależna od sterowania). To usuwa
-ryzyko, które pierwotnie wykluczało oś Z z tej funkcji (obawa: oś pionowa
-pod ciężarem wrzeciona/narzędzia mogłaby opaść po RELEASE). **W efekcie
-RELEASE jest bezpieczne na X, Y i Z.**
+To da się zbudować z **już istniejących** elementów, bez czekania na
+cokolwiek od Teknica:
+
+- `TRQLIMIT` (limit momentu, `zmiany/limit-momentu-sprzet.md`) — obniżany
+  na czas prowadzenia, przywracany po zakończeniu.
+- `TRQX/Y/Z` (odczyt momentu, etap 0 tematu K) — do podglądu na ekranie.
+- Pozycja z `STATUS` — do wykrycia, że serwo "przegrywa" z naciskiem: przy
+  niskim limicie momentu serwo w Position Mode nie potrafi w pełni
+  utrzymać zadanej pozycji pod zewnętrzną siłą większą niż ten limit,
+  więc rzeczywista pozycja zaczyna odjeżdżać od ostatnio zadanej.
+- `JOG` (już istniejąca komenda ruchu pojedynczej osi) — do "doganiania"
+  wykrytego odchylenia nowym, małym ruchem w tym samym kierunku.
+
+**Mechanizm (`hand_guide_step()` w `app/machine.py`):** co ~150 ms
+przeglądarka woła `/api/machine/hand-guide/tick`. Serwer liczy odchylenie
+(rzeczywista pozycja − ostatnio zadana). Poniżej martwej strefy (0.05 mm)
+nic nie robi. Powyżej — wysyła `JOG` w kierunku odchylenia, z dystansem
+stałym (0.3 mm) i posuwem rosnącym proporcjonalnie do wielkości odchylenia
+(50–600 mm/min, nasycenie przy 3 mm). To **przybliżenie** trybu podatnego,
+nie prawdziwe sterowanie momentem — może być mniej płynne niż prawdziwy
+compliant control, do oceny/dostrojenia progów przy pierwszym teście na
+sprzęcie.
+
+**Bezpieczeństwo:** limit momentu (ustawiany przez operatora, 0.5–20%) jest
+głównym ograniczeniem — niezależnie od błędów w logice doganiania, siła,
+jaką oś może wywrzeć, zostaje ograniczona przez `TrqGlobal`. Dodatkowo:
+`JOG` respektuje limity programowe osi (`_check_soft_limit`) tak samo jak
+zwykły ręczny JOG. Wzorem przytrzymania JOG na panelu operatora, pętla
+działa jako "martwy człowiek" po stronie przeglądarki (`tick()` w pętli
+`setTimeout`) — zamknięcie karty albo utrata sieci po prostu przestaje
+generować kolejne wywołania, żaden wątek nie zostaje aktywny po stronie
+serwera.
+
+**Wcześniej rozważane RELEASE/HOLD** (`zmiany/luzowanie-osi.md`) — pełne
+zdjęcie momentu, zero oporu — zostało odrzucone przez operatora jako
+niewłaściwe podejście, ale przy okazji ustalono ważny fakt: **wszystkie
+trzy osie tej maszyny są samohamowne** (nie opadają pod własnym ciężarem
+bez momentu, mechaniczna cecha przekładni/śruby) — co i tak jest istotne
+dla oceny bezpieczeństwa niskiego limitu momentu na Z (najgorszy scenariusz
+przy zbyt niskim limicie to unieruchomienie osi, nie niekontrolowany spadek).
 
 ## Zbudowany zakres
 
@@ -71,12 +107,13 @@ RELEASE jest bezpieczne na X, Y i Z.**
    punktu z operacją programu jest **jednorazowe** (decyzja 2026-09-06):
    wybór z listy w edytorze wypełnia pola X/Y/Z operacji PUNKT, a
    późniejsza zmiana punktu w bazie nie wpływa na już zapisane programy.
-2. **Ekran `/nauczanie`** — przyciski "Zwolnij/Zaciśnij" dla X, Y, Z (używają
-   istniejącego `/api/machine/release`, żadnej nowej komendy mostka), podgląd
-   pozycji na żywo, pole nazwy + "Zapisz punkt" (czyta bieżącą pozycję,
-   zapisuje do `/api/punkty`). Ekran jawnie tłumaczy operatorowi, że
-   zwolnienie to pełne zdjęcie oporu, nie "pływanie" ani regulowany opór —
-   żeby nie oczekiwał funkcji, której sprzęt nie oferuje.
+2. **Ekran `/nauczanie`** — przycisk "Prowadź X/Y/Z" (start/stop) + pole
+   limitu momentu, podgląd pozycji i momentu na żywo, pole nazwy + "Zapisz
+   punkt". `POST /api/machine/hand-guide/start|tick|stop` w `main.py`,
+   logika w `Machine.hand_guide_start/tick/stop` (`app/machine.py`) —
+   wspólna dla symulatora i sprzętu, tylko ustawianie/przywracanie limitu
+   momentu jest nadpisane w `SC4HubMachine` (symulator nie ma realnej siły
+   zewnętrznej, więc nic tam nie ustawia).
 3. **Picker w edytorze programu** (`editor.js`) — przy operacji PUNKT
    dodatkowy `<select>` z listą nazwanych punktów; wybór wypełnia X/Y/Z
    tego wiersza i wraca do stanu "— punkt —" (jednorazowe działanie, nie
@@ -86,20 +123,29 @@ RELEASE jest bezpieczne na X, Y i Z.**
 
 - `server/app/punkty.py` — model, walidacja, plik `config/punkty.json`.
 - `server/app/config.py` — `PUNKTY_FILE`.
-- `server/app/main.py` — `GET/PUT /api/punkty`, strony `/punkty` i `/nauczanie`.
+- `server/app/machine.py` — `hand_guide_step()` (czysta funkcja decyzyjna),
+  `Machine.hand_guide_start/tick/stop`, nadpisania `_hand_guide_set_torque`/
+  `_hand_guide_restore_torque` w `SC4HubMachine`.
+- `server/app/main.py` — `GET/PUT /api/punkty`, `POST /api/machine/hand-guide/*`,
+  strony `/punkty` i `/nauczanie`.
 - `server/app/static/punkty.html`, `punkty.js` — ekran CRUD listy punktów.
 - `server/app/static/nauczanie.html`, `nauczanie.js` — ekran prowadzenia za rękę.
 - `server/app/static/editor.js` — picker punktów w operacji PUNKT.
 - Linki nawigacyjne dopisane w `index.html`, `smart.html`, `sila.html`,
   `cycle.html`, `editor.html`.
-- `server/tests/test_punkty.py` — 13 testów (model, plik, API).
+- `server/tests/test_punkty.py` — 13 testów (model, plik, API punktów).
+- `server/tests/test_hand_guide.py` — 13 testów (funkcja decyzyjna, symulator).
+- `server/tests/test_sc4hub.py` — 2 testy (TRQLIMIT ustawiany/przywracany).
+- `server/tests/test_api.py` — 5 testów endpointów `hand-guide`.
 
 ## Uwagi
 
-- **Nie zweryfikowane jeszcze fizycznie** — ekran `/nauczanie` używa
-  wyłącznie już sprawdzonego mechanizmu RELEASE/HOLD, więc ryzyko jest
-  niskie, ale realny test "zwolnij, przesuń ręką, zapisz punkt" zostaje do
-  zrobienia przy najbliższej obecności operatora.
+- **Nie zweryfikowane jeszcze fizycznie** — logika (kiedy reagować, w którą
+  stronę, z jaką prędkością) jest pokryta testami, ale progi (martwa strefa
+  0.05 mm, nasycenie przy 3 mm, posuw 50–600 mm/min) są **prowizoryczne** i
+  prawie na pewno będą wymagały dostrojenia po pierwszym realnym teście —
+  to nie jest parametr bezpieczeństwa (tym jest limit momentu), tylko
+  kwestia tego, czy prowadzenie "czuje się" dobrze.
 - Gdyby w przyszłości pojawiła się potrzeba prawdziwego trybu podatnego —
   jedyna droga to prawdopodobnie funkcje poza publicznym API Teknica dla
   tej rodziny napędów (kontakt z producentem) albo inny sprzęt; nie ma

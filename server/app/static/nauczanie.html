@@ -16,39 +16,44 @@
 
   <main>
     <section class="panel" id="warn-panel">
-      <h2>Zanim zaczniesz</h2>
+      <h2>Jak to działa</h2>
       <p class="muted" style="margin:0">
-        „Zwolnij" zdejmuje moment z serwa całkowicie — oś nie stawia
-        <b>żadnego</b> oporu, nie „podąża" płynnie za ręką (to nie jest
-        regulowany opór ani kompensacja ciężaru — sprzęt tego nie
-        obsługuje, szczegóły w <code>docs/prowadzenie-za-reke.md</code>).
-        Osie tej maszyny są <b>samohamowne</b> — nie opadają pod własnym
-        ciężarem po zwolnieniu (potwierdzone przez operatora 2026-09-07),
-        więc zwolnienie każdej z X/Y/Z jest bezpieczne. Enkoder liczy
-        dalej, więc po ponownym „Zaciśnij" nie trzeba bazować.
+        Silnik zostaje <b>włączony</b>, z niskim limitem momentu (ustaw
+        poniżej, np. 5%) — na tyle niskim, żeby dało się oś przeważyć ręką.
+        Gdy naciśniesz, sterownik wykrywa, że rzeczywista pozycja odjeżdża
+        od zadanej, i „dogania” to ruchem w tym samym kierunku, z prędkością
+        zależną od tego, jak mocno naciskasz. To NIE jest prawdziwy tryb
+        podatny sprzętu (SDK Teknica go nie udostępnia — szczegóły w
+        <code>docs/prowadzenie-za-reke.md</code>), tylko przybliżenie —
+        może być mniej płynne, zwłaszcza przy pierwszym teście. Puszczenie
+        osi po prostu przestaje generować ruch (jak przytrzymanie JOG).
       </p>
     </section>
 
     <section class="panel">
       <h2>Pozycja na żywo</h2>
-      <div class="grid-3" style="gap:16px; max-width:520px">
+      <div class="grid-3" style="gap:16px; max-width:600px">
         <div class="field">
           <label>X [mm]</label>
           <div class="axis"><span id="pos-x">—</span></div>
-          <button class="small rel" data-axis="x">Zwolnij X</button>
+          <button class="small guide" data-axis="x">Prowadź X</button>
         </div>
         <div class="field">
           <label>Y [mm]</label>
           <div class="axis"><span id="pos-y">—</span></div>
-          <button class="small rel" data-axis="y">Zwolnij Y</button>
+          <button class="small guide" data-axis="y">Prowadź Y</button>
         </div>
         <div class="field">
           <label>Z [mm]</label>
           <div class="axis"><span id="pos-z">—</span></div>
-          <button class="small rel" data-axis="z">Zwolnij Z</button>
+          <button class="small guide" data-axis="z">Prowadź Z</button>
         </div>
       </div>
-      <p id="rel-msg" class="msg" style="margin-top:10px"></p>
+      <div class="field" style="max-width:220px; margin-top:12px">
+        <label>Limit momentu na czas prowadzenia [%]</label>
+        <input id="f-torque" type="number" value="5" min="0.5" max="20" step="0.5">
+      </div>
+      <p id="guide-msg" class="msg" style="margin-top:10px"></p>
     </section>
 
     <section class="panel">

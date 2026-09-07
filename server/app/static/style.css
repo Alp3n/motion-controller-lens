@@ -211,6 +211,14 @@ button.rel.released {
   border-color: var(--warn);
 }
 
+/* Prowadzenie za rękę (/nauczanie): wyraźnie widoczny stan "aktywne" —
+   operator musi wiedzieć, że oś ma teraz obniżony limit momentu. */
+button.guide.active {
+  background: #4d431a;
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
 /* Podgląd pozycji: rysunek XY + wskaźnik Z, odświeżany z każdą ramką statusu. */
 .view-wrap {
   position: relative;
