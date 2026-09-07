@@ -492,7 +492,10 @@ def test_hand_guide_start_wysyla_niski_limit_momentu():
 
     asyncio.run(m.hand_guide_start("x", 5.0))
 
-    assert m.calls == ["TRQLIMIT X 5.00"]
+    # STATUS na końcu: świeży odczyt pozycji do zapamiętania jako cel
+    # doganiania (bez tego "target" ruszałby ze starych danych, patrz
+    # docstring hand_guide_tick w machine.py)
+    assert m.calls == ["TRQLIMIT X 5.00", "STATUS"]
 
 
 def test_hand_guide_stop_przywraca_limit_profilu():

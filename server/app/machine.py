@@ -316,12 +316,16 @@ class Machine:
         """Przywraca limit momentu z aktywnego profilu — no-op domyślnie."""
         return
 
-    async def hand_guide_start(self, axis: str, torque_pct: float) -> None:
+    async def hand_guide_start(
+        self, axis: str, torque_pct: float, max_feed: float = HAND_GUIDE_MAX_FEED
+    ) -> None:
         """Rozpoczyna prowadzenie za rękę jednej osi.
 
         Wymaga READY (jak JOG) i osi niezluzowanej — prowadzenie za rękę to
         NIE luzowanie (RELEASE): silnik zostaje włączony, tylko z niskim
-        limitem momentu, żeby dało się go przeważyć ręką.
+        limitem momentu, żeby dało się go przeważyć ręką. `max_feed` to
+        limit prędkości doganiania — operator ustawia go sam na ekranie
+        (zgłoszenie 2026-09-07: różne osie potrzebują różnej prędkości).
         """
         if axis not in ("x", "y", "z"):
             raise MachineError(f"nieznana oś: {axis}")
@@ -335,11 +339,17 @@ class Machine:
             raise MachineError(
                 f"limit momentu do prowadzenia za rękę: 0.5-20%, jest {torque_pct}"
             )
+        if not (10.0 <= max_feed <= 3000.0):
+            raise MachineError(
+                f"limit prędkości do prowadzenia za rękę: 10-3000 mm/min, jest {max_feed}"
+            )
         await self._hand_guide_set_torque(axis, torque_pct)
+        await self.poll_status()
         self._hand_guide = {
             "axis": axis,
             "target": getattr(self.status, axis),
             "torque_pct": torque_pct,
+            "max_feed": max_feed,
         }
 
     async def hand_guide_tick(self) -> dict:
@@ -349,17 +359,30 @@ class Machine:
         to jest zabezpieczenie „martwego człowieka”: przerwanie wywołań
         (zamknięcie karty, utrata sieci) po prostu kończy prowadzenie, bez
         żadnego wątku działającego dalej po stronie serwera.
+
+        `poll_status()` PRZED odczytem i PO ruchu jest kluczowe na sprzęcie:
+        `SC4HubMachine.jog()` nie aktualizuje `self.status` sam (robi to
+        dopiero osobna pętla `_poll_loop`, co 200 ms, niezależnie od tego
+        wywołania) — bez wymuszenia świeżego odczytu tutaj `target`
+        zapamiętywał nieaktualną pozycję, więc kolejne porównania wychodziły
+        z przestarzałych danych i oś potrafiła jechać dalej „bez kontroli”,
+        zatrzymując się dopiero, gdy `_poll_loop` w końcu doń dogonił
+        (zgłoszone przy maszynie 2026-09-07). W symulatorze `poll_status()`
+        jest no-opem, bo tam pozycja jest zawsze świeża.
         """
         if self._hand_guide is None:
             raise MachineError("prowadzenie za rękę nie jest aktywne")
+        await self.poll_status()
         axis = self._hand_guide["axis"]
         target = self._hand_guide["target"]
+        max_feed = self._hand_guide["max_feed"]
         current = getattr(self.status, axis)
-        step = hand_guide_step(current - target)
+        step = hand_guide_step(current - target, max_feed=max_feed)
         moving = step is not None
         if step is not None:
             distance, feed = step
             await self.jog(axis, distance, feed)
+            await self.poll_status()
             self._hand_guide["target"] = getattr(self.status, axis)
         return {
             "axis": axis,

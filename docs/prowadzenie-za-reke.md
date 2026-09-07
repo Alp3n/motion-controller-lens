@@ -138,9 +138,31 @@ przy zbyt niskim limicie to unieruchomienie osi, nie niekontrolowany spadek).
 - `server/tests/test_sc4hub.py` — 2 testy (TRQLIMIT ustawiany/przywracany).
 - `server/tests/test_api.py` — 5 testów endpointów `hand-guide`.
 
+## Naprawiony błąd (2026-09-07): nieaktualna pozycja w pętli doganiania
+
+Pierwszy test na sprzęcie: oś X „niby działała", ale pozostałe osie nie
+chciały się ruszyć, a zatrzymanie po puszczeniu było opóźnione ("jedzie
+sam bez kontroli, zatrzymuje się po jakimś czasie"). Przyczyna:
+**`SC4HubMachine.jog()` nie aktualizuje `self.status.x/y/z` po ruchu** —
+robi to dopiero osobna pętla `_poll_loop()` w `main.py`, co 200 ms,
+całkowicie niezależnie od wywołań `jog()`. `hand_guide_tick()` zapamiętywał
+więc jako "cel doganiania" **nieaktualną** pozycję, a kolejne porównania
+odchylenia wypadały z przestarzałych danych — stąd niekontrolowany dalszy
+ruch (porównanie nie odzwierciedlało już rzeczywistości) i, przy innym
+zbiegu czasowym `_poll_loop`, brak wykrycia jakiegokolwiek nacisku na
+pozostałych osiach. W symulatorze błąd był niewidoczny, bo tam pozycja
+aktualizuje się synchronicznie w miejscu ruchu.
+
+**Naprawa:** `hand_guide_tick()` woła `await self.poll_status()` zarówno
+PRZED odczytem bieżącej pozycji, jak i PO wykonaniu ruchu doganiającego —
+dla `SC4HubMachine` to realne zapytanie STATUS do mostka; dla symulatora
+to nadal no-op (pozycja już świeża). Dodano też limit prędkości doganiania
+(`max_feed`) jako parametr ustawiany przez operatora na ekranie — różne
+osie mają różne tarcie i wymagają innej prędkości.
+
 ## Uwagi
 
-- **Nie zweryfikowane jeszcze fizycznie** — logika (kiedy reagować, w którą
+- **Nie zweryfikowane jeszcze fizycznie po tej poprawce** — logika (kiedy reagować, w którą
   stronę, z jaką prędkością) jest pokryta testami, ale progi (martwa strefa
   0.05 mm, nasycenie przy 3 mm, posuw 50–600 mm/min) są **prowizoryczne** i
   prawie na pewno będą wymagały dostrojenia po pierwszym realnym teście —
