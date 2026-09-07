@@ -1,16 +1,17 @@
 """Testy prowadzenia za rękę (ekran /nauczanie) — funkcja czysta + symulator.
 
-Trzecia wersja tego mechanizmu (2026-09-07, propozycja operatora po dwóch
-odrzuconych podejściach — RELEASE i niski limit momentu, oba opisane w
+Trzecia wersja tego mechanizmu (2026-09-07/08, po dwóch odrzuconych
+podejściach — RELEASE i niski limit momentu, oba opisane w
 docs/prowadzenie-za-reke.md): silnik zostaje na NORMALNYM limicie momentu
-(nigdy nie dotykamy TrqGlobal, więc fault serwa z drugiej wersji jest
-strukturalnie wykluczony). Wykrywamy małą zmianę odczytu momentu względem
-wartości w spoczynku (histereza) — jedno wykryte naciśnięcie = jeden krok
-JOG, potem trzeba puścić (siła wraca do spoczynku), zanim kolejne
-naciśnięcie znów coś zrobi. Testy sprawdzają logikę decyzyjną (edge
-detection) i to, że symulator poprawnie odmawia w złym stanie/na
-zluzowanej osi — NIE testują „uczucia” prowadzenia, bo to wymaga
-prawdziwej ręki na maszynie.
+(nigdy nie dotykamy TrqGlobal). Wykrywamy małą zmianę odczytu momentu
+względem wartości w spoczynku (histereza) — jedno wykryte naciśnięcie =
+jeden krok JOG, potem trzeba KILKA kolejnych odczytów w spoczynku z rzędu
+(nie tylko jednego — pierwszy test na sprzęcie 2026-09-08 pokazał, że
+pojedynczy przejściowy skok momentu tuż po ruchu bywa mylnie odczytany
+jako nowe, przeciwne naciśnięcie), zanim kolejne naciśnięcie znów coś
+zrobi. Testy sprawdzają logikę decyzyjną (edge detection + debounce) i to,
+że symulator poprawnie odmawia w złym stanie/na zluzowanej osi — NIE
+testują „uczucia” prowadzenia, bo to wymaga prawdziwej ręki na maszynie.
 """
 
 import asyncio
@@ -24,6 +25,7 @@ os.environ.setdefault(
 import pytest  # noqa: E402
 
 from app.machine import (  # noqa: E402
+    HAND_GUIDE_SETTLE_TICKS,
     MachineError,
     MachineState,
     SimulatedMachine,
@@ -31,67 +33,89 @@ from app.machine import (  # noqa: E402
 )
 
 
-# --- hand_guide_step (czysta funkcja, wykrywanie zbocza) --------------------
+# --- hand_guide_step (czysta funkcja, wykrywanie zbocza + debounce) --------
 
 
-def test_hand_guide_step_ponizej_progu_nic_nie_robi_gdy_uzbrojony():
-    distance, armed = hand_guide_step(0.1, armed=True, threshold_pct=0.3)
+def test_hand_guide_step_ponizej_progu_zwieksza_licznik_spoczynku():
+    distance, settle = hand_guide_step(0.1, settle_count=0, threshold_pct=0.3)
     assert distance is None
-    assert armed is True  # nadal uzbrojony, czeka na naciśnięcie
+    assert settle == 1
 
 
-def test_hand_guide_step_powyzej_progu_rusza_i_rozbraja():
-    distance, armed = hand_guide_step(0.5, armed=True, threshold_pct=0.3, step_mm=1.0)
+def test_hand_guide_step_licznik_spoczynku_nasyca_na_settle_ticks():
+    distance, settle = hand_guide_step(
+        0.1, settle_count=HAND_GUIDE_SETTLE_TICKS, threshold_pct=0.3
+    )
+    assert distance is None
+    assert settle == HAND_GUIDE_SETTLE_TICKS  # nie rośnie w nieskończoność
+
+
+def test_hand_guide_step_rusza_dopiero_po_pelnym_uspokojeniu():
+    """Poniżej progu uspokojenia (settle_ticks) przekroczenie progu NIE
+    rusza osią — to jest dokładnie naprawiony błąd z 2026-09-08: pojedynczy
+    przejściowy skok tuż po ruchu nie może sam wywołać kolejnego kroku."""
+    distance, settle = hand_guide_step(
+        0.5, settle_count=HAND_GUIDE_SETTLE_TICKS - 1, threshold_pct=0.3, step_mm=1.0
+    )
+    assert distance is None
+    assert settle == 0  # przerwane uspokajanie, trzeba zacząć liczyć od nowa
+
+
+def test_hand_guide_step_rusza_i_zeruje_licznik_po_pelnym_uspokojeniu():
+    distance, settle = hand_guide_step(
+        0.5, settle_count=HAND_GUIDE_SETTLE_TICKS, threshold_pct=0.3, step_mm=1.0
+    )
     assert distance == 1.0
-    assert armed is False  # zużyte - czeka na powrót do spoczynku
+    assert settle == 0
 
 
 def test_hand_guide_step_kierunek_ze_znaku_delty():
-    plus, _ = hand_guide_step(0.5, armed=True, threshold_pct=0.3, step_mm=1.0)
-    minus, _ = hand_guide_step(-0.5, armed=True, threshold_pct=0.3, step_mm=1.0)
+    plus, _ = hand_guide_step(0.5, settle_count=HAND_GUIDE_SETTLE_TICKS, threshold_pct=0.3, step_mm=1.0)
+    minus, _ = hand_guide_step(-0.5, settle_count=HAND_GUIDE_SETTLE_TICKS, threshold_pct=0.3, step_mm=1.0)
     assert plus == 1.0
     assert minus == -1.0
 
 
-def test_hand_guide_step_nieuzbrojony_ignoruje_nawet_duza_delte():
-    """Ciągły nacisk po zużyciu kroku nie generuje kolejnych kroków —
-    trzeba wrócić do spoczynku, żeby uzbroić ponownie."""
-    distance, armed = hand_guide_step(5.0, armed=False, threshold_pct=0.3)
-    assert distance is None
-    assert armed is False  # nadal poza progiem - nie uzbrojony
-
-
-def test_hand_guide_step_powrot_do_spoczynku_uzbraja_ponownie():
-    distance, armed = hand_guide_step(0.1, armed=False, threshold_pct=0.3)
-    assert distance is None
-    assert armed is True
+def test_hand_guide_step_przejsciowy_sygnal_tuz_po_ruchu_nie_wywoluje_kroku():
+    """Odtwarza dokładnie zgłoszony scenariusz: krok, potem PRZED pełnym
+    uspokojeniem chwilowy skok w przeciwną stronę (np. hamowanie JOG-a) —
+    nie może sam wywołać kroku wstecz."""
+    settle = HAND_GUIDE_SETTLE_TICKS
+    # naciśnięcie -> krok, licznik wyzerowany
+    d, settle = hand_guide_step(0.5, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
+    assert d == 1.0 and settle == 0
+    # przejściowy skok w przeciwną stronę TUŻ po ruchu (np. hamowanie) - IGNOROWANY
+    d, settle = hand_guide_step(-0.5, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
+    assert d is None and settle == 0
 
 
 def test_hand_guide_step_pelny_cykl_jedno_nacisniecie_jeden_krok():
-    """Symuluje: spoczynek -> naciśnięcie -> krok -> przytrzymanie (nic) ->
-    puszczenie -> ponowne naciśnięcie -> drugi krok."""
-    armed = True
+    """Symuluje: spoczynek -> naciśnięcie -> krok -> pełne uspokojenie ->
+    ponowne naciśnięcie -> drugi krok."""
+    settle = HAND_GUIDE_SETTLE_TICKS  # start "uspokojony"
     # spoczynek
-    d, armed = hand_guide_step(0.05, armed=armed, threshold_pct=0.3, step_mm=1.0)
-    assert d is None and armed is True
+    d, settle = hand_guide_step(0.05, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
+    assert d is None and settle == HAND_GUIDE_SETTLE_TICKS
     # naciśnięcie -> krok
-    d, armed = hand_guide_step(0.5, armed=armed, threshold_pct=0.3, step_mm=1.0)
-    assert d == 1.0 and armed is False
-    # nadal trzyma -> nic (nieuzbrojony)
-    d, armed = hand_guide_step(0.5, armed=armed, threshold_pct=0.3, step_mm=1.0)
-    assert d is None and armed is False
-    # puścił -> powrót do spoczynku, uzbraja
-    d, armed = hand_guide_step(0.02, armed=armed, threshold_pct=0.3, step_mm=1.0)
-    assert d is None and armed is True
+    d, settle = hand_guide_step(0.5, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
+    assert d == 1.0 and settle == 0
+    # nadal trzyma -> nic, licznik zerowany za każdym razem
+    d, settle = hand_guide_step(0.5, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
+    assert d is None and settle == 0
+    # puścił -> kilka odczytów w spoczynku z rzędu, aż uzbroi ponownie
+    for _ in range(HAND_GUIDE_SETTLE_TICKS):
+        d, settle = hand_guide_step(0.02, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
+        assert d is None
+    assert settle == HAND_GUIDE_SETTLE_TICKS
     # nowe naciśnięcie -> drugi krok
-    d, armed = hand_guide_step(-0.4, armed=armed, threshold_pct=0.3, step_mm=1.0)
-    assert d == -1.0 and armed is False
+    d, settle = hand_guide_step(-0.4, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
+    assert d == -1.0 and settle == 0
 
 
 def test_hand_guide_step_odrzuca_nieskonczonosc():
-    distance, armed = hand_guide_step(float("nan"), armed=True)
+    distance, settle = hand_guide_step(float("nan"), settle_count=2)
     assert distance is None
-    assert armed is True  # stan bez zmian przy złych danych
+    assert settle == 2  # stan bez zmian przy złych danych
 
 
 # --- Machine.hand_guide_* (symulator) ---------------------------------------
@@ -144,7 +168,7 @@ def test_tick_bez_startu_jest_bledem():
 
 
 def test_tick_bez_nacisku_nie_rusza_osi():
-    """Zaraz po starcie moment = spoczynek (delta=0) — spokój."""
+    """Zaraz po starcie moment = spoczynek (delta=0) — spokój, uzbrojony."""
     m = _ready_machine()
     asyncio.run(m.hand_guide_start("x"))
     result = asyncio.run(m.hand_guide_tick())
@@ -166,7 +190,7 @@ def test_tick_z_wystarczajaca_zmiana_momentu_wykonuje_krok():
     assert result["armed"] is False
 
 
-def test_tick_nie_powtarza_kroku_bez_powrotu_do_spoczynku():
+def test_tick_nie_powtarza_kroku_bez_pelnego_uspokojenia():
     m = _ready_machine()
     asyncio.run(m.hand_guide_start("x", threshold_pct=0.3))
     baseline = m._hand_guide["baseline"]
@@ -174,6 +198,22 @@ def test_tick_nie_powtarza_kroku_bez_powrotu_do_spoczynku():
     first = asyncio.run(m.hand_guide_tick())
     assert first["moving"] is True
     # moment nadal podniesiony, bez powrotu do spoczynku - drugi tick nic nie robi
+    second = asyncio.run(m.hand_guide_tick())
+    assert second["moving"] is False
+
+
+def test_tick_przejsciowy_skok_tuz_po_ruchu_nie_odwraca_kroku():
+    """Odtwarza zgłoszenie 2026-09-08: krok w jedną stronę, zaraz potem
+    przejściowy skok w przeciwną (np. hamowanie ruchu) - nie może sam
+    wywołać kroku wstecz, bo oś jeszcze się nie uspokoiła."""
+    m = _ready_machine()
+    asyncio.run(m.hand_guide_start("x", threshold_pct=0.3))
+    baseline = m._hand_guide["baseline"]
+    m.status.torque["x"] = baseline + 0.5
+    first = asyncio.run(m.hand_guide_tick())
+    assert first["moving"] is True
+    # zaraz po ruchu: przejściowy skok w PRZECIWNĄ stronę
+    m.status.torque["x"] = baseline - 0.5
     second = asyncio.run(m.hand_guide_tick())
     assert second["moving"] is False
 

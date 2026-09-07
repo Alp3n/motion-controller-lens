@@ -53,40 +53,54 @@ from .program import Operation, Program, cut_path, pass_depths
 # (próg/histereza, np. 0.3%) — nawet przy pełnym momencie nacisk ręką lekko
 # podnosi obciążenie, bo serwo się mu przeciwstawia. Jedno wykryte
 # przekroczenie progu = JEDEN krok JOG w stronę wskazaną znakiem zmiany.
-# Żeby ciągły nacisk nie generował kroku za krokiem bez końca, po ruchu
-# blokujemy kolejne aż siła wróci w okolice spoczynku („uzbrojenie” na
-# następne naciśnięcie) — dopiero wtedy nowe przekroczenie progu liczy się
-# jako nowe zdarzenie.
+#
+# Pierwszy test tej wersji na sprzęcie (2026-09-08): krok w jedną stronę, a
+# ~2s później krok DOKŁADNIE w przeciwną — czyli powrót do pozycji sprzed
+# naciśnięcia, mimo że operator naciskał tylko raz. Najbardziej prawdopodobna
+# przyczyna: przejściowy odczyt momentu tuż po zakończeniu ruchu (np.
+# hamowanie na końcu profilu JOG-a, albo osiadanie mechaniki) mylnie
+# odczytany jako NOWE, przeciwne naciśnięcie — pojedynczy odczyt nie
+# odróżniał realnego naciśnięcia od takiego przejściowego "błysku".
+#
+# Naprawa: żeby ponownie uzbroić wykrywanie po ruchu, wymagamy
+# `HAND_GUIDE_SETTLE_TICKS` KOLEJNYCH odczytów w spoczynku z rzędu, nie
+# tylko jednego — pojedynczy przejściowy skok momentu tuż po ruchu nie
+# przerywa poprzedniego "rozbrojenia" (zeruje licznik, ale nie odblokowuje
+# ponownego wyzwolenia), więc nie może sam wywołać kroku w przeciwną stronę.
 HAND_GUIDE_TORQUE_THRESHOLD_PCT = 0.3
 HAND_GUIDE_STEP_MM = 1.0
 HAND_GUIDE_FEED = 400.0
+HAND_GUIDE_SETTLE_TICKS = 3
 
 
 def hand_guide_step(
     torque_delta_pct: float,
-    armed: bool,
+    settle_count: int,
     threshold_pct: float = HAND_GUIDE_TORQUE_THRESHOLD_PCT,
     step_mm: float = HAND_GUIDE_STEP_MM,
-) -> tuple[float | None, bool]:
+    settle_ticks: int = HAND_GUIDE_SETTLE_TICKS,
+) -> tuple[float | None, int]:
     """Wykrywa POJEDYNCZE naciśnięcie i decyduje o jednym kroku ruchu.
 
     `torque_delta_pct` to (zmierzony moment - moment w spoczynku), ze
-    znakiem. `armed` mówi, czy siła zdążyła wrócić w okolice spoczynku od
-    ostatniego ruchu — bez tego jedno przytrzymane naciśnięcie wywołałoby
-    kroki w nieskończoność, zamiast czekać na kolejne osobne naciśnięcie.
+    znakiem. `settle_count` liczy KOLEJNE odczyty z rzędu w spoczynku (w
+    granicach progu) — dopiero po `settle_ticks` takich odczytów z rzędu
+    uznajemy oś za naprawdę uspokojoną i gotową na nowe naciśnięcie.
+    Pojedynczy przejściowy skok momentu tuż po ruchu (hamowanie, osiadanie
+    mechaniki) zeruje licznik, ale sam nie wywołuje ruchu — dopiero
+    naciśnięcie PO pełnym uspokojeniu się liczy.
 
-    Zwraca `(dystans_ze_znakiem_albo_None, nowy_stan_armed)`. Czysta
-    funkcja — testowalna bez maszyny.
+    Zwraca `(dystans_ze_znakiem_albo_None, nowy_stan_settle_count)`.
+    Czysta funkcja — testowalna bez maszyny.
     """
     if not math.isfinite(torque_delta_pct):
-        return None, armed
+        return None, settle_count
     beyond = abs(torque_delta_pct) >= threshold_pct
-    if not armed:
-        # czekamy, aż siła wróci w okolice spoczynku, zanim uzbroimy ponownie
-        return None, not beyond
     if beyond:
-        return math.copysign(step_mm, torque_delta_pct), False
-    return None, True
+        if settle_count >= settle_ticks:
+            return math.copysign(step_mm, torque_delta_pct), 0
+        return None, 0
+    return None, min(settle_count + 1, settle_ticks)
 
 
 class MachineState(str, Enum):
@@ -360,7 +374,7 @@ class Machine:
             "threshold_pct": threshold_pct,
             "feed": feed,
             "step_mm": step_mm,
-            "armed": True,
+            "settle_count": HAND_GUIDE_SETTLE_TICKS,  # start "uspokojony"
         }
 
     async def hand_guide_tick(self) -> dict:
@@ -384,13 +398,13 @@ class Machine:
         threshold_pct = self._hand_guide["threshold_pct"]
         feed = self._hand_guide["feed"]
         step_mm = self._hand_guide["step_mm"]
-        armed = self._hand_guide["armed"]
+        settle_count = self._hand_guide["settle_count"]
         measured = self.status.torque.get(axis, 0.0)
         delta = measured - baseline
-        distance, armed = hand_guide_step(
-            delta, armed, threshold_pct=threshold_pct, step_mm=step_mm
+        distance, settle_count = hand_guide_step(
+            delta, settle_count, threshold_pct=threshold_pct, step_mm=step_mm
         )
-        self._hand_guide["armed"] = armed
+        self._hand_guide["settle_count"] = settle_count
         moving = distance is not None
         if distance is not None:
             await self.jog(axis, distance, feed)
@@ -401,7 +415,7 @@ class Machine:
             "torque": self.status.torque.get(axis),
             "torque_delta": delta,
             "moving": moving,
-            "armed": armed,
+            "armed": settle_count >= HAND_GUIDE_SETTLE_TICKS,
         }
 
     async def hand_guide_stop(self) -> None:

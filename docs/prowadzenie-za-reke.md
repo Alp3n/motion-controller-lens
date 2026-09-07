@@ -243,6 +243,27 @@ kolejne naciśnięcie powoduje następną iterację." Implementacja:
 `SC4HubMachine` (nie ma już nic związanego z TRQLIMIT do wysyłania/
 przywracania, więc kod jest teraz prostszy niż w drugiej wersji).
 
+## Poprawka debounce (2026-09-08): pojedynczy krok wracał sam
+
+Pierwszy test trzeciej wersji na sprzęcie: operator zgłosił, że po
+naciśnięciu widać delikatny ruch, ale oś **sama wraca do poprzedniej
+pozycji** — nie dawało się jej przestawić ani na plus, ani na minus. Log
+pokazał dokładny wzorzec: `JOG Z 1.000`, ~2s później `JOG Z -1.000` —
+krok w jedną stronę, zaraz potem krok DOKŁADNIE w przeciwną, mimo
+JEDNEGO naciśnięcia. Najbardziej prawdopodobna przyczyna: przejściowy
+odczyt momentu tuż po zakończeniu ruchu (hamowanie na końcu profilu
+JOG-a, osiadanie mechaniki) mylnie odczytany jako NOWE, przeciwne
+naciśnięcie — dotychczasowy mechanizm uzbrajał się z powrotem po
+JEDNYM odczycie w granicach progu, więc pojedynczy przejściowy skok
+wystarczał, żeby złapać kolejny (fałszywy) krok w przeciwną stronę.
+
+**Naprawa:** ponowne uzbrojenie wymaga teraz `HAND_GUIDE_SETTLE_TICKS`
+(domyślnie 3) KOLEJNYCH odczytów w spoczynku z rzędu, nie jednego.
+Pojedynczy przejściowy skok tuż po ruchu zeruje licznik uspokojenia, ale
+sam nie może wywołać kolejnego kroku — trzeba naprawdę poczekać, aż oś
+się uspokoi. Kod: `hand_guide_step()` w `app/machine.py` (parametr
+`settle_count` zamiast prostego `armed`).
+
 ## Uwagi
 
 - **Nie zweryfikowane jeszcze fizycznie po tej poprawce** — logika (kiedy reagować, w którą
