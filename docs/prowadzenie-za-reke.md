@@ -160,6 +160,54 @@ to nadal no-op (pozycja już świeża). Dodano też limit prędkości doganiania
 (`max_feed`) jako parametr ustawiany przez operatora na ekranie — różne
 osie mają różne tarcie i wymagają innej prędkości.
 
+## Druga korekta (2026-09-07): sygnał to moment, nie przesunięcie
+
+Pierwszy fizyczny test: oś Y działała "przez chwilę dość dobrze", X miała
+wyczuwalne szarpnięcia, Z "bardzo ciężko" (ledwo reagowała). Operator
+zaproponował inny model: **"siła powyżej limitu → jedziemy X mm; jeśli
+siła nadal powyżej limitu → jedziemy dalej; jak nie → hamujemy"** — i
+zapytał, ile razy na sekundę da się to sprawdzać.
+
+**Zmiana:** główny sygnał „czy ktoś naciska" to teraz **odczyt momentu
+względem ustawionego limitu** (próg: 80% limitu), nie przesunięcie
+pozycji. Przesunięcie zostaje tylko do ustalenia KIERUNKU (potrzebny
+choćby ślad ruchu). To tłumaczy, dlaczego Z ledwo reagowała: jeśli ta oś
+jest mechanicznie sztywniejsza, realny nacisk mógł nie dawać wystarczającego
+przesunięcia pozycji, żeby przekroczyć starą martwą strefę (0.05 mm),
+mimo że moment już się nasycał na limicie. Krok stał się **stały**
+(dystans + posuw, oba ustawiane przez operatora na ekranie) zamiast
+skalowanego do wielkości odchylenia — moment i tak nasyca się na limicie
+i nie niesie dalej informacji "jak mocno", więc skalowanie po odchyleniu
+nie miało solidnej podstawy.
+
+**Odpowiedź na pytanie o częstotliwość:** protokół mostka pozwala na
+JEDNĄ komendę na raz (`_command()` serializuje przez `asyncio.Lock`,
+`docs/zmiany/stop-czekal-za-statusem.md`) — nie da się odczytać momentu
+W TRAKCIE trwania ruchu JOG, tylko PRZED i PO. Częstotliwość sprawdzania
+jest więc z grubsza `1 / (czas jednego kroku)`, gdzie czas kroku ≈
+`dystans_mm / posuw_mm_na_min * 60s` (plus koszt samych komend STATUS —
+zmierzony wcześniej na ~7ms dla 3 osi naraz, pomijalny wobec czasu ruchu).
+Przykłady dla domyślnych 1 mm:
+
+| posuw [mm/min] | czas kroku | sprawdzeń/s |
+|---:|---:|---:|
+| 400 (domyślnie) | ~150 ms | ~6-7 |
+| 200 | ~300 ms | ~3 |
+| 800 | ~75 ms | ~12-13 |
+
+Mniejszy krok (np. 0.3 mm) przy tym samym posuwie proporcjonalnie zwiększa
+częstotliwość (krótszy pojedynczy ruch), ale każdy krok to pełny cykl
+rozpędzenie-hamowanie JOG-a — więcej kroków na sekundę oznacza więcej
+takich cykli, czyli bardziej "szarpaną" motorykę. To jest **nieunikniony
+kompromis przy tej architekturze** (jedno połączenie, jedna komenda na
+raz): żeby sprawdzać częściej BEZ szarpania, trzeba by umieć przerwać
+trwający ruch na podstawie świeżego odczytu siły w trakcie jego trwania —
+a to wymagałoby drugiego, równoległego połączenia do mostka (zmiana w
+C++) albo pętli czasu rzeczywistego bezpośrednio w mostku (temat SMART,
+etap 5, dalej niezaimplementowany). Krok i posuw są teraz parametrami
+ustawianymi przez operatora właśnie po to, żeby dało się ten kompromis
+dostroić osobno dla każdej osi bez zmiany kodu.
+
 ## Uwagi
 
 - **Nie zweryfikowane jeszcze fizycznie po tej poprawce** — logika (kiedy reagować, w którą

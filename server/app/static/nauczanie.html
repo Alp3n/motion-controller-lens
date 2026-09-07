@@ -49,20 +49,26 @@
           <button class="small guide" data-axis="z">Prowadź Z</button>
         </div>
       </div>
-      <div class="grid-2" style="max-width:460px; margin-top:12px; gap:16px">
+      <div class="grid-3" style="max-width:620px; margin-top:12px; gap:16px">
         <div class="field">
           <label>Limit momentu na czas prowadzenia [%]</label>
           <input id="f-torque" type="number" value="5" min="0.5" max="20" step="0.5">
         </div>
         <div class="field">
-          <label>Limit prędkości doganiania [mm/min]</label>
-          <input id="f-feed" type="number" value="600" min="10" max="3000" step="10">
+          <label>Posuw kroku doganiania [mm/min]</label>
+          <input id="f-feed" type="number" value="400" min="10" max="3000" step="10">
+        </div>
+        <div class="field">
+          <label>Dystans kroku [mm]</label>
+          <input id="f-step" type="number" value="1" min="0.05" max="10" step="0.1">
         </div>
       </div>
       <p class="muted" style="margin-top:8px">
-        Jeśli oś w ogóle nie daje się przeważyć — podnieś limit momentu.
-        Jeśli dogania zbyt szarpanie albo za szybko — obniż limit prędkości.
-        Oba dobiera się osobno dla każdej osi (różne tarcie/obciążenie).
+        Ruch startuje dopiero, gdy zmierzony moment sięgnie limitu (naciskasz
+        wystarczająco mocno) — jeśli oś w ogóle nie daje się przeważyć,
+        podnieś limit momentu. Mniejszy krok = częstsze sprawdzanie, szybsze
+        zatrzymanie, ale bardziej "szarpane". Większy krok = płynniej, ale
+        wolniejsza reakcja na puszczenie. Dobiera się osobno dla każdej osi.
       </p>
       <p id="guide-msg" class="msg" style="margin-top:10px"></p>
     </section>

@@ -250,7 +250,8 @@ class HandGuideStartRequest(BaseModel):
 
     axis: str = Field(..., pattern="^[xyzXYZ]$")
     torque_pct: float = Field(..., ge=0.5, le=20.0)
-    max_feed: float = Field(600.0, ge=10.0, le=3000.0, description="limit prędkości doganiania [mm/min]")
+    feed: float = Field(400.0, ge=10.0, le=3000.0, description="posuw kroku doganiania [mm/min]")
+    step_mm: float = Field(1.0, ge=0.05, le=10.0, description="dystans jednego kroku doganiania [mm]")
 
 
 class SaveProgramRequest(BaseModel):
@@ -1156,7 +1157,7 @@ async def hand_guide_start(req: HandGuideStartRequest, user=Depends(require_admi
     zwykły ruch operatora, tylko narzędzie do przygotowania punktów.
     """
     try:
-        await machine.hand_guide_start(req.axis.lower(), req.torque_pct, req.max_feed)
+        await machine.hand_guide_start(req.axis.lower(), req.torque_pct, req.feed, req.step_mm)
     except MachineError as exc:
         raise HTTPException(409, str(exc))
     return {"ok": True}

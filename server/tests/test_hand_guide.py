@@ -1,10 +1,12 @@
 """Testy prowadzenia za rękę (ekran /nauczanie) — funkcja czysta + symulator.
 
 Prawdziwy tryb podatny nie istnieje w SDK (docs/prowadzenie-za-reke.md) —
-to przybliżenie: niski limit momentu + doganianie wykrytego odchylenia
-pozycji nowym ruchem JOG. Testy sprawdzają logikę decyzyjną i to, że
-symulator poprawnie odmawia w złym stanie/na zluzowanej osi — NIE testują
-„uczucia” prowadzenia, bo to wymaga prawdziwej ręki na maszynie.
+to przybliżenie doprecyzowane przez operatora po pierwszym teście na
+sprzęcie (2026-09-07): niski limit momentu + ruch dopiero, gdy zmierzony
+moment sięgnie tego limitu (to jest sygnał „ktoś naciska”), z kierunkiem
+ustalanym z przesunięcia pozycji. Testy sprawdzają logikę decyzyjną i to,
+że symulator poprawnie odmawia w złym stanie/na zluzowanej osi — NIE
+testują „uczucia” prowadzenia, bo to wymaga prawdziwej ręki na maszynie.
 """
 
 import asyncio
@@ -18,8 +20,6 @@ os.environ.setdefault(
 import pytest  # noqa: E402
 
 from app.machine import (  # noqa: E402
-    HAND_GUIDE_MAX_FEED,
-    HAND_GUIDE_MIN_FEED,
     MachineError,
     MachineState,
     SimulatedMachine,
@@ -30,35 +30,54 @@ from app.machine import (  # noqa: E402
 # --- hand_guide_step (czysta funkcja) ---------------------------------------
 
 
-def test_hand_guide_step_w_martwej_strefie_nic_nie_robi():
-    assert hand_guide_step(0.0) is None
-    assert hand_guide_step(0.01) is None
-    assert hand_guide_step(-0.01) is None
+def test_hand_guide_step_wymaga_obu_warunkow():
+    """Sam moment na limicie bez przesunięcia (kierunek nieznany) — nic.
+    Samo przesunięcie bez momentu na limicie (nikt nie naciska) — nic."""
+    assert hand_guide_step(0.0, torque_measured_pct=5.0, torque_limit_pct=5.0) is None
+    assert hand_guide_step(1.0, torque_measured_pct=0.0, torque_limit_pct=5.0) is None
 
 
-def test_hand_guide_step_zwraca_kierunek_ze_znaku_odchylenia():
-    dodatnie = hand_guide_step(1.0)
-    ujemne = hand_guide_step(-1.0)
+def test_hand_guide_step_rusza_gdy_oba_warunki_spelnione():
+    step = hand_guide_step(1.0, torque_measured_pct=4.5, torque_limit_pct=5.0)
+    assert step is not None
+    distance, feed = step
+    assert distance > 0
+    assert feed > 0
+
+
+def test_hand_guide_step_ponizej_progu_momentu_nic_nie_robi():
+    """Moment poniżej progu (domyślnie 80% limitu) mimo przesunięcia — nic
+    (odchylenie mogło powstać z innego powodu, nie z realnego nacisku)."""
+    step = hand_guide_step(1.0, torque_measured_pct=1.0, torque_limit_pct=5.0)
+    assert step is None
+
+
+def test_hand_guide_step_kierunek_ze_znaku_odchylenia():
+    dodatnie = hand_guide_step(1.0, torque_measured_pct=5.0, torque_limit_pct=5.0)
+    ujemne = hand_guide_step(-1.0, torque_measured_pct=5.0, torque_limit_pct=5.0)
     assert dodatnie[0] > 0
     assert ujemne[0] < 0
     assert dodatnie[0] == -ujemne[0]
 
 
-def test_hand_guide_step_predkosc_rosnie_z_odchyleniem():
-    _, feed_mala = hand_guide_step(0.2)
-    _, feed_duza = hand_guide_step(2.9)
-    assert HAND_GUIDE_MIN_FEED <= feed_mala < feed_duza <= HAND_GUIDE_MAX_FEED
+def test_hand_guide_step_moment_ujemny_liczy_sie_z_wartosci_bezwzglednej():
+    """Znak odczytu momentu (kierunek nacisku serwa) nie ma znaczenia dla
+    progu — liczy się, jak mocno serwo się wysila, nie w którą stronę."""
+    step = hand_guide_step(1.0, torque_measured_pct=-4.9, torque_limit_pct=5.0)
+    assert step is not None
 
 
-def test_hand_guide_step_saturuje_powyzej_max_odchylenia():
-    _, feed_na_granicy = hand_guide_step(3.0)
-    _, feed_daleko_za = hand_guide_step(50.0)
-    assert feed_na_granicy == feed_daleko_za == HAND_GUIDE_MAX_FEED
+def test_hand_guide_step_stale_dystans_i_posuw():
+    step = hand_guide_step(
+        1.0, torque_measured_pct=5.0, torque_limit_pct=5.0, step_mm=2.0, feed=300.0
+    )
+    assert step == (2.0, 300.0)
 
 
 def test_hand_guide_step_odrzuca_nieskonczonosc():
-    assert hand_guide_step(float("nan")) is None
-    assert hand_guide_step(float("inf")) is None
+    assert hand_guide_step(float("nan"), 5.0, 5.0) is None
+    assert hand_guide_step(float("inf"), 5.0, 5.0) is None
+    assert hand_guide_step(1.0, float("nan"), 5.0) is None
 
 
 # --- Machine.hand_guide_* (symulator) ---------------------------------------
@@ -92,13 +111,26 @@ def test_start_odrzuca_moment_poza_zakresem():
         asyncio.run(m.hand_guide_start("x", 50.0))
 
 
+def test_start_odrzuca_posuw_poza_zakresem():
+    m = _ready_machine()
+    with pytest.raises(MachineError, match="posuw"):
+        asyncio.run(m.hand_guide_start("x", 5.0, feed=1.0))
+
+
+def test_start_odrzuca_krok_poza_zakresem():
+    m = _ready_machine()
+    with pytest.raises(MachineError, match="krok"):
+        asyncio.run(m.hand_guide_start("x", 5.0, step_mm=50.0))
+
+
 def test_tick_bez_startu_jest_bledem():
     m = _ready_machine()
     with pytest.raises(MachineError, match="nie jest aktywne"):
         asyncio.run(m.hand_guide_tick())
 
 
-def test_tick_bez_odchylenia_nie_rusza_osi():
+def test_tick_bez_nacisku_nie_rusza_osi():
+    """Brak przesunięcia i brak momentu (domyślnie 0 w symulatorze) — spokój."""
     m = _ready_machine()
     asyncio.run(m.hand_guide_start("x", 5.0))
     result = asyncio.run(m.hand_guide_tick())
@@ -106,15 +138,25 @@ def test_tick_bez_odchylenia_nie_rusza_osi():
     assert result["axis"] == "x"
 
 
-def test_tick_z_odchyleniem_wykonuje_ruch():
+def test_tick_samo_przesuniecie_bez_momentu_nie_rusza():
+    """Symulator nie generuje realnego momentu z zewnętrznej siły — sam
+    przesunięty encoder, bez momentu na limicie, ma zostać zignorowany.
+    To jest właśnie naprawiony błąd zgłoszony 2026-09-07 (oś Z nie
+    reagowała mimo przesunięcia, bo brakowało wysokiego momentu)."""
     m = _ready_machine()
     asyncio.run(m.hand_guide_start("x", 5.0))
-    # symulacja "pchnięcia" — coś inne niż tick zmieniło rzeczywistą pozycję
     m.status.x += 1.0
     result = asyncio.run(m.hand_guide_tick())
+    assert result["moving"] is False
+
+
+def test_tick_z_momentem_i_przesunieciem_wykonuje_ruch():
+    m = _ready_machine()
+    asyncio.run(m.hand_guide_start("x", 5.0))
+    m.status.x += 1.0
+    m.status.torque["x"] = 4.8  # >= 80% z limitu 5.0
+    result = asyncio.run(m.hand_guide_tick())
     assert result["moving"] is True
-    # po ruchu doganiającym pozycja powinna zbliżyć się do wykrytego odchylenia
-    assert m.status.x != pytest.approx(1.0, abs=1e-6) or True  # ruch nastąpił
 
 
 def test_stop_konczy_prowadzenie():

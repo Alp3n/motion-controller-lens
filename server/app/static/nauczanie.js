@@ -78,12 +78,14 @@ async function tick() {
 
 async function startGuiding(axis) {
   const torque = Number($("f-torque").value);
-  const maxFeed = Number($("f-feed").value);
+  const feed = Number($("f-feed").value);
+  const stepMm = Number($("f-step").value);
   try {
     await api("POST", "/api/machine/hand-guide/start", {
       axis,
       torque_pct: torque,
-      max_feed: maxFeed,
+      feed,
+      step_mm: stepMm,
     });
   } catch (e) {
     showMsg($("guide-msg"), "nie uruchomiono — " + e.message);

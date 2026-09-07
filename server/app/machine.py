@@ -38,39 +38,49 @@ from .program import Operation, Program, cut_path, pass_depths
 #
 # Prawdziwy tryb podatny (torque mode sterowany z hosta) nie istnieje w SDK
 # Teknica dla ClearPath-SC — potwierdzone wyczerpująco, docs/prowadzenie-za-reke.md.
-# To przybliżenie: niski limit momentu (operator ustawia, np. 5%) + wykrycie,
-# że rzeczywista pozycja odjechała od ostatnio zadanej (serwo "przegrywa" z
-# naciskiem) + doganianie tego odchylenia nowym, małym ruchem JOG z prędkością
-# zależną od wielkości odchylenia. Wartości progowe niżej są PROWIZORYCZNE —
-# do dostrojenia przy pierwszym teście na sprzęcie, nie są parametrem
-# bezpieczeństwa (tym jest sam niski limit momentu, ustawiany osobno).
-HAND_GUIDE_DEAD_BAND_MM = 0.05
-HAND_GUIDE_MAX_DEVIATION_MM = 3.0
-HAND_GUIDE_STEP_MM = 0.3
-HAND_GUIDE_MIN_FEED = 50.0
-HAND_GUIDE_MAX_FEED = 600.0
+# To przybliżenie, doprecyzowane przez operatora po pierwszym teście na
+# sprzęcie (2026-09-07): niski limit momentu (operator ustawia, np. 5%) +
+# GŁÓWNY sygnał „czy ktoś naciska” to sam ODCZYT MOMENTU względem tego
+# limitu (nie przesunięcie pozycji — pierwsza wersja nie reagowała na osi Z,
+# bo sztywniejsza mechanika mogła nie dawać wystarczającego przesunięcia,
+# mimo że moment już się nasycał na limicie). Przesunięcie pozycji zostaje
+# tylko do ustalenia KIERUNKU (potrzebny choćby ślad ruchu, żeby wiedzieć,
+# w którą stronę jechać). Krok ma stały dystans i stały posuw, oba
+# ustawiane przez operatora (zgłoszenie: różne osie potrzebują różnych
+# wartości) — bez skalowania „prędkość proporcjonalna do odchylenia”
+# z pierwszej wersji, bo raz nasycony moment i tak nie niesie dalszej
+# informacji o tym, jak mocno ktoś naciska.
+HAND_GUIDE_DIRECTION_DEAD_BAND_MM = 0.01
+HAND_GUIDE_TORQUE_THRESHOLD_FRACTION = 0.8
+HAND_GUIDE_STEP_MM = 1.0
+HAND_GUIDE_FEED = 400.0
 
 
 def hand_guide_step(
     deviation_mm: float,
-    dead_band_mm: float = HAND_GUIDE_DEAD_BAND_MM,
-    max_deviation_mm: float = HAND_GUIDE_MAX_DEVIATION_MM,
+    torque_measured_pct: float,
+    torque_limit_pct: float,
+    direction_dead_band_mm: float = HAND_GUIDE_DIRECTION_DEAD_BAND_MM,
+    torque_threshold_fraction: float = HAND_GUIDE_TORQUE_THRESHOLD_FRACTION,
     step_mm: float = HAND_GUIDE_STEP_MM,
-    min_feed: float = HAND_GUIDE_MIN_FEED,
-    max_feed: float = HAND_GUIDE_MAX_FEED,
+    feed: float = HAND_GUIDE_FEED,
 ) -> tuple[float, float] | None:
-    """Decyduje, czy i jak „gonić” wykryte odchylenie pozycji od zadanej.
+    """Decyduje, czy wykonać krok doganiania, i w którą stronę.
 
-    `deviation_mm` to (pozycja rzeczywista - ostatnio zadana), ze znakiem.
-    Zwraca `(dystans_ze_znakiem, posuw)` do wysłania jako JOG, albo `None`,
-    gdy odchylenie mieści się w martwej strefie (szum odczytu, nie realne
-    pchnięcie). Czysta funkcja — testowalna bez maszyny.
+    Rusza tylko gdy OBA warunki są spełnione: zmierzony moment sięga co
+    najmniej `torque_threshold_fraction` ustawionego limitu (to jest
+    „ktoś naciska”), ORAZ jest jakiekolwiek przesunięcie pozycji poza
+    martwą strefę kierunku (to jest „w którą stronę”). Zwraca zawsze ten
+    sam `(dystans_ze_znakiem, posuw)` — stały krok, nie skalowany, albo
+    `None`. Czysta funkcja — testowalna bez maszyny.
     """
-    if not math.isfinite(deviation_mm) or abs(deviation_mm) <= dead_band_mm:
+    if not math.isfinite(deviation_mm) or not math.isfinite(torque_measured_pct):
         return None
-    factor = min(abs(deviation_mm) / max_deviation_mm, 1.0)
+    if abs(deviation_mm) <= direction_dead_band_mm:
+        return None
+    if abs(torque_measured_pct) < torque_threshold_fraction * torque_limit_pct:
+        return None
     distance = math.copysign(step_mm, deviation_mm)
-    feed = min_feed + factor * (max_feed - min_feed)
     return distance, feed
 
 
@@ -317,15 +327,19 @@ class Machine:
         return
 
     async def hand_guide_start(
-        self, axis: str, torque_pct: float, max_feed: float = HAND_GUIDE_MAX_FEED
+        self,
+        axis: str,
+        torque_pct: float,
+        feed: float = HAND_GUIDE_FEED,
+        step_mm: float = HAND_GUIDE_STEP_MM,
     ) -> None:
         """Rozpoczyna prowadzenie za rękę jednej osi.
 
         Wymaga READY (jak JOG) i osi niezluzowanej — prowadzenie za rękę to
         NIE luzowanie (RELEASE): silnik zostaje włączony, tylko z niskim
-        limitem momentu, żeby dało się go przeważyć ręką. `max_feed` to
-        limit prędkości doganiania — operator ustawia go sam na ekranie
-        (zgłoszenie 2026-09-07: różne osie potrzebują różnej prędkości).
+        limitem momentu, żeby dało się go przeważyć ręką. `feed`/`step_mm`
+        operator ustawia sam na ekranie — różne osie mają różne tarcie
+        i potrzebują innych wartości (zgłoszenie 2026-09-07).
         """
         if axis not in ("x", "y", "z"):
             raise MachineError(f"nieznana oś: {axis}")
@@ -339,21 +353,24 @@ class Machine:
             raise MachineError(
                 f"limit momentu do prowadzenia za rękę: 0.5-20%, jest {torque_pct}"
             )
-        if not (10.0 <= max_feed <= 3000.0):
+        if not (10.0 <= feed <= 3000.0):
             raise MachineError(
-                f"limit prędkości do prowadzenia za rękę: 10-3000 mm/min, jest {max_feed}"
+                f"posuw doganiania: 10-3000 mm/min, jest {feed}"
             )
+        if not (0.05 <= step_mm <= 10.0):
+            raise MachineError(f"krok doganiania: 0.05-10 mm, jest {step_mm}")
         await self._hand_guide_set_torque(axis, torque_pct)
         await self.poll_status()
         self._hand_guide = {
             "axis": axis,
             "target": getattr(self.status, axis),
             "torque_pct": torque_pct,
-            "max_feed": max_feed,
+            "feed": feed,
+            "step_mm": step_mm,
         }
 
     async def hand_guide_tick(self) -> dict:
-        """Jedno wywołanie pętli: sprawdza odchylenie, ewentualnie dogania.
+        """Jedno wywołanie pętli: sprawdza moment i odchylenie, ewentualnie dogania.
 
         Wołane wielokrotnie przez przeglądarkę (jak przytrzymanie JOG) —
         to jest zabezpieczenie „martwego człowieka”: przerwanie wywołań
@@ -375,13 +392,18 @@ class Machine:
         await self.poll_status()
         axis = self._hand_guide["axis"]
         target = self._hand_guide["target"]
-        max_feed = self._hand_guide["max_feed"]
+        torque_pct = self._hand_guide["torque_pct"]
+        feed = self._hand_guide["feed"]
+        step_mm = self._hand_guide["step_mm"]
         current = getattr(self.status, axis)
-        step = hand_guide_step(current - target, max_feed=max_feed)
+        measured = self.status.torque.get(axis, 0.0)
+        step = hand_guide_step(
+            current - target, measured, torque_pct, step_mm=step_mm, feed=feed
+        )
         moving = step is not None
         if step is not None:
-            distance, feed = step
-            await self.jog(axis, distance, feed)
+            distance, feed_used = step
+            await self.jog(axis, distance, feed_used)
             await self.poll_status()
             self._hand_guide["target"] = getattr(self.status, axis)
         return {
