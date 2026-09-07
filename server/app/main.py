@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import audit, axes, config, cycle, kalibracja, outputs, profiles, smart, spindle, users
+from . import audit, axes, config, cycle, kalibracja, outputs, profiles, punkty, smart, spindle, users
 from .machine import (
     MachineError,
     MachineState,
@@ -81,6 +81,11 @@ machine.apply_smart(smart_cfg)
 # nie parametr bezpieczeństwa: błędny/brakujący plik nie przerywa startu
 # (powód w app/kalibracja.py).
 kalibracja_cfg = kalibracja.load(config.KALIBRACJA_FILE)
+
+# Nazwane punkty PTP (ekran /nauczanie i /punkty) — wygodny picker w
+# edytorze programu, nie parametr bezpieczeństwa: błędny/brakujący plik
+# nie przerywa startu (powód w app/punkty.py).
+punkty_cfg = punkty.load(config.PUNKTY_FILE)
 
 # Cykl maszyny — kroki poziomu admina wokół programu detalu. Pusty, dopóki
 # nie zostanie zdefiniowany; błędny plik przerywa start (powód w app/cycle.py).
@@ -334,6 +339,16 @@ class SmartRequest(BaseModel):
     definitions: dict[str, dict] = Field(
         ..., description="nazwa definicji -> {procedure, params, note}"
     )
+
+
+class PunktyRequest(BaseModel):
+    """Nazwane punkty PTP z ekranów `/nauczanie` i `/punkty`.
+
+    Jak przy SMART i kalibracji — walidacją zajmuje się app/punkty.py, żeby
+    operator zobaczył komunikat po polsku z nazwą punktu.
+    """
+
+    points: dict[str, dict] = Field(..., description="nazwa punktu -> {x, y, z, note}")
 
 
 class KalibracjaRequest(BaseModel):
@@ -901,6 +916,36 @@ async def put_smart(req: SmartRequest, user=Depends(require_admin)):
     }
 
 
+# --- nazwane punkty PTP (ekrany /nauczanie i /punkty) ----------------------
+
+
+@app.get("/api/punkty")
+async def get_punkty(user=Depends(require_operator)):
+    """Lista nazwanych punktów — do pickera w edytorze i ekranu /punkty."""
+    return {
+        "points": punkty.to_dict(punkty_cfg),
+        "file": str(config.PUNKTY_FILE),
+    }
+
+
+@app.put("/api/punkty")
+async def put_punkty(req: PunktyRequest, user=Depends(require_admin)):
+    """Zapis całej listy punktów — usunięcie punktu to pominięcie go w ciele żądania."""
+    global punkty_cfg
+    try:
+        new_points = punkty.parse_points({"points": req.points})
+    except punkty.PunktyError as exc:
+        raise HTTPException(422, str(exc))
+
+    try:
+        punkty.save(config.PUNKTY_FILE, new_points)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.PUNKTY_FILE}: {exc}")
+    punkty_cfg = new_points
+    _log(user, "zapis nazwanych punktów", ", ".join(sorted(new_points)))
+    return {"ok": True, "points": punkty.to_dict(new_points)}
+
+
 # --- kalibracja moment -> siła (etap 2 tematu K, ekran /sila) --------------
 
 
@@ -1229,6 +1274,16 @@ async def smart_page(request: Request):
 @app.get("/sila", include_in_schema=False)
 async def sila_page(request: Request):
     return _page(request, "sila.html", users.ROLE_ADMIN)
+
+
+@app.get("/punkty", include_in_schema=False)
+async def punkty_page(request: Request):
+    return _page(request, "punkty.html", users.ROLE_ADMIN)
+
+
+@app.get("/nauczanie", include_in_schema=False)
+async def nauczanie_page(request: Request):
+    return _page(request, "nauczanie.html", users.ROLE_ADMIN)
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

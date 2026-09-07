@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prowadzenie za rękę — maszyna do odcinania wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Prowadzenie za rękę — zapis punktów PTP</h1>
+    <a href="/">← Panel operatora</a>
+    <a href="/punkty">Lista punktów</a>
+    <a href="/editor">Edytor technologa →</a>
+  </header>
+
+  <main>
+    <section class="panel" id="warn-panel">
+      <h2>Zanim zaczniesz</h2>
+      <p class="muted" style="margin:0">
+        „Zwolnij" zdejmuje moment z serwa całkowicie — oś nie stawia
+        <b>żadnego</b> oporu, nie „podąża" płynnie za ręką (to nie jest
+        regulowany opór ani kompensacja ciężaru — sprzęt tego nie
+        obsługuje, szczegóły w <code>docs/prowadzenie-za-reke.md</code>).
+        Osie tej maszyny są <b>samohamowne</b> — nie opadają pod własnym
+        ciężarem po zwolnieniu (potwierdzone przez operatora 2026-09-07),
+        więc zwolnienie każdej z X/Y/Z jest bezpieczne. Enkoder liczy
+        dalej, więc po ponownym „Zaciśnij" nie trzeba bazować.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Pozycja na żywo</h2>
+      <div class="grid-3" style="gap:16px; max-width:520px">
+        <div class="field">
+          <label>X [mm]</label>
+          <div class="axis"><span id="pos-x">—</span></div>
+          <button class="small rel" data-axis="x">Zwolnij X</button>
+        </div>
+        <div class="field">
+          <label>Y [mm]</label>
+          <div class="axis"><span id="pos-y">—</span></div>
+          <button class="small rel" data-axis="y">Zwolnij Y</button>
+        </div>
+        <div class="field">
+          <label>Z [mm]</label>
+          <div class="axis"><span id="pos-z">—</span></div>
+          <button class="small rel" data-axis="z">Zwolnij Z</button>
+        </div>
+      </div>
+      <p id="rel-msg" class="msg" style="margin-top:10px"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Zapisz bieżącą pozycję jako punkt</h2>
+      <div style="display:flex; gap:8px; max-width:520px">
+        <input id="f-name" placeholder="nazwa punktu, np. wlewek-lewy-gorny" style="flex:1">
+        <button id="btn-save">💾 Zapisz punkt</button>
+      </div>
+      <p class="muted" style="margin-top:8px">
+        Zapisuje bieżące X/Y/Z pod podaną nazwą na listę
+        <a href="/punkty">nazwanych punktów</a>. Jeśli nazwa już istnieje,
+        nadpisuje jej współrzędne (bez wpływu na programy, które już jej
+        użyły — patrz opis na ekranie listy).
+      </p>
+      <p id="save-msg" class="msg"></p>
+    </section>
+  </main>
+
+  <script src="/static/nauczanie.js"></script>
+  <script src="/static/sesja.js"></script>
+</body>
+</html>

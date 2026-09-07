@@ -46,6 +46,11 @@ Ustalenia i analizy:
   wykorzystujemy z serw (mamy wersję Advanced): limit momentu z API, bazowanie
   do oporu, grupy wyzwalania, zdarzenia; ryzyko: system może przypadkowo
   załączyć wyjście BRAKE.
+- [prowadzenie-za-reke.md](prowadzenie-za-reke.md) — analiza trybu
+  "antygrawitacyjnego"/prowadzenia za rękę: prawdziwy tryb podatny
+  (torque mode z hosta) jest nieosiągalny na tym sprzęcie (potwierdzone
+  w SDK), zbudowany zakres opiera się na już istniejącym RELEASE/HOLD
+  (bezpieczne na X/Y/Z — osie samohamowne) plus baza nazwanych punktów.
 - [funkcje-smart.md](funkcje-smart.md) — ruch z kontrolą siły (temat K):
   odczyt momentu `TrqMeasured` potwierdzony u źródła, dlaczego pętla musi
   być w mostku a nie w Pythonie, definicje SMART i ekran `/smart`, operacja
@@ -208,5 +213,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   ostrzeżenie w edytorze programu, gdy operacja skrawająca nie ma własnego
   MOMENT (bo wtedy dziedziczy limit z profilu, który bywa różny zależnie
   od tego, czy program jedzie wprost, czy jako krok cyklu).
+- [zmiany/baza-nazwanych-punktow.md](zmiany/baza-nazwanych-punktow.md) —
+  nazwane punkty PTP z pełnym CRUD (`/punkty`), ekran prowadzenia za rękę
+  przez zwolnienie osi (`/nauczanie`), picker punktów w operacji PUNKT
+  edytora. Analiza wykonalności trybu podatnego: `prowadzenie-za-reke.md`.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

@@ -46,6 +46,7 @@ const LABEL = {
 let currentNumber = null;
 let workArea = null;
 let smartNames = [];
+let namedPoints = {}; // nazwa -> {x, y, z} — picker w operacji PUNKT
 
 async function api(method, url, body) {
   const res = await fetch(url, {
@@ -126,6 +127,42 @@ function smartCell(value) {
   return sel;
 }
 
+/* Picker nazwanych punktów — jednorazowo wypełnia X/Y/Z tego wiersza, nie
+   zapisuje żadnego trwałego odwołania po nazwie (decyzja 2026-09-06, patrz
+   docs/prowadzenie-za-reke.md). Widoczny tylko dla operacji PUNKT. */
+function pointPickerCell(tr) {
+  const sel = document.createElement("select");
+  sel.className = "point-picker";
+  sel.title = "wybierz zapisany punkt, żeby wypełnić X/Y/Z";
+  const fill = () => {
+    sel.innerHTML = "";
+    const opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent = "— punkt —";
+    sel.appendChild(opt0);
+    for (const name of Object.keys(namedPoints).sort()) {
+      const o = document.createElement("option");
+      o.value = name;
+      o.textContent = name;
+      sel.appendChild(o);
+    }
+  };
+  fill();
+  sel.onchange = () => {
+    const p = namedPoints[sel.value];
+    if (p) {
+      for (const f of ["x", "y", "z"]) {
+        const input = tr.querySelector(`[data-field="${f}"]`);
+        if (input && !input.disabled) input.value = p[f];
+      }
+      onEdit();
+    }
+    sel.value = ""; // jednorazowe wypełnienie, nie trwałe pole
+  };
+  sel._refill = fill;
+  return sel;
+}
+
 function iconBtn(label, title, onClick) {
   const b = document.createElement("button");
   b.className = "small icon";
@@ -154,6 +191,7 @@ function addOpRow(op = {}, after = null) {
     onEdit();
   };
   opTd.appendChild(select);
+  opTd.appendChild(pointPickerCell(tr));
 
   const fieldTds = FIELDS.map((f) => {
     const td = document.createElement("td");
@@ -209,6 +247,8 @@ function applyRowSchema(tr) {
     input.parentElement.classList.toggle("off", !used);
     if (!used) input.value = "";
   }
+  const picker = tr.querySelector(".point-picker");
+  if (picker) picker.hidden = type !== "PUNKT";
 }
 
 function renumber() {
@@ -626,6 +666,13 @@ window.addEventListener("resize", () => drawEditView(readRows()));
     smartNames = Object.keys((await api("GET", "/api/smart")).definitions || {});
   } catch (e) {
     smartNames = [];
+  }
+  try {
+    // lista nazwanych punktów do pickera przy operacji PUNKT — bez niej
+    // picker jest po prostu pusty, reszta edytora działa dalej
+    namedPoints = (await api("GET", "/api/punkty")).points || {};
+  } catch (e) {
+    namedPoints = {};
   }
   await refreshList();
   onEdit();

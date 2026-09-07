@@ -80,6 +80,10 @@ KALIBRACJA_FILE = Path(
     os.environ.get("KALIBRACJA_CONFIG", "config/kalibracja.json")
 ).resolve()
 
+# nazwane punkty PTP (ekran /nauczanie i /punkty) — wybierane w edytorze
+# programu technologa jako jednorazowy wypełniacz pól X/Y/Z operacji PUNKT
+PUNKTY_FILE = Path(os.environ.get("PUNKTY_CONFIG", "config/punkty.json")).resolve()
+
 # wartości startowe obszaru roboczego [mm] — używane tylko, dopóki nie ma
 # pliku konfiguracji osi
 WORK_AREA = {
