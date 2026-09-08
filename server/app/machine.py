@@ -444,27 +444,34 @@ class Machine:
         threshold_pct = session["threshold_pct"]
         feed = session["feed"]
         step_mm = session["step_mm"]
-        settle_count = session["settle_count"]
+        settle_count_before = session["settle_count"]
         measured = self.status.torque.get(axis, 0.0)
         delta = measured - baseline
         distance, settle_count, at_rest = hand_guide_step(
-            delta, settle_count, threshold_pct=threshold_pct, step_mm=step_mm
+            delta, settle_count_before, threshold_pct=threshold_pct, step_mm=step_mm
         )
         session["settle_count"] = settle_count
-        if at_rest:
-            # Powoli dryfujemy rejestr spoczynku do aktualnego odczytu —
-            # ALE TYLKO gdy jesteśmy w granicach progu względem obecnego
-            # rejestru (czyli naprawdę w spoczynku, nie w trakcie
-            # wykrytego nacisku). Zgłoszone 2026-09-08, dwa razy:
-            # (a) bez tego naturalny moment spoczynkowy w nowej pozycji
-            # potrafił nigdy nie wrócić w granice progu względem wartości
-            # sprzed startu sesji — długie czekanie na kolejny ruch mimo
-            # że oś już dawno się uspokoiła; (b) PIERWSZA próba naprawy
-            # (przeładowanie zaraz PO ruchu, bez tego warunku) miała
-            # nowy błąd: jeśli operator nadal naciskał w chwili odczytu
-            # po ruchu, rejestr zapamiętywał WARTOŚĆ NACISKU jako nowy
-            # "spoczynek" — serwo wtedy "długo czekało na puszczenie",
-            # bo normalny powrót do zera wyglądał jak nowe naciśnięcie.
+        # Rejestr spoczynku dryfuje do aktualnego odczytu TYLKO w OKNIE
+        # ponownego uzbrajania po ruchu (`settle_count_before < settle_ticks`)
+        # — nigdy gdy oś jest już w pełni uzbrojona (`armed`, czyli stoi
+        # nieruszana od dawna). Zgłoszone i naprawiane trzykrotnie 2026-09-08:
+        # (a) bez JAKIEGOKOLWIEK dryfu naturalny moment spoczynkowy w nowej
+        # pozycji potrafił nigdy nie wrócić w granice progu względem wartości
+        # sprzed startu sesji — długie czekanie na kolejny ruch mimo że oś
+        # już dawno się uspokoiła; (b) dryf bez warunku "nie podczas
+        # nacisku" łapał WARTOŚĆ NACISKU jako nowy "spoczynek", więc serwo
+        # "długo czekało na puszczenie"; (c) TA poprawka: dryf bez limitu do
+        # okna uzbrajania aktualizował rejestr na KAŻDYM spokojnym ticku,
+        # również gdy oś była już w pełni uzbrojona — więc powolne,
+        # narastające pchnięcie ręką (typowe, nie skokowe) nigdy nie
+        # zdążyło przekroczyć progu względem rejestru, bo rejestr gonił
+        # każdy kolejny odczyt co 150 ms. Efekt na sprzęcie: żaden ruch nie
+        # startował NIGDY, niezależnie od siły nacisku (zgłoszenie
+        # "jest cały czas nie tak", 2026-09-08). Teraz rejestr zamraża się,
+        # gdy tylko oś raz się w pełni uzbroi, i rusza dopiero po
+        # kolejnym kroku — dając stabilny punkt odniesienia do wykrycia
+        # narastającego nacisku.
+        if at_rest and settle_count_before < HAND_GUIDE_SETTLE_TICKS:
             session["baseline"] = measured
         moving = distance is not None
         if distance is not None:

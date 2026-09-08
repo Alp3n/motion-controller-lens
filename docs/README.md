@@ -218,5 +218,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   nazwane punkty PTP z pełnym CRUD (`/punkty`), ekran prowadzenia za rękę
   przez niski limit momentu + doganianie odchylenia (`/nauczanie`), picker
   punktów w operacji PUNKT edytora. Pełna analiza: `prowadzenie-za-reke.md`.
+- [zmiany/dryf-rejestru-prowadzenia-za-reke.md](zmiany/dryf-rejestru-prowadzenia-za-reke.md) —
+  rejestr spoczynku dryfował bez ograniczenia, więc powolne narastające
+  pchnięcie nigdy nie przekraczało progu — ruch nie startował. Naprawione:
+  dryf tylko w oknie ponownego uzbrajania po kroku.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

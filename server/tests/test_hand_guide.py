@@ -231,19 +231,52 @@ def test_tick_nie_aktualizuje_spoczynku_w_trakcie_wykrytego_nacisku():
     assert m._hand_guide["baseline"] == original_baseline
 
 
-def test_tick_dryfuje_rejestr_tylko_w_spoczynku():
-    """Gdy oś jest genuinie w spoczynku (w granicach progu), rejestr może
-    się powoli aktualizować do aktualnego odczytu — to jest mechanizm,
-    który ma rozwiązać "długie czekanie", bez ryzyka zanieczyszczenia
-    wartością nacisku (patrz test wyżej)."""
+def test_tick_dryfuje_rejestr_w_oknie_uspokojenia_po_ruchu():
+    """Zaraz PO kroku (settle_count wyzerowany) rejestr ma prawo dryfować
+    do aktualnego, genuinie spokojnego odczytu — to jest mechanizm, który
+    ma rozwiązać "długie czekanie po ruchu" (patrz nagłówek modułu)."""
+    m = _ready_machine()
+    asyncio.run(m.hand_guide_start("x", threshold_pct=0.3))
+    baseline = m._hand_guide["baseline"]
+    m.status.torque["x"] = baseline + 0.5
+    first = asyncio.run(m.hand_guide_tick())
+    assert first["moving"] is True
+    post_move_baseline = m._hand_guide["baseline"]
+    # nowy, genuinie spokojny odczyt w nowej pozycji (w granicach progu
+    # względem rejestru sprzed ruchu) - to wciąż okno uzbrajania
+    m.status.torque["x"] = post_move_baseline + 0.1
+    result = asyncio.run(m.hand_guide_tick())
+    assert result["moving"] is False
+    assert m._hand_guide["baseline"] == pytest.approx(post_move_baseline + 0.1)
+
+
+def test_tick_nie_dryfuje_rejestru_gdy_juz_uzbrojony():
+    """Naprawiony błąd 2026-09-08 (trzecia poprawka): dryf BEZ ograniczenia
+    do okna uzbrajania aktualizował rejestr na każdym spokojnym ticku,
+    również gdy oś stała nieruszana od dawna (już w pełni uzbrojona) —
+    powolne, narastające pchnięcie ręką (typowe - nie skokowe) nigdy nie
+    zdążyło przekroczyć progu względem rejestru, bo rejestr gonił każdy
+    kolejny odczyt co 150 ms. Efekt na sprzęcie: żaden ruch nie startował
+    NIGDY, niezależnie od siły nacisku ("jest cały czas nie tak"). Rejestr
+    ma się zamrozić, gdy tylko oś raz w pełni się uzbroi."""
     m = _ready_machine()
     asyncio.run(m.hand_guide_start("x", threshold_pct=0.3))
     original_baseline = m._hand_guide["baseline"]
-    # niewielka zmiana, W GRANICACH progu - to "spoczynek", nie nacisk
+    assert m._hand_guide["settle_count"] == HAND_GUIDE_SETTLE_TICKS  # start "uzbrojony"
+    # mały odczyt w granicach progu - PRZED naprawą to i tak przesuwało rejestr
     m.status.torque["x"] = original_baseline + 0.1
     result = asyncio.run(m.hand_guide_tick())
     assert result["moving"] is False
-    assert m._hand_guide["baseline"] == pytest.approx(original_baseline + 0.1)
+    assert m._hand_guide["baseline"] == original_baseline
+    # powolne, narastające pchnięcie: seria drobnych przyrostów, każdy
+    # osobno poniżej progu względem POPRZEDNIEGO odczytu, ale suma
+    # względem ZAMROŻONEGO rejestru w końcu przekracza próg
+    m.status.torque["x"] += 0.15  # suma delt: 0.25 - wciąż poniżej progu
+    result = asyncio.run(m.hand_guide_tick())
+    assert result["moving"] is False
+    m.status.torque["x"] += 0.15  # suma delt: 0.40 - przekracza próg 0.3
+    result = asyncio.run(m.hand_guide_tick())
+    assert result["moving"] is True
 
 
 def test_tick_nie_powtarza_kroku_bez_pelnego_uspokojenia():

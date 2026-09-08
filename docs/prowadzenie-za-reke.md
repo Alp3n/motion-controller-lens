@@ -330,6 +330,48 @@ jest przez `abs(delta)`, więc działa symetrycznie niezależnie od znaku
 obu wartości. Zgłoszony problem miał inną, konkretną przyczynę (wyścig
 opisany wyżej), nie błąd w arytmetyce znaku.
 
+## Naprawiony błąd: rejestr spoczynku dryfował bez końca, ruch nigdy nie startował (2026-09-08)
+
+Zgłoszenie po teście na sprzęcie (po naprawie wyścigu wyżej): "jest cały
+czas nie tak" — brak crasha, ale w logu serwera przez całe ~30 s testu
+(trzy sesje `start`→`tick`×kilkadziesiąt→`stop`) **nie padła ani jedna
+komenda `JOG`** do mostka, mimo że zwykły JOG z panelu chwilę później
+zadziałał normalnie. Czyli `hand_guide_tick()` nigdy nie uznawał żadnego
+odczytu za "przekroczenie progu" — mechanizm w ogóle nie wykrywał
+nacisku, niezależnie od jego siły.
+
+**Przyczyna:** poprzednia poprawka (sekcja "Dwie dalsze poprawki" wyżej)
+kazała rejestrowi spoczynku dryfować do aktualnego odczytu na KAŻDYM
+ticku uznanym za "spokojny" (`at_rest`) — bez ograniczenia w czasie. Od
+startu sesji oś jest od razu "w pełni uzbrojona" (`settle_count` startuje
+na `HAND_GUIDE_SETTLE_TICKS`), więc ten dryf działał non-stop, także w
+długim bezruchu, nie tylko zaraz po kroku. Efekt: rejestr gonił każdy
+kolejny odczyt co ~150 ms. Prawdziwe naciśnięcie ręką narasta stopniowo
+(rampa kilkuset ms, nie skok w jednym ticku) — każdy pojedynczy przyrost
+między dwoma ticками zwykle mieści się w progu 0.3%, więc rejestr zdążał
+"uciec" do nowej wartości, zanim SKUMULOWANA różnica względem *prawdziwego*
+spoczynku zdążyła przekroczyć próg. Próg efektywnie mierzył zmianę
+momentu MIĘDZY DWOMA TICKAMI (150 ms), a nie zmianę względem spoczynku —
+dla ręcznego, płynnego nacisku to prawie nigdy nie wystarcza.
+
+**Naprawa:** dryf rejestru ograniczony do OKNA ponownego uzbrajania po
+kroku (`settle_count_before < HAND_GUIDE_SETTLE_TICKS`, czyli maks.
+`HAND_GUIDE_SETTLE_TICKS` ticków zaraz po ruchu) — to zachowuje naprawę
+"długiego czekania po ruchu" (sekcja wyżej). Gdy oś raz w pełni się
+uzbroi (stoi bez zmian przez `HAND_GUIDE_SETTLE_TICKS` ticków z rzędu),
+rejestr **zamraża się** i czeka nieruchomo na kolejne naciśnięcie —
+dopiero wtedy narastające pchnięcie ma stabilny punkt odniesienia i może
+skumulować się ponad próg. Testy: `test_tick_dryfuje_rejestr_w_oknie_uspokojenia_po_ruchu`
+(zachowanie zaraz po kroku, bez zmian) i nowy
+`test_tick_nie_dryfuje_rejestru_gdy_juz_uzbrojony` (odtwarza dokładnie
+ten scenariusz — seria drobnych przyrostów poniżej progu, każdy osobno,
+sumujących się ponad próg względem zamrożonego rejestru).
+
+**Nie zweryfikowane jeszcze fizycznie** — to czwarta z rzędu poprawka tego
+mechanizmu po testach na sprzęcie; logika jest teraz pokryta testem
+odtwarzającym dokładnie zgłoszony scenariusz, ale ostateczne potwierdzenie
+wymaga kolejnego testu ręką na maszynie.
+
 ## Uwagi
 
 - **Nie zweryfikowane jeszcze fizycznie po tej poprawce** — logika (kiedy reagować, w którą
