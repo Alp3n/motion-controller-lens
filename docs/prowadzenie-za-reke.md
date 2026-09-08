@@ -281,10 +281,21 @@ testu:
    starcie sesji, i już nigdy nie odświeżany — jeśli naturalny moment
    trzymający w NOWEJ pozycji różni się choćby trochę od tego sprzed
    startu, odczyt mógł nigdy nie wrócić w granice progu względem starej
-   wartości, blokując licznik uspokojenia w nieskończoność. Naprawa:
-   `hand_guide_tick()` przeładowuje `baseline` świeżym odczytem momentu
-   zaraz po każdym wykonanym kroku — porównania zawsze liczą się od tego,
-   gdzie oś faktycznie jest teraz, nie od stanu sprzed całej sesji.
+   wartości, blokując licznik uspokojenia w nieskończoność.
+
+   **Pierwsza próba naprawy miała nowy błąd**, zgłoszony zaraz potem:
+   przeładowanie rejestru NATYCHMIAST po ruchu (bez sprawdzenia, czy
+   operator nadal naciska) potrafiło zapamiętać WARTOŚĆ NACISKU jako nowy
+   "spoczynek" — serwo wtedy naprawdę długo czekało na puszczenie, bo
+   normalny powrót do zera po zwolnieniu wyglądał jak nowe, przeciwne
+   naciśnięcie względem tak zanieczyszczonego rejestru.
+
+   **Poprawiona naprawa:** `hand_guide_step()` zwraca teraz trzeci element
+   (`at_rest: bool`) — rejestr w `hand_guide_tick()` aktualizuje się
+   WYŁĄCZNIE gdy odczyt jest w granicach progu względem OBECNEGO rejestru
+   (czyli naprawdę w spoczynku), nigdy w trakcie wykrytego nacisku. Rejestr
+   powoli dryfuje do rzeczywistości między naciśnięciami, ale nigdy nie
+   może zostać nadpisany wartością aktywnego nacisku.
 
 ## Uwagi
 

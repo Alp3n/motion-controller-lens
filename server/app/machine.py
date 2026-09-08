@@ -84,7 +84,7 @@ def hand_guide_step(
     threshold_pct: float = HAND_GUIDE_TORQUE_THRESHOLD_PCT,
     step_mm: float = HAND_GUIDE_STEP_MM,
     settle_ticks: int = HAND_GUIDE_SETTLE_TICKS,
-) -> tuple[float | None, int]:
+) -> tuple[float | None, int, bool]:
     """Wykrywa POJEDYNCZE naciśnięcie i decyduje o jednym kroku ruchu.
 
     `torque_delta_pct` to (zmierzony moment - moment w spoczynku), ze
@@ -95,8 +95,12 @@ def hand_guide_step(
     mechaniki) zeruje licznik, ale sam nie wywołuje ruchu — dopiero
     naciśnięcie PO pełnym uspokojeniu się liczy.
 
-    Zwraca `(dystans_ze_znakiem_albo_None, nowy_stan_settle_count)`.
-    Czysta funkcja — testowalna bez maszyny.
+    Zwraca `(dystans_ze_znakiem_albo_None, nowy_stan_settle_count,
+    czy_w_spoczynku)`. Trzeci element mówi wołającemu, czy WARTO
+    zaktualizować rejestr spoczynku tym odczytem (patrz `hand_guide_tick` —
+    aktualizacja NIGDY nie może się zdarzyć w trakcie wykrytego nacisku,
+    inaczej rejestr zapamiętałby wartość nacisku jako nowy "spoczynek",
+    patrz historia poprawek niżej). Czysta funkcja — testowalna bez maszyny.
 
     Znak kierunku jest ODWRÓCONY względem znaku `torque_delta_pct`
     (`HAND_GUIDE_DIRECTION_SIGN = -1`) — zgłoszone przy maszynie
@@ -106,14 +110,14 @@ def hand_guide_step(
     pierwotnego założenia „znak momentu = kierunek pchnięcia”.
     """
     if not math.isfinite(torque_delta_pct):
-        return None, settle_count
+        return None, settle_count, False
     beyond = abs(torque_delta_pct) >= threshold_pct
     if beyond:
         if settle_count >= settle_ticks:
             distance = math.copysign(step_mm, HAND_GUIDE_DIRECTION_SIGN * torque_delta_pct)
-            return distance, 0
-        return None, 0
-    return None, min(settle_count + 1, settle_ticks)
+            return distance, 0, False
+        return None, 0, False
+    return None, min(settle_count + 1, settle_ticks), True
 
 
 class MachineState(str, Enum):
@@ -414,21 +418,29 @@ class Machine:
         settle_count = self._hand_guide["settle_count"]
         measured = self.status.torque.get(axis, 0.0)
         delta = measured - baseline
-        distance, settle_count = hand_guide_step(
+        distance, settle_count, at_rest = hand_guide_step(
             delta, settle_count, threshold_pct=threshold_pct, step_mm=step_mm
         )
         self._hand_guide["settle_count"] = settle_count
+        if at_rest:
+            # Powoli dryfujemy rejestr spoczynku do aktualnego odczytu —
+            # ALE TYLKO gdy jesteśmy w granicach progu względem obecnego
+            # rejestru (czyli naprawdę w spoczynku, nie w trakcie
+            # wykrytego nacisku). Zgłoszone 2026-09-08, dwa razy:
+            # (a) bez tego naturalny moment spoczynkowy w nowej pozycji
+            # potrafił nigdy nie wrócić w granice progu względem wartości
+            # sprzed startu sesji — długie czekanie na kolejny ruch mimo
+            # że oś już dawno się uspokoiła; (b) PIERWSZA próba naprawy
+            # (przeładowanie zaraz PO ruchu, bez tego warunku) miała
+            # nowy błąd: jeśli operator nadal naciskał w chwili odczytu
+            # po ruchu, rejestr zapamiętywał WARTOŚĆ NACISKU jako nowy
+            # "spoczynek" — serwo wtedy "długo czekało na puszczenie",
+            # bo normalny powrót do zera wyglądał jak nowe naciśnięcie.
+            self._hand_guide["baseline"] = measured
         moving = distance is not None
         if distance is not None:
             await self.jog(axis, distance, feed)
             await self.poll_status()
-            # Przeładuj spoczynek świeżym odczytem PO ruchu, zamiast trzymać
-            # ten sprzed startu sesji — zgłoszone 2026-09-08: naturalny
-            # moment spoczynkowy bywa nieco inny w nowej pozycji, więc
-            # porównanie do starej wartości potrafiło nigdy nie wrócić w
-            # granice progu, każąc długo czekać na kolejny ruch mimo że oś
-            # już dawno się uspokoiła.
-            self._hand_guide["baseline"] = self.status.torque.get(axis, 0.0)
         return {
             "axis": axis,
             "position": getattr(self.status, axis),
