@@ -215,6 +215,43 @@ narzędzie do siłomierza, wpisujesz odczyt, ekran zapamiętuje parę
 (ryzyko 2 niżej). Bez siłomierza ekran dalej działa — po prostu zostajesz
 przy procentach.
 
+### Obserwacja przy maszynie: asymetryczny moment spoczynkowy osi X (2026-09-08)
+
+Zgłoszenie przy okazji testów prowadzenia za rękę: oś X w spoczynku (bez
+ruchu, bez obciążenia, `released_axes` puste) pokazuje `TRQX` w wąskim
+paśmie ok. **-2.8...-3.0%**, podczas gdy Y i Z w tym samym czasie wahają
+się w granicach **-0.2...+0.2%**. Sprawdzone i wykluczone jako przyczyna:
+
+- **Nie jest to znany błąd „zamrożonego statusu"** (`zmiany/stop-nie-lapal-bledu.md`,
+  incydent „Node @ 1 error" z 2026-09-01) — tam `torque_source` zamrażał
+  się na `"brak"`; tutaj jest `"sterownik"`, czyli STATUS realnie się
+  wykonuje. Log `motion-controller-bridge.service` z ostatnich 3h bez
+  żadnego błędu/wyjątku.
+- **Nie jest to buforowanie w SDK** — nagłówek SDK (`ValueDouble
+  TrqMeasured`, `pubSysCls.h`) wprost mówi „This value automatically
+  refreshes by default", a mostek (`sc4hub_bridge.cpp`) niczego tu nie
+  wyłącza (`AutoRefresh` nigdzie nie występuje w kodzie mostka). Próbkowanie
+  co 200 ms przez ~3 s pokazało realny, żywy szum (-2.8/-2.9/-3.0), nie
+  jedną zamrożoną liczbę.
+- **Nie jest to ograniczenie ruchu** — pozycja X w chwili pomiaru: -7.95 mm,
+  daleko od zakresu roboczego (`soft_min/max` -90..90 mm z `config/axes.json`).
+
+**Wniosek: to prawdopodobnie realny odczyt sprzętowy, nie błąd
+oprogramowania.** X ma stałe, systematyczne przesunięcie (bias), nie szum
+wokół zera jak Y/Z — to dokładnie objaw opisany wyżej w sekcji 2:
+„na osiach poziomych asymetria wskazuje na zakleszczanie albo źle napiętą
+śrubę". Nie da się tego rozstrzygnąć samym kodem — wymaga sprawdzenia
+fizycznego (czy X faktycznie stawia większy opór ręką niż Y, czy coś w
+prowadnicy/łańcuchu kablowym się ociera, napięcie śruby/paska X). Właśnie
+to ma docelowo mierzyć **automatyczna próba przejazdu** z Etapu 2 (`/sila`),
+świadomie jeszcze nie zbudowana (patrz `kanban.md`) — to zgłoszenie jest
+dodatkowym argumentem, żeby zrobić ją wcześniej, a nie tylko dla SMART.
+
+Mechanizmu prowadzenia za rękę to nie blokuje — liczy DELTA względem
+zapamiętanego spoczynku danej osi, nie wartość bezwzględną — ale warto
+zweryfikować fizycznie, bo to spore (jak na oś bez obciążenia), systematyczne
+obciążenie w spoczynku.
+
 ### 4. Pomiar częstotliwości próbkowania
 
 Przy okazji nagrywania ekran pokazuje, **ile próbek na sekundę faktycznie

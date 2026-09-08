@@ -229,7 +229,12 @@ Definicje wspólne dla programu technologa i cyklu maszyny.
       2026-09-01, bo na żywo dzieje się za szybko). **Zostaje:** automatyczna
       próba przejazdu (charakterystyka bazowa osi: tarcie, ciężar, oba
       kierunki, kilka prędkości) — świadomie odłożona, bo rusza maszyną i
-      wymaga ustalenia profilu ruchu przy maszynie. Pomiar częstotliwości
+      wymaga ustalenia profilu ruchu przy maszynie. **Argument za
+      wcześniejszym zrobieniem tego etapu (2026-09-08):** oś X pokazuje w
+      spoczynku stały moment ok. -2.9%, podczas gdy Y/Z są bliskie zera —
+      możliwy objaw zakleszczania/złego napięcia śruby na X, do
+      potwierdzenia właśnie próbą przejazdu, patrz `funkcje-smart.md`.
+      Pomiar częstotliwości
       próbkowania **zrobiony osobno, bez próby przejazdu** (patrz Etap 0
       wyżej) — nie wymagał ruchu. Szczegóły: `zmiany/ekran-sila.md`,
       `zmiany/przebieg-nagrywanie.md`
