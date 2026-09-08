@@ -59,6 +59,14 @@ mam to założyć.
       Limiting* w serwie (ClearView) + `TrqGlobal` z API
 - [x] Siła per operacja w programie technologa — kolumna MOMENT, format 4
       `.prg`; jak profile, dziś tylko zapis w pliku
+- [ ] **`accel`/`decel` z `config/profiles.json` nie są wysyłane do mostka**
+      (znalezione 2026-09-09 przy zgłoszeniu zbyt wolnego cyklu) — realne
+      przyspieszenie to zawsze jedna globalna wartość `ACC_RPM_PER_SEC`
+      z `bridge/machine.env`, nie per-oś/per-profil. Wymaga rozszerzenia
+      protokołu `AXCFG` (C++, mostek) o przyspieszenie. Do czasu naprawy:
+      pola `accel`/`decel` na ekranie `/profiles` **nic nie robią** na
+      sprzęcie. Szczegóły: `sterownik-sc4-hub.md` (sekcja „Limity
+      prędkości/przyspieszenia").
 - [ ] Soft limits w silniku jako warstwa dodatkowa (wymagają bazowania)
 - [ ] Ruchy head-tail dla zagłębiania w Z; ruchy asymetryczne — propozycja
       z pytaniami do decyzji w `propozycja-head-tail-asymetria.md`,

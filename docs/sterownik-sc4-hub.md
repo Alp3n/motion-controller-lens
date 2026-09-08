@@ -670,6 +670,64 @@ sprzętu.
 > "READY"`. Pierwsza realna komenda ruchu (temat tego zastrzeżenia) już się
 > odbyła i została zweryfikowana — nie jest to już krok oczekujący.
 
+## Limity prędkości/przyspieszenia w `machine.env` (2026-09-09)
+
+Zgłoszenie: cały cykl (i pojedynczy program, np. `000000000003`) chodzi
+zauważalnie wolno — program 000000000003 wykonuje się ok. 20 s mimo
+zaledwie 4 krótkich operacji. Prześledzone w kodzie trzy warstwy, które
+razem decydują o prędkości ruchu:
+
+1. Kolumna `POSUW` w pliku `.prg` — żądany posuw pojedynczego ruchu.
+2. `vel_max` w `config/profiles.json` — ogranicza (1) od góry, per oś, per
+   profil. **Działa** (`Machine._capped_feed()`).
+3. `MAX_RPM`/`ACC_RPM_PER_SEC` w `bridge/machine.env` — **globalny, twardy
+   sufit** narzucony przez mostek (`applyLimits()` w `sc4hub_bridge.cpp`) na
+   WSZYSTKIE osie i WSZYSTKIE ruchy, ważniejszy niż (2).
+
+**Znalezisko: `accel`/`decel` w `config/profiles.json` (dokumentowane jako
+mm/s² w `profiles.py`) nie są dziś w ogóle wysyłane do mostka.** Serwer
+wysyła tam tylko `TRQLIMIT` (moment) i `AXCFG MMREV=...` (przełożenie/
+limity programowe) — żadna funkcja nie wysyła `ACC`/przyspieszenia per oś.
+Realne przyspieszenie każdego ruchu to zawsze jedna, globalna wartość z
+`ACC_RPM_PER_SEC`, niezależnie od profilu. To martwy parametr w UI — do
+naprawienia osobno (rozszerzenie protokołu `AXCFG` o przyspieszenie,
+zmiana C++ w mostku).
+
+**Realny sufit sprzed tej zmiany:** `MAX_RPM=400` × `MM_PER_REV=5` =
+**2000 mm/min** pułapu prędkości, `ACC_RPM_PER_SEC=1000` × 5 ÷ 60 = **ok.
+83 mm/s²** przyspieszenia — dla WSZYSTKICH osi, niezależnie od tego, co
+ustawiono w profilach. Komentarz w pliku wprost mówił, że to „ostrożne
+wartości na próby z czystymi serwami" — czyli tymczasowe, sprzed Auto-Tune
+(2026-08-30), nigdy potem nie podniesione. Przy tak niskim przyspieszeniu
+krótkie ruchy (a takie ma większość operacji w programach do cięcia
+wlewków) nie zdążają dojechać do zadanej prędkości — profil trójkątny
+zamiast trapezowego. To najbardziej prawdopodobna przyczyna zgłoszonej
+powolności.
+
+Próbowałem zweryfikować rzeczywisty limit obrotowy silnika
+`CPM-SCSK-2310S-RLNA` w instrukcji producenta (`zbyszek/Clearpath-SC User
+Manual.pdf`) — tabela prędkość/moment jest tam osadzona jako obrazek, nie
+tekst, i nie dało się jej odczytać bez `poppler-utils` (brak na tej
+maszynie). **Operator potwierdził przy maszynie: silniki mają realnie
+4000 obr/min** (nie potwierdzone niezależnie z arkusza danych — do
+zweryfikowania, gdyby ktoś miał dostęp do wykresu/etykiety silnika).
+
+**Zmiana (pierwszy, ostrożny krok do testu z operatorem przy maszynie, nie
+docelowy sufit):**
+
+```
+MAX_RPM=1200            # 30% realnego maksimum (4000 obr/min)
+ACC_RPM_PER_SEC=2000     # podwojone względem poprzedniej wartości
+```
+
+`MAX_RPM=1200` × 5 mm/obr = 6000 mm/min — powyżej wszystkich `vel_max`
+skonfigurowanych dziś w `profiles.json` (max 5000), więc to profile, a nie
+ten plik, wyznaczają teraz realny limit prędkości. Wymaga restartu
+`motion-controller-bridge.service` (bez utraty bazowania — pozycja siedzi
+w enkoderze serwa, nie w procesie mostka, potwierdzone już przy innych
+restartach). **Nie zweryfikowane jeszcze fizycznie** — pierwszy ruch po tej
+zmianie należy zrobić uważnie, obserwując maszynę.
+
 ## Do zrobienia
 
 Przed zabudową mechaniki:
