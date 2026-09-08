@@ -153,6 +153,17 @@ def test_start_odrzuca_zluzowana_os():
         asyncio.run(m.hand_guide_start("x"))
 
 
+def test_start_odrzuca_gdy_inna_sesja_juz_aktywna():
+    """Zgłoszenie 2026-09-08 ("działa parę razy, potem błąd"): dwie karty
+    ekranu /nauczanie potrafiły cicho nadpisać sobie nawzajem sesję, bo
+    self._hand_guide to jeden, wspólny słownik. Druga próba startu ma być
+    jawnie odrzucona, nie cicho nadpisywać pierwszej."""
+    m = _ready_machine()
+    asyncio.run(m.hand_guide_start("x"))
+    with pytest.raises(MachineError, match="już aktywne"):
+        asyncio.run(m.hand_guide_start("y"))
+
+
 def test_start_odrzuca_prog_poza_zakresem():
     m = _ready_machine()
     with pytest.raises(MachineError, match="próg"):
@@ -261,6 +272,30 @@ def test_tick_przejsciowy_skok_tuz_po_ruchu_nie_odwraca_kroku():
     m.status.torque["x"] = baseline - 0.5
     second = asyncio.run(m.hand_guide_tick())
     assert second["moving"] is False
+
+
+def test_tick_nie_wywala_sie_gdy_stop_wywolany_w_trakcie_poll_status():
+    """Odtwarza dokładnie zgłoszony błąd 2026-09-08: 500 Internal Server
+    Error / TypeError: 'NoneType' object is not subscriptable, gdy inny
+    klient (druga karta przeglądarki) wywołał hand_guide_stop() W TRAKCIE
+    oczekiwania na poll_status() tej korutyny. hand_guide_tick() ma
+    dokończyć się bezpiecznie, korzystając z wcześniej zapamiętanej sesji,
+    nie wywalić się na `self._hand_guide["..."]` po tym, jak ktoś inny
+    zdążył ustawić `self._hand_guide = None`."""
+    m = _ready_machine()
+    asyncio.run(m.hand_guide_start("x"))
+    original_poll = m.poll_status
+
+    async def poll_then_concurrent_stop():
+        await original_poll()
+        m._hand_guide = None  # symuluje stop() z innej karty w trakcie await
+
+    m.poll_status = poll_then_concurrent_stop
+
+    result = asyncio.run(m.hand_guide_tick())  # nie może rzucić
+
+    assert result["axis"] == "x"
+    assert m._hand_guide is None  # stan po konkurencyjnym stop() zostaje
 
 
 def test_stop_konczy_prowadzenie():

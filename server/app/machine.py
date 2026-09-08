@@ -367,6 +367,14 @@ class Machine:
         NIEGO, nie do żadnego limitu. `threshold_pct`/`feed`/`step_mm`
         operator ustawia sam na ekranie — różne osie mają różne tarcie
         i potrzebują innych wartości (zgłoszenie 2026-09-07).
+
+        Odrzuca, gdy inna sesja jest już aktywna — zgłoszenie 2026-09-08:
+        dwie otwarte karty ekranu `/nauczanie` (albo odświeżenie karty bez
+        wcześniejszego "Zakończ") powodowały, że druga karta cicho
+        NADPISYWAŁA sesję pierwszej (`self._hand_guide` to jeden, wspólny
+        słownik) — obie karty wysyłały wtedy komendy ruchu bez wiedzy o
+        sobie nawzajem, a pierwsza karta, klikając "Zakończ", wywoływała
+        `TypeError` w tick() drugiej karty (patrz `hand_guide_tick`).
         """
         if axis not in ("x", "y", "z"):
             raise MachineError(f"nieznana oś: {axis}")
@@ -374,6 +382,12 @@ class Machine:
             raise MachineError(
                 f"prowadzenie za rękę możliwe tylko w stanie READY "
                 f"(obecnie: {self.status.state.value})"
+            )
+        if self._hand_guide is not None:
+            raise MachineError(
+                f"prowadzenie za rękę już aktywne na osi "
+                f"{self._hand_guide['axis'].upper()} — zakończ je najpierw "
+                "(sprawdź, czy ekran /nauczanie nie jest otwarty w innej karcie)"
             )
         self._require_not_released([axis])
         if not (0.05 <= threshold_pct <= 20.0):
@@ -406,22 +420,37 @@ class Machine:
         i pozycji na sprzęcie (`SC4HubMachine.jog()` sam nie aktualizuje
         `self.status` — robi to dopiero osobna pętla `_poll_loop`, co 200 ms,
         niezależnie od tego wywołania). W symulatorze to no-op.
+
+        Zapamiętuje `self._hand_guide` w lokalnej zmiennej `session` na
+        samym początku i dalej używa TYLKO jej — nigdy nie czyta
+        `self._hand_guide` ponownie po `await`. Bez tego: `poll_status()`
+        i `jog()` oddają sterowanie event loopowi, więc W TRAKCIE takiego
+        oczekiwania inne żądanie mogło zdążyć wywołać `hand_guide_stop()`
+        (np. z innej karty przeglądarki — zgłoszenie 2026-09-08, „działa
+        parę razy, potem błąd”) i ustawić `self._hand_guide = None` —
+        kolejne odwołanie do `self._hand_guide["..."]` w TEJ korutynie
+        wywalało się `TypeError: 'NoneType' object is not subscriptable`
+        (500 zamiast czytelnego komunikatu). `hand_guide_start()` dodatkowo
+        odrzuca teraz drugą, równoległą sesję, więc do tego wyścigu w
+        normalnej pracy nie powinno już dochodzić — to jest zabezpieczenie
+        na wszelki wypadek, nie jedyna linia obrony.
         """
-        if self._hand_guide is None:
+        session = self._hand_guide
+        if session is None:
             raise MachineError("prowadzenie za rękę nie jest aktywne")
         await self.poll_status()
-        axis = self._hand_guide["axis"]
-        baseline = self._hand_guide["baseline"]
-        threshold_pct = self._hand_guide["threshold_pct"]
-        feed = self._hand_guide["feed"]
-        step_mm = self._hand_guide["step_mm"]
-        settle_count = self._hand_guide["settle_count"]
+        axis = session["axis"]
+        baseline = session["baseline"]
+        threshold_pct = session["threshold_pct"]
+        feed = session["feed"]
+        step_mm = session["step_mm"]
+        settle_count = session["settle_count"]
         measured = self.status.torque.get(axis, 0.0)
         delta = measured - baseline
         distance, settle_count, at_rest = hand_guide_step(
             delta, settle_count, threshold_pct=threshold_pct, step_mm=step_mm
         )
-        self._hand_guide["settle_count"] = settle_count
+        session["settle_count"] = settle_count
         if at_rest:
             # Powoli dryfujemy rejestr spoczynku do aktualnego odczytu —
             # ALE TYLKO gdy jesteśmy w granicach progu względem obecnego
@@ -436,7 +465,7 @@ class Machine:
             # po ruchu, rejestr zapamiętywał WARTOŚĆ NACISKU jako nowy
             # "spoczynek" — serwo wtedy "długo czekało na puszczenie",
             # bo normalny powrót do zera wyglądał jak nowe naciśnięcie.
-            self._hand_guide["baseline"] = measured
+            session["baseline"] = measured
         moving = distance is not None
         if distance is not None:
             await self.jog(axis, distance, feed)

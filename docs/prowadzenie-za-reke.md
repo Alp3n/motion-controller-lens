@@ -297,6 +297,39 @@ testu:
    powoli dryfuje do rzeczywistości między naciśnięciami, ale nigdy nie
    może zostać nadpisany wartością aktywnego nacisku.
 
+## Naprawiony wyścig: dwie karty przeglądarki (2026-09-08)
+
+Zgłoszenie: "działa około 3 razy poprawnie, a potem ma duże opory i nie
+działa z jakiegoś powodu". Log serwera pokazał realną przyczynę —
+**nie fizyczną, tylko błąd współbieżności**: dwie karty przeglądarki
+(dwa różne porty klienta w logu, np. `45250` i `58118`) obie wołały
+`/api/machine/hand-guide/tick`, prawdopodobnie bo ekran `/nauczanie`
+został odświeżony albo otwarty ponownie bez wcześniejszego "Zakończ" na
+starej karcie. Gdy jedna karta wywołała `hand-guide/stop`, ustawiając
+`self._hand_guide = None`, korutyna obsługująca `tick()` z DRUGIEJ karty
+— akurat zawieszona w środku `await self.poll_status()` — po wznowieniu
+próbowała odczytać `self._hand_guide["axis"]` z już nieistniejącego
+słownika: `TypeError: 'NoneType' object is not subscriptable`, 500
+Internal Server Error. Przeglądarka po takim błędzie przestawała działać
+("duże opory i nie działa" to subiektywny odbiór martwej pętli po stronie
+JS, nie realny opór mechaniczny).
+
+**Naprawa, dwie części:**
+1. `hand_guide_tick()` zapamiętuje sesję w lokalnej zmiennej na starcie i
+   dalej używa TYLKO jej, nigdy nie czyta `self._hand_guide` ponownie po
+   `await` — bezpieczne, nawet jeśli inny klient wywoła `stop()` w
+   międzyczasie.
+2. `hand_guide_start()` odrzuca teraz drugą, równoległą sesję jawnym
+   błędem ("już aktywne na osi ...") zamiast cicho nadpisywać pierwszą —
+   to zapobiega dokładnie tej sytuacji (i ostrzega, że ekran może być
+   otwarty w innej karcie), zamiast tylko łagodzić jej skutek.
+
+**Na pytanie o znak/przejście przez zero:** przejrzany kod nie ma tu błędu
+— `delta = zmierzony - spoczynek` to zwykłe odejmowanie, a próg sprawdzany
+jest przez `abs(delta)`, więc działa symetrycznie niezależnie od znaku
+obu wartości. Zgłoszony problem miał inną, konkretną przyczynę (wyścig
+opisany wyżej), nie błąd w arytmetyce znaku.
+
 ## Uwagi
 
 - **Nie zweryfikowane jeszcze fizycznie po tej poprawce** — logika (kiedy reagować, w którą
