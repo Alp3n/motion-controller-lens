@@ -723,10 +723,23 @@ ACC_RPM_PER_SEC=2000     # podwojone względem poprzedniej wartości
 `MAX_RPM=1200` × 5 mm/obr = 6000 mm/min — powyżej wszystkich `vel_max`
 skonfigurowanych dziś w `profiles.json` (max 5000), więc to profile, a nie
 ten plik, wyznaczają teraz realny limit prędkości. Wymaga restartu
-`motion-controller-bridge.service` (bez utraty bazowania — pozycja siedzi
-w enkoderze serwa, nie w procesie mostka, potwierdzone już przy innych
-restartach). **Nie zweryfikowane jeszcze fizycznie** — pierwszy ruch po tej
-zmianie należy zrobić uważnie, obserwując maszynę.
+`motion-controller-bridge.service`.
+
+**Korekta (2026-09-09, zaraz po restarcie):** zdanie wyżej o zachowaniu
+bazowania było błędne — **pełny restart procesu mostka KASUJE bazowanie**
+(`GET /api/status` po restarcie: `"state": "NOT_HOMED"`, pozycja 0/0/0),
+inaczej niż `RESET` po alarmie. Przyczyna w kodzie: "wznowienie bez
+bazowania" (`resumedWithoutHoming`, `docs/zmiany/wznowienie-bez-bazowania.md`)
+opiera się na fladze `everHomed` trzymanej **w pamięci procesu** mostka —
+ustawianej po udanym bazowaniu i sprawdzanej tylko przy komendzie `RESET`
+w ramach TEGO SAMEGO uruchomienia. Świeży proces zawsze startuje z
+`everHomed=false` i `state = State::NOT_HOMED` ustawionym na sztywno przy
+starcie (`sc4hub_bridge.cpp`), niezależnie od tego, co faktycznie pamięta
+enkoder serwa. Czyli: `RESET` (bez restartu procesu) = bazowanie zostaje;
+restart usługi/procesu mostka (jak przy tej zmianie) = **trzeba bazować
+od nowa**. Po tej konkretnej zmianie trzeba było ponownie zbazować maszynę
+przed testem prędkości. **Nie zweryfikowane jeszcze fizycznie** — pierwszy
+ruch po tej zmianie należy zrobić uważnie, obserwując maszynę.
 
 ## Do zrobienia
 
