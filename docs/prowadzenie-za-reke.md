@@ -264,6 +264,28 @@ sam nie może wywołać kolejnego kroku — trzeba naprawdę poczekać, aż oś
 się uspokoi. Kod: `hand_guide_step()` w `app/machine.py` (parametr
 `settle_count` zamiast prostego `armed`).
 
+## Dwie dalsze poprawki (2026-09-08): kierunek i długie czekanie
+
+Po naprawie debounce operator zgłosił dwa kolejne problemy z tego samego
+testu:
+
+1. **Odwrócony kierunek** — naciśnięcie ruszało oś w przeciwną stronę niż
+   trzeba. Przyczyna: konwencja znaku odczytu momentu w SDK jest przeciwna
+   do intuicyjnego założenia „znak momentu = kierunek pchnięcia” — serwo
+   opiera się naciskowi, więc odczyt rośnie w stronę PRZECIWNĄ do niego.
+   Naprawa: `HAND_GUIDE_DIRECTION_SIGN = -1` w `app/machine.py`, jedno
+   miejsce do odwrócenia, gdyby na innej osi/sprzęcie było inaczej.
+2. **Długie czekanie na kolejny ruch** — operator zaproponował: "kasowanie
+   siły po zrobieniu ruchu i rejestr powinien być załadowany aktualnie
+   przeczytaną siłą". Przyczyna: rejestr spoczynku był ustawiany RAZ, przy
+   starcie sesji, i już nigdy nie odświeżany — jeśli naturalny moment
+   trzymający w NOWEJ pozycji różni się choćby trochę od tego sprzed
+   startu, odczyt mógł nigdy nie wrócić w granice progu względem starej
+   wartości, blokując licznik uspokojenia w nieskończoność. Naprawa:
+   `hand_guide_tick()` przeładowuje `baseline` świeżym odczytem momentu
+   zaraz po każdym wykonanym kroku — porównania zawsze liczą się od tego,
+   gdzie oś faktycznie jest teraz, nie od stanu sprzed całej sesji.
+
 ## Uwagi
 
 - **Nie zweryfikowane jeszcze fizycznie po tej poprawce** — logika (kiedy reagować, w którą

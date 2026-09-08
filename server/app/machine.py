@@ -71,6 +71,11 @@ HAND_GUIDE_TORQUE_THRESHOLD_PCT = 0.3
 HAND_GUIDE_STEP_MM = 1.0
 HAND_GUIDE_FEED = 400.0
 HAND_GUIDE_SETTLE_TICKS = 3
+# -1: znak odczytu momentu jest przeciwny do kierunku pchnięcia (serwo
+# opiera się naciskowi) — zgłoszone i potwierdzone przy maszynie
+# 2026-09-08. Gdyby na innym sprzęcie/osi było odwrotnie, to jedyne
+# miejsce do zmiany.
+HAND_GUIDE_DIRECTION_SIGN = -1
 
 
 def hand_guide_step(
@@ -92,13 +97,21 @@ def hand_guide_step(
 
     Zwraca `(dystans_ze_znakiem_albo_None, nowy_stan_settle_count)`.
     Czysta funkcja — testowalna bez maszyny.
+
+    Znak kierunku jest ODWRÓCONY względem znaku `torque_delta_pct`
+    (`HAND_GUIDE_DIRECTION_SIGN = -1`) — zgłoszone przy maszynie
+    2026-09-08: naciśnięcie ruszało oś w przeciwną stronę niż trzeba.
+    Konwencja znaku odczytu momentu w SDK (serwo opiera się naciskowi,
+    więc rośnie w stronę PRZECIWNĄ do pchnięcia) okazała się odwrotna od
+    pierwotnego założenia „znak momentu = kierunek pchnięcia”.
     """
     if not math.isfinite(torque_delta_pct):
         return None, settle_count
     beyond = abs(torque_delta_pct) >= threshold_pct
     if beyond:
         if settle_count >= settle_ticks:
-            return math.copysign(step_mm, torque_delta_pct), 0
+            distance = math.copysign(step_mm, HAND_GUIDE_DIRECTION_SIGN * torque_delta_pct)
+            return distance, 0
         return None, 0
     return None, min(settle_count + 1, settle_ticks)
 
@@ -409,6 +422,13 @@ class Machine:
         if distance is not None:
             await self.jog(axis, distance, feed)
             await self.poll_status()
+            # Przeładuj spoczynek świeżym odczytem PO ruchu, zamiast trzymać
+            # ten sprzed startu sesji — zgłoszone 2026-09-08: naturalny
+            # moment spoczynkowy bywa nieco inny w nowej pozycji, więc
+            # porównanie do starej wartości potrafiło nigdy nie wrócić w
+            # granice progu, każąc długo czekać na kolejny ruch mimo że oś
+            # już dawno się uspokoiła.
+            self._hand_guide["baseline"] = self.status.torque.get(axis, 0.0)
         return {
             "axis": axis,
             "position": getattr(self.status, axis),

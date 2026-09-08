@@ -65,15 +65,18 @@ def test_hand_guide_step_rusza_i_zeruje_licznik_po_pelnym_uspokojeniu():
     distance, settle = hand_guide_step(
         0.5, settle_count=HAND_GUIDE_SETTLE_TICKS, threshold_pct=0.3, step_mm=1.0
     )
-    assert distance == 1.0
+    assert distance == -1.0  # znak odwrócony względem delty, patrz docstring
     assert settle == 0
 
 
-def test_hand_guide_step_kierunek_ze_znaku_delty():
+def test_hand_guide_step_kierunek_odwrocony_wzgledem_znaku_delty():
+    """Zgłoszone i potwierdzone przy maszynie 2026-09-08: naciśnięcie
+    ruszało oś w przeciwną stronę — znak momentu w SDK jest przeciwny do
+    kierunku pchnięcia (serwo opiera się naciskowi)."""
     plus, _ = hand_guide_step(0.5, settle_count=HAND_GUIDE_SETTLE_TICKS, threshold_pct=0.3, step_mm=1.0)
     minus, _ = hand_guide_step(-0.5, settle_count=HAND_GUIDE_SETTLE_TICKS, threshold_pct=0.3, step_mm=1.0)
-    assert plus == 1.0
-    assert minus == -1.0
+    assert plus == -1.0
+    assert minus == 1.0
 
 
 def test_hand_guide_step_przejsciowy_sygnal_tuz_po_ruchu_nie_wywoluje_kroku():
@@ -83,7 +86,7 @@ def test_hand_guide_step_przejsciowy_sygnal_tuz_po_ruchu_nie_wywoluje_kroku():
     settle = HAND_GUIDE_SETTLE_TICKS
     # naciśnięcie -> krok, licznik wyzerowany
     d, settle = hand_guide_step(0.5, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
-    assert d == 1.0 and settle == 0
+    assert d == -1.0 and settle == 0
     # przejściowy skok w przeciwną stronę TUŻ po ruchu (np. hamowanie) - IGNOROWANY
     d, settle = hand_guide_step(-0.5, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
     assert d is None and settle == 0
@@ -96,9 +99,9 @@ def test_hand_guide_step_pelny_cykl_jedno_nacisniecie_jeden_krok():
     # spoczynek
     d, settle = hand_guide_step(0.05, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
     assert d is None and settle == HAND_GUIDE_SETTLE_TICKS
-    # naciśnięcie -> krok
+    # naciśnięcie -> krok (znak odwrócony względem delty)
     d, settle = hand_guide_step(0.5, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
-    assert d == 1.0 and settle == 0
+    assert d == -1.0 and settle == 0
     # nadal trzyma -> nic, licznik zerowany za każdym razem
     d, settle = hand_guide_step(0.5, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
     assert d is None and settle == 0
@@ -109,7 +112,7 @@ def test_hand_guide_step_pelny_cykl_jedno_nacisniecie_jeden_krok():
     assert settle == HAND_GUIDE_SETTLE_TICKS
     # nowe naciśnięcie -> drugi krok
     d, settle = hand_guide_step(-0.4, settle_count=settle, threshold_pct=0.3, step_mm=1.0)
-    assert d == -1.0 and settle == 0
+    assert d == 1.0 and settle == 0
 
 
 def test_hand_guide_step_odrzuca_nieskonczonosc():
@@ -188,6 +191,20 @@ def test_tick_z_wystarczajaca_zmiana_momentu_wykonuje_krok():
     result = asyncio.run(m.hand_guide_tick())
     assert result["moving"] is True
     assert result["armed"] is False
+
+
+def test_tick_przeladowuje_spoczynek_po_ruchu():
+    """Zgłoszenie 2026-09-08: naturalny moment spoczynkowy bywa nieco inny
+    w nowej pozycji, więc porównanie do wartości sprzed startu sesji
+    potrafiło nigdy nie wrócić w granice progu — długie czekanie na kolejny
+    ruch mimo że oś już się uspokoiła. Rejestr spoczynku ma się przeładować
+    świeżym odczytem zaraz po ruchu — niezależnie od tego, jaką dokładnie
+    wartość da fizyka symulatora/sprzętu po osiadnięciu."""
+    m = _ready_machine()
+    asyncio.run(m.hand_guide_start("x", threshold_pct=0.3))
+    m.status.torque["x"] = m._hand_guide["baseline"] + 0.5
+    asyncio.run(m.hand_guide_tick())
+    assert m._hand_guide["baseline"] == m.status.torque["x"]
 
 
 def test_tick_nie_powtarza_kroku_bez_pelnego_uspokojenia():
