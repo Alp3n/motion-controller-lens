@@ -51,9 +51,12 @@ mam to założyć.
 - [x] Przycisk „JEDŹ DO ZERA" na panelu operatora, pod przyciskiem bazowania
       — dojazd wszystkich osi do punktu zerowego (po zbazowaniu, gdy maszyna
       stoi gdzie indziej), w tej samej kolejności co bazowanie. To ruch
-      pozycyjny, nie ponowne bazowanie. **Ryzyko nie złagodzone:** nie
-      podnosi Z przed ruchem XY, w przeciwieństwie do bazowania — możliwa
-      kolizja przy niskim Z. Nie zweryfikowane na fizycznym sterowniku.
+      pozycyjny, nie ponowne bazowanie. **Poprawione 2026-09-09 (decyzja
+      operatora):** kolejność ruchu ustalona na sztywno — Z zawsze jedzie
+      pierwsza, dopiero po dojechaniu do zera rusza XY, niezależnie od
+      skonfigurowanej kolejności bazowania. Wcześniej ryzyko kolizji
+      (XY przed Z na tej maszynie) nie było złagodzone — teraz jest.
+      **Poprawka jeszcze nie zweryfikowana na fizycznym sterowniku.**
       Szczegóły: `zmiany/jedz-do-zera.md`
 - [x] Siła/prędkość zależne od pozycji — sprawdzone: *Conditional Torque
       Limiting* w serwie (ClearView) + `TrqGlobal` z API

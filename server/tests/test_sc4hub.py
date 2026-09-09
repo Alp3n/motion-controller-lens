@@ -314,16 +314,19 @@ def test_go_to_zero_z_first_wysyla_movez_przed_movexy():
     assert m.calls == ["MOVEZ 0.000 1000", "MOVEXY 0.000 0.000 1000"]
 
 
-def test_go_to_zero_xy_first_wysyla_jedna_komende_movexy():
-    """Konfiguracja produkcyjna tej maszyny: X=1, Y=2, Z=3. X i Y jadą razem
-    jedną komendą MOVEXY (mostek nie umie ruszyć nimi osobno), potem Z."""
+def test_go_to_zero_z_first_niezaleznie_od_kolejnosci_bazowania():
+    """Konfiguracja produkcyjna tej maszyny: X=1, Y=2, Z=3 w kolejności
+    bazowania. Dla JEDŹ DO ZERA to nie ma znaczenia — Z zawsze jedzie
+    pierwsza (decyzja operatora 2026-09-09, docs/zmiany/jedz-do-zera.md),
+    dopiero potem X i Y razem jedną komendą MOVEXY (mostek nie umie ruszyć
+    nimi osobno)."""
     axes_cfg = _axes_with_home_order({"x": 1, "y": 2, "z": 3})
     m = _machine(axes_cfg)
     m.status.state = MachineState.READY
 
     asyncio.run(m.go_to_zero())
 
-    assert m.calls == ["MOVEXY 0.000 0.000 1000", "MOVEZ 0.000 1000"]
+    assert m.calls == ["MOVEZ 0.000 1000", "MOVEXY 0.000 0.000 1000"]
 
 
 def test_go_to_zero_z_pustej_kolejnosci_jest_odrzucony():

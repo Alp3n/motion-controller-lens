@@ -213,9 +213,12 @@ def test_jedz_do_zera_wymaga_stanu_ready():
         asyncio.run(m.go_to_zero())
 
 
-def test_jedz_do_zera_porusza_w_kolejnosci_bez_najpierw_z():
+def test_jedz_do_zera_z_zawsze_pierwsza():
     """W przeciwieństwie do bazowania NIE ma odjazdu w górę na start —
-    to zwykły dojazd do zera, nie procedura bazowania."""
+    to zwykły dojazd do zera, nie procedura bazowania. Kolejność RUCHU jest
+    jednak ustalona na sztywno (decyzja operatora 2026-09-09): Z zawsze
+    pierwsza, dopiero po niej X i Y razem — niezależnie od skonfigurowanej
+    kolejności bazowania. Tu konfiguracja akurat już ma Z jako pierwszą."""
     m = SimulatedMachine()
     m.apply_axis_config(_axes(z={"home_order": 1, "vel_home": 300},
                               x={"home_order": 2}, y={"home_order": 3}))
@@ -227,7 +230,26 @@ def test_jedz_do_zera_porusza_w_kolejnosci_bez_najpierw_z():
 
     assert [mv[:3] for mv in moves] == [
         (10.0, 20.0, 0.0),
-        (0.0, 20.0, 0.0),
+        (0.0, 0.0, 0.0),
+    ]
+    assert m.status.state is MachineState.READY
+
+
+def test_jedz_do_zera_z_pierwsza_mimo_innej_kolejnosci_bazowania():
+    """Konfiguracja produkcyjna tej maszyny: X=1, Y=2, Z=3 w kolejności
+    bazowania. Dla JEDŹ DO ZERA to nie ma znaczenia — Z i tak jedzie
+    pierwsza."""
+    m = SimulatedMachine()
+    m.apply_axis_config(_axes(x={"home_order": 1}, y={"home_order": 2},
+                              z={"home_order": 3, "vel_home": 300}))
+    m.status.state = MachineState.READY
+    m.status.x, m.status.y, m.status.z = 10.0, 20.0, 5.0
+    moves = _record_moves(m)
+
+    asyncio.run(_go_to_zero_and_wait(m))
+
+    assert [mv[:3] for mv in moves] == [
+        (10.0, 20.0, 0.0),
         (0.0, 0.0, 0.0),
     ]
     assert m.status.state is MachineState.READY
