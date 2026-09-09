@@ -129,6 +129,25 @@ SDK, przykłady kodu — patrz listing katalogu), pod SM45BL przydałoby się:
    **USB→RS485** bezpośrednio (pomija RS232 w ogóle, wpina się w zwykły
    port USB, pojawia się jako `/dev/ttyUSBx`), zamiast RS232→RS485 plus
    dodatkowo USB→RS232.
+
+   **Konkretne konwertery, które użytkownik ma pod ręką (sprawdzone przez
+   wyszukiwanie 2026-09-09, nie z pamięci):**
+   - **Waveshare SKU 23376** — „RS232 To RS485 (B)": wejście **RS232**
+     (potwierdza problem wyżej), zasilanie zewnętrzne **6-36V DC wymagane
+     osobno** (izolowany, nie zasila się samym sygnałem). Bez portu RS232
+     albo dodatkowej przejściówki USB→RS232 — nieużywalny na tym
+     komputerze.
+   - **Waveshare SKU 23778** — „Rail-mount TTL to RS485", wejście **TTL
+     UART** (3,3-5V), nie RS232 i nie USB wprost. **To lepsza opcja na
+     tym komputerze**, pod warunkiem posiadania osobnej przejściówki
+     **USB→TTL-UART** (popularne, tanie moduły FTDI/CP2102/CH340 — inny
+     sprzęt niż powyższe dwa konwertery). Łańcuch: USB (port w tym PC) →
+     USB-TTL → SKU 23778 (TTL→RS485, galwanicznie izolowany) → RS485 A/B
+     do serwa. Zasilanie modułu prawdopodobnie z pinu VCC strony TTL (do
+     potwierdzenia w instrukcji modułu, nie zakładam na pewno).
+   - **Pytanie otwarte:** czy jest osobno przejściówka USB→TTL-UART? Bez
+     niej żaden z tych dwóch konwerterów nie ma jak się podłączyć do tego
+     komputera przez USB.
 6. **Numer firmware/wersji SM45BL**, jeśli jest widoczny na etykiecie/w
    dokumentacji — mapy rejestrów Modbus bywają różne między wersjami tego
    samego modelu, więc warto mieć pewność, że instrukcja pasuje do
