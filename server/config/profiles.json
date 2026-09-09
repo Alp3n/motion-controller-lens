@@ -4,22 +4,22 @@
     "globalny": {
       "axes": {
         "x": {
-          "vel_max": 5000.0,
+          "vel_max": 4000.0,
           "accel": 500.0,
           "decel": 500.0,
-          "torque_pct": 10.0
+          "torque_pct": 20.0
         },
         "y": {
-          "vel_max": 5000.0,
+          "vel_max": 4000.0,
           "accel": 500.0,
           "decel": 500.0,
-          "torque_pct": 10.0
+          "torque_pct": 20.0
         },
         "z": {
-          "vel_max": 5000.0,
-          "accel": 500.0,
-          "decel": 500.0,
-          "torque_pct": 10.0
+          "vel_max": 40.0,
+          "accel": 50.0,
+          "decel": 50.0,
+          "torque_pct": 20.0
         },
         "w": {
           "vel_max": 3000.0,

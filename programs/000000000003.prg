@@ -4,7 +4,7 @@ PROGRAM;000000000003
 NAZWA;Plytka soczewki 50mm - lewa
 MATERIAL;PMMA
 AUTOR;J.Kowalski
-DATA;2026-09-05
+DATA;2026-09-09
 OBROTY_FREZU;12000
 POSUW_ROBOCZY;300
 POSUW_DOJAZDU;3000
@@ -12,7 +12,7 @@ Z_BEZPIECZNE;0
 
 [OPERACJE]
 LP;OPERACJA;X;Y;Z;X2;Y2;POSUW;OBROTY;MOMENT;PRZEJSCIA;PRZYROST;SMART;UWAGI
-1;PUNKT;-14;19;-1.5;;;550;;8;1;;;wlewek gorny
-2;PUNKT;-14;-26;-1.5;;;660;;8;;77;;wlewek dolny
-3;LINIA;-14;-53;-1.5;-8;-53;770;;8;1;;;wlewek boczny - 1e po linii
-4;LINIA;9;-53;-1.5;15;-53;770;;8;1;;;2 zbek
+1;PUNKT;-14;19;-1.5;;;;;10;1;;;wlewek gorny
+2;PUNKT;-14;-26;-1.5;;;;;10;;77;;wlewek dolny
+3;LINIA;-14;-53;-1.5;-8;-53;;;10;1;;;wlewek boczny - 1e po linii
+4;LINIA;9;-53;-1.5;15;-53;;;10;1;;;2 zbek
