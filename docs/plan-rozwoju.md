@@ -372,6 +372,55 @@ Pomiary i testy:
 Źródło: `docs/sterownik-sc4-hub.md` „Do zrobienia";
 [`mozliwosci-clearpath-sc.md`](mozliwosci-clearpath-sc.md).
 
+## L. Architektura wielu sterowników (drajwerów) osi
+
+Nowy temat (2026-09-09): planowana oś 4 na serwie **FEETECH SM45BL**
+(przemysłowe, brushless, **Modbus RTU**) oraz w dalszej perspektywie moduł
+**Teknic ClearCore** do silników krokowych i I/O. Dziś cała maszyna to
+jedna klasa `Machine` obsługująca wszystkie osie jednym protokołem —
+osie dodatkowe w ogóle się nie ruszają (tylko zapis w konfiguracji, patrz
+temat C). Pełna analiza i propozycja: `architektura-wielu-drajwerow-osi.md`.
+
+- [ ] **Propozycja, nie zdecydowane:** driver per oś (X/Y/Z zostają na
+      dzisiejszym Teknicu, nowe osie dostają własne implementacje
+      wspólnego interfejsu). Cztery pytania otwarte przed kodowaniem
+      (m.in. czy oś 4 uczestniczy w programie technologa na równi z X/Y/Z,
+      czy jest pomocnicza).
+- [x] Sprawdzone: ClearCore to nie SDK do podłączenia, tylko firmware do
+      napisania od zera (Microchip Studio, Windows) + protokół host↔płytka
+      do zaprojektowania — drugi projekt w stylu `bridge/`.
+- [ ] Materiały do SM45BL (mapa rejestrów Modbus RTU, Python SDK) — jeszcze
+      niedostarczone. `doc.feetech.cn` niedostępny z sesji Claude
+      (zablokowany dostęp sieciowy); GitHub/Gitee producenta sprawdzone i
+      pokrywają inny protokół (bus servo SMS/STS), nie Modbus RTU.
+- [ ] Test łączności fizycznej — zaplanowany, konwerter USB→RS485 z
+      izolacją ustalony jako właściwy sprzęt, narzędzie gotowe:
+      `tools/test_modbus_servo.py` (skanuje porty/baudrate'y/adres węzła,
+      bez znajomości mapy rejestrów — tylko potwierdza łączność).
+
+## M. Analiza zużycia osi/narzędzia i powiadomienia o incydentach
+
+Nowy temat (2026-09-09): ekran z analizą zużycia osi (średnie/maksymalne
+na godzinę, zmianę, tydzień), definicje progów alarmowych z powiadomieniem
+e-mail i do modułu **FAP** systemu MES, długoterminowa analiza zużycia
+osi/narzędzia. Dane zbierane **po zakończeniu cyklu**, nie w czasie ruchu —
+ten sam powód architektoniczny co w temacie K (mostek blokuje się na czas
+ruchu). Pełna analiza: `analiza-zuzycia-osi.md`.
+
+- [ ] **Propozycja, nie zdecydowane, cztery bloki do ustalenia przed
+      kodowaniem:** (1) metryka zużycia — kandydaci: dystans, liczba
+      operacji, moment×czas; (2) magazyn długoterminowy — dziś
+      `Machine.recording` jest ulotny (~20 minut), potrzebny trwały zapis;
+      (3) definicja alarmu wzorem `/smart`; (4) dwa kanały powiadomień —
+      e-mail (nowy sekret SMTP, nieistniejący dziś w projekcie) i MES/FAP
+      (pierwszy kierunek integracji **wychodzącej** z naszego serwera,
+      dzisiejsza integracja MES jest wyłącznie przychodząca — wymaga
+      kontraktu API od strony MES, nie da się założyć).
+- [ ] Proponowana kolejność wdrożenia (pięć kroków, szczegóły w
+      `analiza-zuzycia-osi.md`): ustalić metrykę i format zapisu → zbieranie
+      danych po cyklu bez ekranu → ekran podglądu → alarmy + e-mail →
+      powiadomienia MES/FAP.
+
 ## I. Odłożone / niski priorytet
 
 - [ ] `LUK`, `OKRAG`, `POLILINIA` (operacje grupy B w `.prg`) — świadomie
@@ -593,4 +642,11 @@ To jest **propozycja**, nie decyzja — ustalmy razem, czy się zgadzasz:
    (model cyklu/programu). Etap 0 (odczyt momentu na panelu) warto zrobić
    **od razu** — jest mały, bezpieczny i weryfikuje sprzęt pod resztę
    tematu. Reszta etapów wymaga pracy przy maszynie.
-9. **I** — dopiero jeśli się okaże potrzebne.
+9. **L** (wielu drajwerów osi) — nowy temat (2026-09-09), niezależny od
+   reszty, blokowany na materiałach od producenta serwa (SM45BL) i na
+   decyzji, czy oś 4 jest pełnoprawna w cyklu/programie.
+10. **M** (analiza zużycia, powiadomienia) — nowy temat (2026-09-09),
+    częściowo buduje się na K (odczyt momentu). Krok 1-2 (metryka, zapis
+    danych po cyklu) da się zacząć niezależnie od L; alarmy e-mail i
+    MES/FAP czekają na osobne decyzje (SMTP, kontrakt API MES).
+11. **I** — dopiero jeśli się okaże potrzebne.

@@ -271,6 +271,36 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       (wzór ze źródła pomija sprawność śruby) — czeka na pierwsze pary
       w ekranie `/sila` (kalibracja siłomierzem już dostępna)
 
+### L. Architektura wielu sterowników (drajwerów) osi
+- [ ] **Propozycja spisana 2026-09-09** (nie zdecydowane, nie kodowane):
+      driver per oś zamiast jednej klasy `Machine` na cały sprzęt, pod
+      planowaną oś 4 (FEETECH SM45BL, Modbus RTU) i moduł ClearCore
+      (kroki + I/O). Cztery pytania do ustalenia przed kodowaniem, w tym
+      czy oś 4 jest pełnoprawna w cyklu/programie czy pomocnicza.
+      Ustalone przy okazji: ClearCore to firmware do napisania od zera
+      (Microchip Studio/Windows), nie gotowe SDK — drugi projekt w stylu
+      `bridge/`. Materiały do SM45BL (mapa rejestrów Modbus, Python SDK)
+      jeszcze nie dostarczone — `doc.feetech.cn` niedostępny z sesji
+      Claude, GitHub/Gitee producenta pokrywają inny protokół (bus servo
+      SMS/STS, nie Modbus RTU). Konwertery na jutrzejszy test łączności
+      ustalone (USB→RS485 z izolacją), narzędzie gotowe:
+      `tools/test_modbus_servo.py`. Szczegóły:
+      `architektura-wielu-drajwerow-osi.md`.
+
+### M. Analiza zużycia osi/narzędzia i powiadomienia o incydentach
+- [ ] **Propozycja spisana 2026-09-09** (nie zdecydowane, nie kodowane):
+      ekran z analizą zużycia osi (średnie/maks. na godzinę/zmianę/
+      tydzień), definicje alarmów z powiadomieniem e-mail i do modułu FAP
+      systemu MES, długoterminowa analiza zużycia osi/narzędzia. Dane
+      zbierane po zakończeniu cyklu, nie w czasie ruchu (ten sam powód co
+      w temacie K: mostek blokuje się na czas ruchu). Cztery otwarte bloki
+      do ustalenia przed kodowaniem: metryka zużycia, magazyn
+      długoterminowy (dziś `Machine.recording` jest ulotny, ~20 minut),
+      definicja alarmu (wzorem `/smart`), dwa kanały powiadomień (e-mail —
+      nowy sekret SMTP; MES/FAP — pierwszy kierunek integracji wychodzącej,
+      wymaga kontraktu API od MES). Proponowana kolejność wdrożenia w
+      pięciu krokach. Szczegóły: `analiza-zuzycia-osi.md`.
+
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`
 - [ ] GRBL/G-code jako alternatywa

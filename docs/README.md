@@ -32,7 +32,11 @@ Ustalenia i analizy:
   bazowania, limity programowe, przełożenie posuwu; komenda `AXCFG`.
 - [architektura-wielu-drajwerow-osi.md](architektura-wielu-drajwerow-osi.md) —
   propozycja: driver per oś zamiast jednej klasy `Machine` na cały sprzęt,
-  pod planowaną oś Feetek (PWM) i moduł ClearCore — czeka na decyzję.
+  pod planowaną oś FEETECH SM45BL (Modbus RTU) i moduł ClearCore — czeka
+  na decyzję, temat L w planie rozwoju.
+- [analiza-zuzycia-osi.md](analiza-zuzycia-osi.md) — propozycja: ekran
+  analizy zużycia osi/narzędzia, alarmy e-mail i powiadomienia do MES
+  (moduł FAP) — czeka na decyzję, temat M w planie rozwoju.
 - [auto-tune-osi.md](auto-tune-osi.md) — Auto-Tune osi krok po kroku:
   warunki wstępne i ostrzeżenia z manuala Teknica, specyfika naszej
   instalacji (jeden port USB, mostek trzeba zatrzymać), co zrobić z
