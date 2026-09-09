@@ -137,6 +137,29 @@ jest niedostępna z tej sesji (zablokowany dostęp sieciowy, jak
 `teknic.com`/`manualslib.com` — patrz `plan-rozwoju.md` sekcja J) — do
 otwarcia ręcznie i wklejenia/wgrania do `zbyszek/`.
 
+**Struktura menu strony potwierdzona przez użytkownika (2026-09-09)** —
+serwis obejmuje kilka niezwiązanych rodzin serw/protokołów naraz
+(HLS/SMS/STS/SCS/FU/SHC — protokół własny FT; osobno UAVCAN/CAN2.0A/
+CANopen). Priorytety, co z tego pobrać/wgrać do `zbyszek/`:
+
+1. **„Serwomechanizmy serii MODBUS-RTU"** — właściwa rodzina dla SM45BL;
+   w środku szukać konkretnie strony/PDF **SM45BL** (seria może mieć kilka
+   modeli).
+2. **„Protokół MODBUS-RTU"** — mapa rejestrów, najważniejsze (patrz punkt 2
+   listy wyżej).
+3. **„Pobierz Python SDK"** — prawdopodobnie najbardziej przydatne: nasz
+   serwer jest w Pythonie, gotowy kod pokaże realne użycie rejestrów i czy
+   biblioteka w ogóle udostępnia odczyt pozycji/prądu.
+4. **„Pobierz zestaw SDK dla systemu Linux"** — dodatkowo, niższy poziom
+   (C), do porównania z Python SDK, gdyby czegoś w nim brakowało.
+5. „Tabela generowania instrukcji szesnastkowych" — pomocnicze, dopiero
+   jeśli powyższe nie wystarczą do zrozumienia protokołu.
+
+**Pominąć na razie:** Arduino SDK, STM32 SDK (nie nasza platforma — host to
+Linux/Python, nie embedded), pozostałe rodziny serw (HLS/SMS/STS/SCS/FU/
+SHC) i pozostałe protokoły (UAVCAN/CAN2.0A/CANopen) — dotyczą innych
+modeli niż SM45BL.
+
 ## Sprawdzone 2026-09-09: ClearCore to osobny mikrokontroler, nie SDK do podłączenia
 
 `https://github.com/Teknic-Inc/ClearCore-library` (podane w rozmowie) —
