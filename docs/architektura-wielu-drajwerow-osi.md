@@ -116,7 +116,19 @@ SDK, przykłady kodu — patrz listing katalogu), pod SM45BL przydałoby się:
 5. **Konkretny model/wersja przejściówki USB↔RS485**, którą planujesz użyć
    do podłączenia do tego komputera (Linux) — sterownik w jądrze,
    ewentualna reguła udev pod stały port, tak jak dziś
-   `99-teknic-sc4hub.rules` dla SC4-Hub.
+   `99-teknic-sc4hub.rules` dla SC4-Hub. **Sprawdzone 2026-09-09: ten
+   komputer prawdopodobnie NIE ma fizycznego portu RS232** — `lspci`
+   pokazuje tylko sterownik Intel AMT „Serial-Over-LAN" (wirtualny port
+   do zarządzania, nieużywalny do zewnętrznego okablowania), żadnej
+   dedykowanej karty UART/RS232. `/dev/ttyS0`-`ttyS31` istnieją, ale to
+   niemal na pewno standardowa rejestracja sterownika jądra bez sprzętu
+   za nimi (nie udało się tego ostatecznie potwierdzić —
+   `/proc/tty/driver/serial` wymaga uprawnień, których ta sesja nie ma
+   bez interaktywnego hasła). **Wniosek: przejściówka RS232→RS485 może
+   nie mieć się do czego podłączyć** — prościej wziąć przejściówkę
+   **USB→RS485** bezpośrednio (pomija RS232 w ogóle, wpina się w zwykły
+   port USB, pojawia się jako `/dev/ttyUSBx`), zamiast RS232→RS485 plus
+   dodatkowo USB→RS232.
 6. **Numer firmware/wersji SM45BL**, jeśli jest widoczny na etykiecie/w
    dokumentacji — mapy rejestrów Modbus bywają różne między wersjami tego
    samego modelu, więc warto mieć pewność, że instrukcja pasuje do
