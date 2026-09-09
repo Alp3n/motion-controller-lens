@@ -160,6 +160,21 @@ Linux/Python, nie embedded), pozostałe rodziny serw (HLS/SMS/STS/SCS/FU/
 SHC) i pozostałe protokoły (UAVCAN/CAN2.0A/CANopen) — dotyczą innych
 modeli niż SM45BL.
 
+**Sprawdzone 2026-09-09, wniosek: GitHub/Gitee producenta NIE pokrywają
+Modbus RTU / SM45BL.** Organizacja `github.com/ftservo` (główna strona
+sprawdzona na prośbę użytkownika) ma cztery repozytoria —
+`FTServo_Arduino`, `FTServo_Python`, `FTServo_Linux`, `FTServo_stm32HAL` —
+wszystkie dla tej samej rodziny **protokołu magistralowego „bus servo"**
+(katalogi `sms_sts`/`scservo_sdk`/`scscl`/`hls` w `FTServo_Python`), czyli
+serie SMS/STS/SCS/HLS z menu strony dokumentacji, **nie** Modbus RTU. Ani
+`gitee.com/ftservo/FTServo_Linux` (sprawdzone wcześniej), ani żadne z tych
+czterech repo nie wspominają SM45BL ani Modbus RTU. **Wniosek: kod/SDK dla
+SM45BL trzeba wziąć wyłącznie z `doc.feetech.cn`** (sekcja „Serwomechanizmy
+serii MODBUS-RTU" / „Protokół MODBUS-RTU" / „Pobierz Python SDK" —
+prawdopodobnie osobny pakiet SDK niż `FTServo_Python`, mimo podobnej
+nazwy) — dalsze zgadywanie repozytoriów na GitHubie/Gitee nie ma sensu,
+strona producenta to jedyne potwierdzone źródło.
+
 ## Sprawdzone 2026-09-09: ClearCore to osobny mikrokontroler, nie SDK do podłączenia
 
 `https://github.com/Teknic-Inc/ClearCore-library` (podane w rozmowie) —
