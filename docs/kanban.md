@@ -85,9 +85,11 @@ mam to założyć.
       TrqGlobal nigdy nie schodzi poniżej normalnej wartości.
       Osobno: baza punktów z pełnym CRUD (`/punkty`, `app/punkty.py`),
       picker punktów w operacji PUNKT edytora (jednorazowe wypełnienie
-      X/Y/Z, bez trwałego wiązania po nazwie). **Nie zweryfikowane
-      fizycznie** — progi doganiania są prowizoryczne, do dostrojenia przy
-      najbliższej obecności operatora. Szczegóły: `zmiany/baza-nazwanych-punktow.md`.
+      X/Y/Z, bez trwałego wiązania po nazwie). **Zweryfikowane fizycznie
+      2026-09-09: działa, ale nieintuicyjne i niestabilne** — zostaje na
+      później do dostrojenia (szczegół problemu jeszcze nieokreślony).
+      Progi doganiania dalej prowizoryczne. Szczegóły:
+      `zmiany/baza-nazwanych-punktow.md`, `prowadzenie-za-reke.md`.
 
 ### D. Wrzeciono
 - [x] Włączenie przy starcie maszyny — przełącznik na panelu operatora

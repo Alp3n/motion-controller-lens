@@ -372,14 +372,23 @@ mechanizmu po testach na sprzęcie; logika jest teraz pokryta testem
 odtwarzającym dokładnie zgłoszony scenariusz, ale ostateczne potwierdzenie
 wymaga kolejnego testu ręką na maszynie.
 
+## Test na sprzęcie (2026-09-09): działa, ale nieintuicyjne i niestabilne
+
+Zgłoszenie operatora po teście czwartej poprawki (dryf rejestru wyżej):
+mechanizm **działa** — brak faultu, brak crasha, ruch faktycznie startuje
+— ale w odbiorze operatora jest **nieintuicyjny i niestabilny**. Brak na
+razie szczegółu, na czym dokładnie to polega (kierunek, opóźnienie,
+wyczucie kroku, coś innego) — **świadomie odłożone na później**, do
+doprecyzowania przy kolejnej sesji przy maszynie.
+
 ## Uwagi
 
-- **Nie zweryfikowane jeszcze fizycznie po tej poprawce** — logika (kiedy reagować, w którą
-  stronę, z jaką prędkością) jest pokryta testami, ale progi (martwa strefa
-  0.05 mm, nasycenie przy 3 mm, posuw 50–600 mm/min) są **prowizoryczne** i
-  prawie na pewno będą wymagały dostrojenia po pierwszym realnym teście —
-  to nie jest parametr bezpieczeństwa (tym jest limit momentu), tylko
-  kwestia tego, czy prowadzenie "czuje się" dobrze.
+- **Zweryfikowane fizycznie 2026-09-09** — mechanizm działa (nie jest już
+  tylko pokryty testami), ale wymaga dalszego dostrojenia UX (patrz sekcja
+  wyżej). Progi (martwa strefa 0.05 mm, nasycenie przy 3 mm, posuw
+  50–600 mm/min) są **prowizoryczne** i prawie na pewno będą wymagały
+  dostrojenia — to nie jest parametr bezpieczeństwa (tym jest limit
+  momentu), tylko kwestia tego, czy prowadzenie "czuje się" dobrze.
 - Gdyby w przyszłości pojawiła się potrzeba prawdziwego trybu podatnego —
   jedyna droga to prawdopodobnie funkcje poza publicznym API Teknica dla
   tej rodziny napędów (kontakt z producentem) albo inny sprzęt; nie ma
