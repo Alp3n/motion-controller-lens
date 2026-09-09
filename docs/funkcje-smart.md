@@ -252,6 +252,13 @@ zapamiętanego spoczynku danej osi, nie wartość bezwzględną — ale warto
 zweryfikować fizycznie, bo to spore (jak na oś bez obciążenia), systematyczne
 obciążenie w spoczynku.
 
+**Rozwiązane (zgłoszenie operatora, 2026-09-09):** przyczyna potwierdzona
+fizycznie przy maszynie — napięcie śruby osi X. Po smarowaniu widoczna
+poprawa. Nie mierzono nowej wartości `TRQX` w spoczynku po smarowaniu (do
+odnotowania przy najbliższej okazji, jeśli ktoś ją sprawdzi) — samo
+zjawisko jednak wyjaśnione i nie wymagało budowy automatycznej próby
+przejazdu z Etapu 2, którą zaproponowano wyżej jako sposób potwierdzenia.
+
 ### 4. Pomiar częstotliwości próbkowania
 
 Przy okazji nagrywania ekran pokazuje, **ile próbek na sekundę faktycznie
