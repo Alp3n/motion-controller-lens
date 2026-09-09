@@ -30,6 +30,9 @@ Ustalenia i analizy:
   zbioru operacji `.prg`, format 2, przebudowa edytora technologa.
 - [konfiguracja-osi.md](konfiguracja-osi.md) — model osi: długość, punkt
   bazowania, limity programowe, przełożenie posuwu; komenda `AXCFG`.
+- [architektura-wielu-drajwerow-osi.md](architektura-wielu-drajwerow-osi.md) —
+  propozycja: driver per oś zamiast jednej klasy `Machine` na cały sprzęt,
+  pod planowaną oś Feetek (PWM) i moduł ClearCore — czeka na decyzję.
 - [auto-tune-osi.md](auto-tune-osi.md) — Auto-Tune osi krok po kroku:
   warunki wstępne i ostrzeżenia z manuala Teknica, specyfika naszej
   instalacji (jeden port USB, mostek trzeba zatrzymać), co zrobić z
