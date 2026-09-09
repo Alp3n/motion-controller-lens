@@ -234,6 +234,26 @@ stronie Pythona nad istniejącym protokołem producenta; `ClearCoreDriver`
 to dodatkowo praca firmware'owa od zera, zanim jakikolwiek driver Pythona
 będzie miał z czym rozmawiać.
 
+## Narzędzie do testu jutro: `tools/test_modbus_servo.py`
+
+Użytkownik znalazł jeszcze jeden konwerter tej samej firmy: **USB→RS485
+z izolacją** (symbol do ustalenia jutro) — to zamyka pytanie o
+podłączenie fizyczne, prościej niż łańcuch TTL/RS232 rozważany wyżej.
+
+Napisane narzędzie (bez zewnętrznych bibliotek, jak reszta `tools/` —
+sam port szeregowy przez `termios`, sam Modbus RTU: funkcja 0x03 + CRC16)
+do sprawdzenia samej łączności, zanim mamy mapę rejestrów SM45BL:
+skanuje `/dev/ttyUSB*`, typowe baudrate'y Modbus (9600-115200) i adres
+węzła 1 (domyślny dla wielu serw — **do potwierdzenia** w dokumentacji
+SM45BL, nie pewnik), wysyła „Read Holding Registers" na rejestr 0 i
+pokazuje surową odpowiedź (albo jej brak) dla każdej kombinacji.
+Użycie: `tools/test_modbus_servo.py --help`.
+
+**To NIE jest właściwy sterownik osi** — nie zna rzeczywistych rejestrów
+SM45BL (bo ich jeszcze nie mamy), tylko potwierdza, że coś w ogóle
+odpowiada na danym porcie/baudrate. Właściwy `FeetekModbusDriver`
+(sekcja „Co proponuję" niżej) powstanie dopiero po mapie rejestrów.
+
 ## Co proponuję jako pierwszy krok
 
 Nie kodować całości od razu. Zacząć od wydzielenia interfejsu `AxisDriver`
