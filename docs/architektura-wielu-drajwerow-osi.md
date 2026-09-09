@@ -46,15 +46,17 @@ To nie jest tylko kwestia różnych protokołów transportowych — to różne
 - **ClearPath-SC (dziś, X/Y/Z):** serwo z enkoderem, zamknięta pętla,
   odczyt momentu (`TrqMeasured`), limit momentu jako twardy sufit,
   faulty/alarmy zgłaszane przez sterownik.
-- **Feetek PWM ("45 kg", typowe dla serw hobby/RC-style): do potwierdzenia
-  u źródła, nie zakładam na pewno** — ale typowe serwo sterowane
-  szerokością impulsu PWM to z perspektywy hosta pętla **otwarta**:
-  wysyłasz docelową pozycję, serwo samo dojeżdża wewnętrznym
-  potencjometrem/enkoderem, a host zwykle **nie dostaje z powrotem ani
-  pozycji, ani momentu**. Jeśli się to potwierdzi, ta oś nie może
-  uczestniczyć w niczym, co dziś zależy od odczytu momentu — limit siły,
-  funkcje SMART (temat K), prowadzenie za rękę (`prowadzenie-za-reke.md`).
-  Będzie to oś "głucha": wysyłasz cel, wierzysz, że dojechała.
+- **Feetech SM45BL (skorygowane 2026-09-09 — konkretny model podany przez
+  użytkownika):** to **nie** jest hobbystyczne serwo RC sterowane gołym
+  sygnałem PWM, jak pierwotnie założyłem niżej w tym dokumencie na
+  podstawie samego słowa „PWM" w pierwszym zgłoszeniu — to przemysłowy
+  serwonapęd **brushless z komunikacją Modbus RTU** (RS485, rejestry).
+  Modbus RTU zwykle daje hostowi odczyt pozycji i często prądu/momentu z
+  powrotem przez rejestry — więc ta oś prawdopodobnie **nie** jest głucha
+  jak zakładałem. **Nadal do potwierdzenia u źródła** (dopiero instrukcja/
+  mapa rejestrów SM45BL rozstrzygnie, jakie dane faktycznie wraca i w jakim
+  trybie pracy — pozycja/prędkość/moment), patrz materiały do przygotowania
+  niżej.
 - **ClearCore (kroki + I/O):** silniki krokowe to zwykle sterowanie w
   pętli otwartej **bez enkodera** (chyba że dokupiony osobno) — brak
   informacji zwrotnej o rzeczywistej pozycji, zgubienie kroków pod
@@ -88,6 +90,40 @@ fałszywie zielonych pól.
    obok istniejącego SC4-Hub, każdy ze swoim połączeniem? Trzeba potwierdzić
    model komunikacji, zanim zaprojektuję drugi `_command`/`_exchange`
    obok tego z `SC4HubMachine`.
+
+## Materiały do przygotowania (FEETECH SM45BL) — `zbyszek/`
+
+Wzorem tego, co już tam jest dla Teknica (instrukcja użytkownika, referencja
+SDK, przykłady kodu — patrz listing katalogu), pod SM45BL przydałoby się:
+
+1. **Instrukcja/karta katalogowa SM45BL** (specyfikacja mechaniczna i
+   elektryczna: napięcie zasilania, prąd znamionowy/szczytowy, moment,
+   masa, wymiary, złącza) — odpowiednik `Clearpath-SC User Manual.pdf`.
+2. **Protokół komunikacyjny Modbus RTU — mapa rejestrów**, to najważniejszy
+   dokument: adresy rejestrów komend (pozycja/prędkość/moment zadany),
+   rejestrów odczytu (pozycja rzeczywista, prąd/moment jeśli jest, status,
+   kody alarmów), dostępne tryby pracy (pozycyjny/prędkościowy/momentowy),
+   domyślny baudrate/parzystość/adres węzła (node ID) na wyjściu z fabryki
+   i sposób jego zmiany. Bez tego nie da się ustalić, czy ta oś może
+   uczestniczyć w limicie siły/SMART (patrz wyżej) — to odpowiednik
+   `S-FoundationRef.chm` dla Teknica.
+3. **Przykłady kodu / biblioteka producenta** dla Modbus RTU (Python/C, jeśli
+   Feetech coś udostępnia) — jak `ClearPath_SC_Beta_Examples.zip`
+   przyspieszyło pracę z SDK Teknica.
+4. **Narzędzie konfiguracyjne producenta** (jeśli istnieje, jak ClearView
+   dla Teknica) — nazwa, wymagania (Windows?), do czego służy (np. zmiana
+   adresu węzła, tryb pracy, ewentualny odpowiednik Auto-Tune).
+5. **Konkretny model/wersja przejściówki USB↔RS485**, którą planujesz użyć
+   do podłączenia do tego komputera (Linux) — sterownik w jądrze,
+   ewentualna reguła udev pod stały port, tak jak dziś
+   `99-teknic-sc4hub.rules` dla SC4-Hub.
+6. **Numer firmware/wersji SM45BL**, jeśli jest widoczny na etykiecie/w
+   dokumentacji — mapy rejestrów Modbus bywają różne między wersjami tego
+   samego modelu, więc warto mieć pewność, że instrukcja pasuje do
+   egzemplarza, który faktycznie kupisz.
+
+Jeśli producent ma osobne dokumenty PDF na komunikację i na mechanikę —
+oba, tak jak dla Teknica jest osobno manual serva i osobno referencja SDK.
 
 ## Co proponuję jako pierwszy krok
 
