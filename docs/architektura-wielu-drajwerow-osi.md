@@ -125,6 +125,18 @@ SDK, przykłady kodu — patrz listing katalogu), pod SM45BL przydałoby się:
 Jeśli producent ma osobne dokumenty PDF na komunikację i na mechanikę —
 oba, tak jak dla Teknica jest osobno manual serva i osobno referencja SDK.
 
+**Sprawdzone 2026-09-09:** `https://gitee.com/ftservo/FTServo_Linux`
+(podane jako link) to biblioteka Feetecha dla serw **magistralowych serii
+SMS/STS** — protokół własny producenta po UART (`/dev/ttyUSBx`), **nie
+Modbus RTU**, i **bez śladu SM45BL** w widocznej strukturze repo
+(`src/`, `examples/SMS_STS/...`, licencja MIT). Przydatne jako wzorzec
+stylu komunikacji Feetecha (ramki, half-duplex UART), ale **nie zastępuje**
+punktu 2 z listy wyżej — mapy rejestrów Modbus RTU konkretnie dla SM45BL
+tu nie ma. `doc.feetech.cn` (strona z dokumentacją, podany wcześniej link)
+jest niedostępna z tej sesji (zablokowany dostęp sieciowy, jak
+`teknic.com`/`manualslib.com` — patrz `plan-rozwoju.md` sekcja J) — do
+otwarcia ręcznie i wklejenia/wgrania do `zbyszek/`.
+
 ## Co proponuję jako pierwszy krok
 
 Nie kodować całości od razu. Zacząć od wydzielenia interfejsu `AxisDriver`
