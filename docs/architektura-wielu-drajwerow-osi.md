@@ -137,6 +137,34 @@ jest niedostępna z tej sesji (zablokowany dostęp sieciowy, jak
 `teknic.com`/`manualslib.com` — patrz `plan-rozwoju.md` sekcja J) — do
 otwarcia ręcznie i wklejenia/wgrania do `zbyszek/`.
 
+## Sprawdzone 2026-09-09: ClearCore to osobny mikrokontroler, nie SDK do podłączenia
+
+`https://github.com/Teknic-Inc/ClearCore-library` (podane w rozmowie) —
+kluczowe ustalenie, odpowiada na pytanie 4 wyżej: **ClearCore to nie jest
+biblioteka, którą host linkuje do rozmowy z gotowym urządzeniem** (jak
+sFoundation dla SC4-Hub). To **firmware, który sam piszesz i wgrywasz NA
+płytkę ClearCore** (mikrokontroler SAME53, C++, środowisko **Microchip
+Studio** — Windows, wymaga wersji 7.0.1645+). Struktura repo:
+`libClearCore/` (API do silników krokowych/ClearPath i I/O), `Tools/`
+(narzędzia do wgrywania firmware pod Windows), `LwIP/` (stos Ethernet).
+Komunikacja z hostem: **USB albo Ethernet**, ale protokołu na tej
+komunikacji **nie ma gotowego** — trzeba go samemu zaprojektować i
+zaimplementować **po obu stronach**: we własnym firmware na ClearCore
+(używając `libClearCore` do sterowania krokami/I/O) i w Pythonie po
+stronie serwera.
+
+**Konsekwencja dla tej propozycji:** to praktycznie powtórka tego, co już
+raz zrobiono dla SC4-Hub (`bridge/sc4hub_bridge.cpp` + protokół TCP na
+porcie 8500, patrz `ARCHITEKTURA.md`) — tylko że tu embedded część
+(firmware ClearCore) zastępuje dzisiejszy Linux-owy `bridge/`, a nie
+istnieje jeszcze w ogóle. To realny, osobny projekt firmware'owy (Windows +
+Microchip Studio do wgrywania), nie „doinstaluj SDK i podłącz kabel" jak
+przy SM45BL/Modbus. Warto to jasno oddzielić w planowaniu: `FeetekPwmDriver`
+(lepiej: `FeetekModbusDriver` po korekcie wyżej) to głównie praca po
+stronie Pythona nad istniejącym protokołem producenta; `ClearCoreDriver`
+to dodatkowo praca firmware'owa od zera, zanim jakikolwiek driver Pythona
+będzie miał z czym rozmawiać.
+
 ## Co proponuję jako pierwszy krok
 
 Nie kodować całości od razu. Zacząć od wydzielenia interfejsu `AxisDriver`
