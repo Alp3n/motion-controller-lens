@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import audit, axes, config, cycle, kalibracja, outputs, profiles, punkty, smart, spindle, users
+from . import audit, axes, config, cycle, kalibracja, outputs, profiles, punkty, smart, spindle, users, zuzycie
 from .machine import (
     MachineError,
     MachineState,
@@ -209,7 +209,11 @@ def _page(request: Request, filename: str, required: str) -> Response:
 # Przy okazji /api/status jest teraz aktualne także bez otwartego panelu.
 
 
+_zuzycie_was_running = False
+
+
 async def _poll_loop() -> None:
+    global _zuzycie_was_running
     while True:
         with contextlib.suppress(MachineError):
             await machine.poll_status()
@@ -217,6 +221,24 @@ async def _poll_loop() -> None:
         # celowo POZA suppress() wyżej: ma nagrywać ostatni znany status
         # nawet gdy poll_status() akurat zawiódł, nie tylko gdy się uda.
         machine._record_sample()
+        # Zużycie osi (temat M): dopisz podsumowanie DOKŁADNIE przy przejściu
+        # RUNNING/PAUSED -> coś innego, czyli "po przebiegu, na spokojnie"
+        # (cykl maszyny albo pojedynczy program) — `machine.recording` z
+        # tego przebiegu żyje aż do startu następnego (patrz `_record_sample`),
+        # więc jest tu jeszcze kompletne. Błąd zapisu nie może zamrozić tej
+        # pętli — zuzycie.record_run() sam nie rzuca, ale osłona zostaje na
+        # wypadek błędu programistycznego w nowym module.
+        running = machine.status.state in (MachineState.RUNNING, MachineState.PAUSED)
+        if _zuzycie_was_running and not running:
+            try:
+                zuzycie.record_run(
+                    config.ZUZYCIE_DIR,
+                    machine.recording,
+                    torque_measured=machine.status.torque_source == "sterownik",
+                )
+            except Exception:
+                pass
+        _zuzycie_was_running = running
         await asyncio.sleep(0.2)
 
 

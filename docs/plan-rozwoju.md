@@ -407,19 +407,17 @@ osi/narzędzia. Dane zbierane **po zakończeniu cyklu**, nie w czasie ruchu —
 ten sam powód architektoniczny co w temacie K (mostek blokuje się na czas
 ruchu). Pełna analiza: `analiza-zuzycia-osi.md`.
 
-- [ ] **Propozycja, nie zdecydowane, cztery bloki do ustalenia przed
-      kodowaniem:** (1) metryka zużycia — kandydaci: dystans, liczba
-      operacji, moment×czas; (2) magazyn długoterminowy — dziś
-      `Machine.recording` jest ulotny (~20 minut), potrzebny trwały zapis;
-      (3) definicja alarmu wzorem `/smart`; (4) dwa kanały powiadomień —
-      e-mail (nowy sekret SMTP, nieistniejący dziś w projekcie) i MES/FAP
-      (pierwszy kierunek integracji **wychodzącej** z naszego serwera,
-      dzisiejsza integracja MES jest wyłącznie przychodząca — wymaga
-      kontraktu API od strony MES, nie da się założyć).
-- [ ] Proponowana kolejność wdrożenia (pięć kroków, szczegóły w
-      `analiza-zuzycia-osi.md`): ustalić metrykę i format zapisu → zbieranie
-      danych po cyklu bez ekranu → ekran podglądu → alarmy + e-mail →
-      powiadomienia MES/FAP.
+- [x] **Kroki 1-2 zaimplementowane 2026-09-10:** metryka (dystans per oś +
+      moment śr./maks. gdzie mierzony na sprzęcie) i zbieranie/zapis po
+      każdym przebiegu — bez dużych baz danych, szczegóły tylko z bieżącej
+      doby, trwały trend (jedna linia per oś per dzień) bez limitu
+      czasowego. Decyzja: e-mail i zgłoszenia do modułu FAP wysyła **wMES**,
+      nie nasz serwer — zdjęło ryzyko nowego sekretu SMTP i kontraktu API
+      wychodzącego do MES, które wcześniej blokowały ten temat. Szczegóły:
+      `zmiany/zuzycie-osi-zbieranie.md`.
+- [ ] **Zostaje:** ekran podglądu (krok 3), definicje alarmów wzorem
+      `/smart` (krok 4), sposób udostępnienia alarmów systemowi MES do
+      odczytu (krok 5) — szczegóły w `analiza-zuzycia-osi.md`.
 
 ## I. Odłożone / niski priorytet
 

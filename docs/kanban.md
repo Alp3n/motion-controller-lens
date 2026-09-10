@@ -288,18 +288,20 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       `architektura-wielu-drajwerow-osi.md`.
 
 ### M. Analiza zużycia osi/narzędzia i powiadomienia o incydentach
-- [ ] **Propozycja spisana 2026-09-09** (nie zdecydowane, nie kodowane):
-      ekran z analizą zużycia osi (średnie/maks. na godzinę/zmianę/
-      tydzień), definicje alarmów z powiadomieniem e-mail i do modułu FAP
-      systemu MES, długoterminowa analiza zużycia osi/narzędzia. Dane
-      zbierane po zakończeniu cyklu, nie w czasie ruchu (ten sam powód co
-      w temacie K: mostek blokuje się na czas ruchu). Cztery otwarte bloki
-      do ustalenia przed kodowaniem: metryka zużycia, magazyn
-      długoterminowy (dziś `Machine.recording` jest ulotny, ~20 minut),
-      definicja alarmu (wzorem `/smart`), dwa kanały powiadomień (e-mail —
-      nowy sekret SMTP; MES/FAP — pierwszy kierunek integracji wychodzącej,
-      wymaga kontraktu API od MES). Proponowana kolejność wdrożenia w
-      pięciu krokach. Szczegóły: `analiza-zuzycia-osi.md`.
+- [x] **Krok 1-2 zaimplementowane 2026-09-10:** zbieranie zużycia osi
+      (dystans per oś, moment śr./maks. tam, gdzie mierzony na sprzęcie)
+      po każdym zakończonym przebiegu, bez dużych baz danych — szczegóły
+      tylko z bieżącej doby (`config/zuzycie/YYYY-MM-DD.jsonl`), trwały
+      trend bez limitu czasowego, jedna linia per oś per dzień aktywności
+      (`config/zuzycie/trend.jsonl`). Decyzja 2026-09-10: alarmy na
+      poziomie maszyny, ale e-mail i zgłoszenia do modułu FAP wysyła
+      **wMES**, nie nasz serwer — zdejmuje ryzyko nowego sekretu SMTP i
+      kontraktu API wychodzącego do MES. Szczegóły:
+      `zmiany/zuzycie-osi-zbieranie.md`, pełna analiza:
+      `analiza-zuzycia-osi.md`.
+- [ ] **Zostaje:** ekran podglądu (krok 3), definicje alarmów wzorem
+      `/smart` (krok 4), endpoint do odczytu przez wMES (krok 5, np.
+      `GET /api/zuzycie/alarmy`) — dokładny kształt do ustalenia.
 
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`

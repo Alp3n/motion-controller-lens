@@ -229,5 +229,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   rejestr spoczynku dryfował bez ograniczenia, więc powolne narastające
   pchnięcie nigdy nie przekraczało progu — ruch nie startował. Naprawione:
   dryf tylko w oknie ponownego uzbrajania po kroku.
+- [zmiany/zuzycie-osi-zbieranie.md](zmiany/zuzycie-osi-zbieranie.md) —
+  zbieranie zużycia osi (dystans, moment śr./maks.) po każdym przebiegu,
+  szczegóły z bieżącej doby + trwały trend per oś per dzień, bez ekranu i
+  alarmów (temat M, krok 1-2). Pełna analiza: `analiza-zuzycia-osi.md`.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

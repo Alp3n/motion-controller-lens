@@ -31,6 +31,26 @@ długoterminowy, kontrakt z MES, dane SMTP), podobnie jak
   długoterminowych (wszystkie `config/*.json` to bieżąca konfiguracja, nie
   historia zdarzeń).
 
+## Decyzje podjęte 2026-09-10
+
+- **Alarmy na poziomie maszyny, powiadomienia (e-mail, MES/FAP) po stronie
+  wMES** — nasz serwer NIE wysyła e-maili ani nie woła MES. To zdejmuje
+  główne ryzyko z bloku 4 niżej (nowy sekret SMTP, kontrakt API wychodzący
+  do MES) — nasza odpowiedzialność kończy się na wykryciu przekroczenia
+  progu i wystawieniu tego gdzieś, skąd wMES to odczyta (dokładny kształt —
+  do ustalenia, patrz blok 4).
+- **Bez dużych baz danych — dwuwarstwowy model zapisu:** szczegółowe dane
+  trzymane tylko z **bieżącej doby**; potem zapisywana jest **średnia dla
+  osi** (i maksimum), a te uśrednione wpisy **zbierane bez ograniczenia w
+  czasie** (trend rośnie wolno — jedna linia per oś per dzień aktywności),
+  żeby dało się zobaczyć długoterminowy trend pracy poszczególnej osi pod
+  kątem predykcji maintenance. Rozstrzyga blok 2 niżej.
+- **Krok 1-2 z proponowanej kolejności (metryka + zbieranie/zapis po
+  przebiegu) zaimplementowany 2026-09-10** — `server/app/zuzycie.py`,
+  szczegóły: `zmiany/zuzycie-osi-zbieranie.md`. Metryka na start: dystans
+  [mm] per oś (suma) + moment (średnia, maksimum) tam, gdzie mierzony na
+  sprzęcie. Wciąż bez ekranu (krok 3) i bez alarmów (krok 4).
+
 ## Cztery osobne bloki, żeby się nie pomieszały
 
 ### 1. Metryka „zużycia" — do ustalenia, zanim cokolwiek zakoduję
@@ -53,56 +73,64 @@ długoterminowy, kontrakt z MES, dane SMTP), podobnie jak
   to dwa różne obiekty zużycia, mieszanie ich w jednej liczbie byłoby
   mylące. Zgłoszenie wspomina oba („zużycia osi **lub** narzędzia").
 
-**Rekomendacja, jeśli mam wybrać jedną na start:** skumulowany dystans
-[mm] per oś + osobno licznik operacji cięcia jako proxy zużycia
-narzędzia. Metryka oparta na momencie/obciążeniu dopiero gdy będzie
-przelicznik moment→siła z tematu K — inaczej liczby „zużycia" byłyby
-nieskalibrowanym zgadywaniem.
+**Zdecydowane 2026-09-10, zaimplementowane:** skumulowany dystans [mm] per
+oś (suma) + moment (średnia, maksimum) tam, gdzie mierzony na sprzęcie —
+patrz `zmiany/zuzycie-osi-zbieranie.md`. Osobna metryka „zużycia
+narzędzia" (licznik operacji cięcia) **jeszcze nie zaimplementowana** —
+zostaje jako rozszerzenie, gdy będzie potrzebna.
 
-### 2. Przechowywanie długoterminowe — nowa warstwa, nie istnieje dziś
+### 2. Przechowywanie długoterminowe — ROZSTRZYGNIĘTE i zaimplementowane 2026-09-10
 
 Agregacja godzina/zmiana/tydzień wymaga TRWAŁEGO zapisu, nie bufora w
-pamięci procesu (jak dzisiejszy `recording`). Do ustalenia:
+pamięci procesu (jak dawny `recording`). Ustalone z użytkownikiem: **bez
+dużych baz danych**, dwuwarstwowo —
 
-- **Format:** proste dopisywanie zdarzeń do pliku (JSON Lines/CSV, jeden
-  wpis na zakończoną operację/cykl), w stylu reszty `config/`, czy coś
-  strukturalnego (SQLite)? Przy niskiej częstotliwości zdarzeń (cykle
-  trwają sekundy-minuty, nie setki na sekundę) prosty dopisywany plik
-  prawdopodobnie wystarczy — zgodnie z tym, że reszta projektu nie używa
-  bazy danych.
-- **Co jest jednym wpisem** — pojedyncza operacja `.prg`? Cały cykl
-  maszyny? Trzymać surowe zdarzenia i agregować przy odczycie (elastyczne,
-  więcej miejsca na dysku, da się przeliczyć wstecz inną definicją
-  „zmiany") czy agregować od razu przy zapisie (mniej miejsca, ale
-  definicja „zmiany" zamrożona na stałe)?
-- **Definicja „zmiany"** — stałe godziny (np. 6-14/14-22/22-6) czy
-  konfigurowalne na ekranie? Wpływa na to, jak liczyć „na zmianę".
-- **Retencja** — jak długo trzymamy dane „długoterminowe"? Bez limitu
-  plik rośnie bez końca.
+- **Szczegóły tylko z bieżącej doby:** surowe wpisy (jeden na zakończony
+  przebieg — cykl albo pojedynczy program), w pliku dnia
+  `config/zuzycie/YYYY-MM-DD.jsonl`. Zostają surowe (nie zagregowane od
+  razu), więc przyszły ekran może z nich policzyć „na godzinę"/„na zmianę"
+  dowolnie, bez zamrażania definicji „zmiany" w formacie zapisu.
+- **Trend bez ograniczenia w czasie:** przy pierwszym zapisie po zmianie
+  dnia poprzedni plik dnia jest sprowadzany do JEDNEJ linii per oś
+  (liczba przebiegów, suma dystansu, średni/maks. moment) dopisywanej
+  trwale do `config/zuzycie/trend.jsonl`, po czym kasowany. Trend rośnie
+  wolno (najwyżej kilka linii dziennie), bezpiecznie bez limitu — to dane
+  pod długoterminową predykcję maintenance.
+- **Format:** JSON Lines, jak istniejący `app/audit.py` — bez nowej
+  zależności, zgodnie z tym, że reszta projektu nie używa bazy danych.
+
+Szczegóły implementacji: `zmiany/zuzycie-osi-zbieranie.md`.
+**Wciąż otwarte:** dokładna definicja „zmiany" (stałe godziny czy
+konfigurowalne) — potrzebna dopiero przy budowie ekranu (krok 3), bo dziś
+i tak trzymamy surowe zdarzenia z całego dnia.
 
 ### 3. Definicja alarmu — wzorem definicji SMART
 
 Nazwany próg (np. „X-zużycie-dzienne-krytyczne": metryka, oś/narzędzie,
-okres, wartość progowa, odbiorcy) — CRUD jak `/smart` (`app/smart.py`,
+okres, wartość progowa) — CRUD jak `/smart` (`app/smart.py`,
 `zmiany/ekran-smart.md`), żeby dało się dodawać reguły bez zmiany kodu.
-**Kiedy sprawdzamy próg** — po każdym zakończonym cyklu, zgodnie z
-„obrabiamy dane po cyklu, na spokojnie"?
+**Kiedy sprawdzamy próg** — po każdym zakończonym przebiegu, zgodnie z
+„obrabiamy dane po cyklu, na spokojnie" (ten sam punkt w kodzie, gdzie
+dziś wywołuje się `zuzycie.record_run()` — `main.py::_poll_loop`).
+**Jeszcze niezaimplementowane** (krok 4).
 
-### 4. Dwa kanały powiadomień — różne wymagania, różne ryzyka
+### 4. Powiadomienia — uproszczone decyzją 2026-09-10
 
-- **E-mail:** wymaga konfiguracji SMTP (serwer, port, poświadczenia) —
-  **nowy sekret w projekcie**, analogicznie do `MES_TOKEN`
-  (`zmiany/token-mes.md`: zmienna środowiskowa, nie plik w repo). Do
-  ustalenia: czyj serwer SMTP (firmowy? zewnętrzny jak SendGrid?), lista
-  odbiorców (per reguła alarmu czy globalna), czy musi być niezawodne
-  (kolejka/retry) czy „best effort" wystarczy dla powiadomień
-  diagnostycznych.
-- **MES, moduł FAP:** dzisiejsza integracja MES jest **wyłącznie
-  przychodząca** — to byłby **pierwszy kierunek wychodzący** (nasz serwer
-  woła MES, nie odwrotnie). **Nie da się tego zaprojektować bez kontraktu
-  API modułu FAP** — adres endpointu, metoda uwierzytelnienia, format
-  payloadu incydentu. Pytanie do systemu MES/integratora, nie coś, co mogę
-  założyć.
+**Alarmy wykrywamy na poziomie maszyny; wysyłkę e-maili i zgłoszenia do
+modułu FAP systemu MES robi wMES, nie nasz serwer.** To zdejmuje z tego
+tematu największe ryzyka, które były tu opisane wcześniej — nowy sekret
+SMTP i projektowanie kontraktu API wychodzącego do MES na wyczucie.
+
+**Wciąż otwarte:** w jaki sposób wMES dowiaduje się o wykrytym
+przekroczeniu progu. Dwie opcje, do ustalenia z Tobą/integratorem MES:
+- **wMES odpytuje nasz serwer** (nowy endpoint, np. `GET
+  /api/zuzycie/alarmy`, zwracający aktywne/ostatnie przekroczenia) —
+  pasuje do dzisiejszego kierunku integracji (MES woła nas, jak
+  `POST /api/mes/select-order`), nie wymaga nowego sekretu wychodzącego.
+- **Nasz serwer coś zapisuje/publikuje**, co wMES obserwuje z drugiej
+  strony (plik współdzielony, kolejka) — mniej pasuje do dzisiejszej
+  architektury, prawdopodobnie niepotrzebne, jeśli opcja pierwsza
+  wystarczy.
 
 ## Ekran (dopiero po ustaleniu punktów 1-4)
 
@@ -115,15 +143,17 @@ faktycznie poszedł).
 
 ## Proponowana kolejność (jeśli się zgadzasz z podziałem wyżej)
 
-1. Ustalić metrykę (punkt 1) i minimalny format trwałego zapisu
-   (punkt 2) — fundament, reszta na nim stoi.
-2. Zbieranie i zapis danych po cyklu (bez alarmów, bez ekranu) — samo
-   dopisywanie zdarzeń do pliku, żeby dane zaczęły się gromadzić jak
-   najwcześniej (im szybciej zaczniemy zbierać, tym szybciej będzie co
-   pokazać na „długoterminowej" analizie).
-3. Ekran z samym podglądem (bez alarmów/powiadomień) — już przydatny sam
-   w sobie.
-4. Definicje alarmów + e-mail (prostszy kanał, nie wymaga kontraktu
-   z MES).
-5. Powiadomienia do MES/FAP — dopiero po ustaleniu kontraktu API z
-   systemem MES.
+1. ~~Ustalić metrykę (punkt 1) i minimalny format trwałego zapisu
+   (punkt 2)~~ — **zrobione 2026-09-10.**
+2. ~~Zbieranie i zapis danych po cyklu (bez alarmów, bez ekranu)~~ —
+   **zaimplementowane 2026-09-10**, `zmiany/zuzycie-osi-zbieranie.md`. Dane
+   zaczynają się gromadzić od teraz, więc długoterminowy trend będzie
+   rósł od tej daty.
+3. **Następny krok:** ekran z samym podglądem (bez alarmów/powiadomień) —
+   już przydatny sam w sobie.
+4. Definicje alarmów (wzorem `/smart`) — sprawdzane po każdym przebiegu,
+   w tym samym miejscu co zapis danych.
+5. Udostępnienie alarmów systemowi MES do odczytu (prawdopodobnie nowy
+   endpoint `GET /api/zuzycie/alarmy`, wMES sam wysyła e-mail/FAP) —
+   ostatni krok, bo najmniej pilny przy dzisiejszej decyzji o podziale
+   odpowiedzialności.
