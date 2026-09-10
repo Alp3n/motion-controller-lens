@@ -360,3 +360,31 @@ jeszcze używany ani potwierdzony w naszym kodzie. Dla `docisk`
 roboczy to około 28 obrotów — **prawdopodobnie WYMAGA trybu
 wielobrotowego**, żeby zmieścić się w jednym ciągłym ruchu bez ręcznego
 zawijania przez Pythona. Do zbadania przy etapie 2/3, nie zakładane teraz.
+
+## Dodatkowy wątek: moduły I/O Waveshare Modbus RTU na tej samej magistrali
+
+Zgłoszenie użytkownika (2026-09-10): ma dwa moduły I/O tej samej firmy co
+konwerter (Waveshare) — cyfrowy 8IN/8OUT i analogowy — pytanie, czy można
+je podłączyć do tej samej magistrali RS485 co serwa FEETECH. **Model
+dokładny jeszcze nieznany** (użytkownik sprawdzi później) — poniższe
+oparte na typowych produktach Waveshare z tej kategorii, do potwierdzenia
+po podaniu SKU.
+
+- Sprawdzone (wyszukiwanie, strony produktowe Waveshare): to **prawdziwy
+  Modbus RTU** (w przeciwieństwie do serw!) — np.
+  [Modbus RTU IO 8CH](https://www.waveshare.com/modbus-rtu-io-8ch.htm)
+  (8DI/8DO) i [Modbus RTU Analog Input 8CH (B)](https://www.waveshare.com/wiki/Modbus_RTU_Analog_Input_8CH),
+  adresy 1-255, kaskadowanie wielu modułów na jednej magistrali.
+- **Domyślny baudrate modułów: 9600** (N,8,1) — inny niż serwa (115200).
+  Fizycznie mogą wisieć na tej samej magistrali RS485 (wielopunktowa), ale
+  **jeden port ma jedną prędkość transmisji na raz** — trzeba przełączać
+  baudrate między odczytem serwa a modułu I/O (driver już to umie, otwiera
+  port z zadanym baudrate za każdym razem), albo przestawić moduły na
+  115200 rejestrem konfiguracyjnym, jeśli to wspierane — do sprawdzenia
+  po ustaleniu dokładnego modelu.
+- `tools/test_modbus_servo.py` (prawdziwy Modbus RTU: funkcja 0x03 +
+  CRC16, napisany 2026-09-09 zanim ustalono, że serwa go NIE używają) —
+  gotowy punkt startowy do testu łączności z tymi modułami, mapa rejestrów
+  do potwierdzenia z konkretnej strony wiki Waveshare po podaniu SKU.
+- **Nie zaimplementowane, nie zdecydowane co dalej** — czeka na model
+  modułów.
