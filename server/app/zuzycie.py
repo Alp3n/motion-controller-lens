@@ -102,40 +102,52 @@ def _combine_max(current: float | None, candidate: float | None) -> float | None
     return current
 
 
+def _aggregate_entries(entries: list[dict]) -> dict[str, dict]:
+    """Sprowadza listę wpisów dnia (jeden per przebieg) do jednego
+    podsumowania per oś — wspólne dla rollupu do trendu i dla podglądu
+    „dzisiaj" na ekranie (`summarize_today`)."""
+    per_axis: dict[str, dict] = {}
+    for entry in entries:
+        for axis, values in entry.get("osie", {}).items():
+            acc = per_axis.setdefault(
+                axis,
+                {"n": 0, "dystans": 0.0, "moment_sum": 0.0, "moment_n": 0, "moment_max": None},
+            )
+            acc["n"] += 1
+            acc["dystans"] += values.get("dystans_mm") or 0.0
+            srednia = values.get("moment_srednia_pct")
+            if srednia is not None:
+                acc["moment_sum"] += srednia
+                acc["moment_n"] += 1
+            acc["moment_max"] = _combine_max(acc["moment_max"], values.get("moment_max_pct"))
+    result = {}
+    for axis, acc in per_axis.items():
+        result[axis] = {
+            "liczba_przebiegow": acc["n"],
+            "dystans_mm_suma": round(acc["dystans"], 1),
+            "moment_srednia_pct": (
+                round(acc["moment_sum"] / acc["moment_n"], 2) if acc["moment_n"] else None
+            ),
+            "moment_max_pct": acc["moment_max"],
+        }
+    return result
+
+
 def _rollup_day_file(day_path: Path, trend_path: Path) -> None:
     """Sprowadza jeden plik dnia do wpisów trendu (jeden per oś) i kasuje go."""
     entries = _read_jsonl(day_path)
     day = day_path.stem  # "YYYY-MM-DD"
-    if entries:
-        per_axis: dict[str, dict] = {}
-        for entry in entries:
-            for axis, values in entry.get("osie", {}).items():
-                acc = per_axis.setdefault(
-                    axis,
-                    {"n": 0, "dystans": 0.0, "moment_sum": 0.0, "moment_n": 0, "moment_max": None},
-                )
-                acc["n"] += 1
-                acc["dystans"] += values.get("dystans_mm") or 0.0
-                srednia = values.get("moment_srednia_pct")
-                if srednia is not None:
-                    acc["moment_sum"] += srednia
-                    acc["moment_n"] += 1
-                acc["moment_max"] = _combine_max(acc["moment_max"], values.get("moment_max_pct"))
-        for axis, acc in per_axis.items():
-            _append_jsonl(
-                trend_path,
-                {
-                    "data": day,
-                    "os": axis,
-                    "liczba_przebiegow": acc["n"],
-                    "dystans_mm_suma": round(acc["dystans"], 1),
-                    "moment_srednia_pct": (
-                        round(acc["moment_sum"] / acc["moment_n"], 2) if acc["moment_n"] else None
-                    ),
-                    "moment_max_pct": acc["moment_max"],
-                },
-            )
+    for axis, summary in _aggregate_entries(entries).items():
+        _append_jsonl(trend_path, {"data": day, "os": axis, **summary})
     day_path.unlink(missing_ok=True)
+
+
+def summarize_today(dir_path: Path, now: datetime | None = None) -> dict[str, dict]:
+    """Podsumowanie bieżącej doby per oś (do ekranu `/zuzycie`) — te same
+    pola co wpis trendu (`liczba_przebiegow`, `dystans_mm_suma`,
+    `moment_srednia_pct`, `moment_max_pct`), liczone na żywo z pliku dnia,
+    bez zapisu/rollupu."""
+    return _aggregate_entries(read_today(dir_path, now))
 
 
 def record_run(

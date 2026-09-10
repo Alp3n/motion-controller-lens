@@ -355,9 +355,17 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       kontraktu API wychodzącego do MES. Szczegóły:
       `zmiany/zuzycie-osi-zbieranie.md`, pełna analiza:
       `analiza-zuzycia-osi.md`.
-- [ ] **Zostaje:** ekran podglądu (krok 3), definicje alarmów wzorem
-      `/smart` (krok 4), endpoint do odczytu przez wMES (krok 5, np.
-      `GET /api/zuzycie/alarmy`) — dokładny kształt do ustalenia.
+- [x] **Krok 3 zaimplementowany 2026-09-10:** ekran `/zuzycie` — tabela
+      „dzisiaj" per oś (przebiegi, dystans, moment śr./maks.) i wykresy
+      trendu (słupkowe, jeden per oś, małe wielokrotności). Sam podgląd,
+      bez alarmów. **Dziś tylko X/Y/Z** — osie FEETECH jeszcze nie
+      wliczane do zużycia (osobna praca, przecięcie tematów L i M).
+      Zweryfikowane end-to-end (izolowany katalog danych), zrestartowana
+      usługa produkcyjna. Szczegóły: `zmiany/ekran-zuzycia-osi.md`.
+- [ ] **Zostaje:** definicje alarmów wzorem `/smart` (krok 4), endpoint do
+      odczytu przez wMES (krok 5, np. `GET /api/zuzycie/alarmy`) —
+      dokładny kształt do ustalenia. Ewentualnie: rozszerzenie zbierania
+      zużycia o osie FEETECH (nieustalone, nie w pierwotnym planie kroków).
 
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`

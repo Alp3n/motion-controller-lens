@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zużycie osi — maszyna do odcinania wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Zużycie osi</h1>
+    <a href="/">← Panel operatora</a>
+    <a href="/sila">Kontrola siły</a>
+    <a href="/diagnostics">Diagnostyka</a>
+  </header>
+
+  <main>
+    <section class="panel" id="scope-warn">
+      <h2>Zakres tego ekranu</h2>
+      <p class="muted" style="margin:0; white-space:pre-line">Krok 3 z pełnej specyfikacji (docs/analiza-zuzycia-osi.md) — sam
+podgląd zebranych danych, bez definicji alarmów i bez powiadomień
+(to osobne, jeszcze niezrobione kroki).
+
+Dziś obejmuje wyłącznie osie X/Y/Z — osie FEETECH (docisk, podajnik)
+jeszcze nie są w to wliczane (zbieranie zużycia dla nich to osobna praca,
+temat L).</p>
+    </section>
+
+    <section class="panel">
+      <h2>Dzisiaj</h2>
+      <p class="muted" style="margin-top:-6px">Suma dystansu i moment (średnia/maksimum) z przebiegów bieżącej doby — dane surowe, odświeżają się dopiero po zakończonym przebiegu (cyklu albo programie), nie na żywo w trakcie ruchu.</p>
+      <table>
+        <thead>
+          <tr><th>Oś</th><th>Przebiegów</th><th>Dystans [mm]</th><th>Moment śr. [%]</th><th>Moment maks. [%]</th></tr>
+        </thead>
+        <tbody id="dzisiaj-tabela"></tbody>
+      </table>
+      <p class="muted" id="dzisiaj-puste" style="display:none; margin-top:10px">
+        Brak zakończonych przebiegów dzisiaj — tabela wypełni się po pierwszym cyklu/programie.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Trend długoterminowy</h2>
+      <p class="muted" style="margin-top:-6px">
+        Jedna wartość per oś per dzień aktywności, bez limitu czasowego —
+        pod predykcję maintenance. Ostatnie <span id="trend-count">—</span> dni z danymi.
+      </p>
+      <div id="trend-charts"></div>
+      <p class="muted" id="trend-puste" style="display:none">
+        Brak jeszcze danych trendu — pojawią się, gdy miną przynajmniej dwie
+        doby z zarejestrowanymi przebiegami (dzisiejsza doba trafia do
+        trendu dopiero następnego dnia).
+      </p>
+    </section>
+  </main>
+
+  <script src="/static/zuzycie.js"></script>
+  <script src="/static/sesja.js"></script>
+</body>
+</html>

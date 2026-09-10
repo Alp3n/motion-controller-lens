@@ -241,5 +241,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   integracji `FeetekDriver` z `Machine`: pozycja/obciążenie osi `docisk`/
   `podajnik` w `GET /api/status` (jednostki rejestru, nie mm), osobna
   pętla odpytująca niezależna od X/Y/Z. Zweryfikowane na sprzęcie.
+- [zmiany/ekran-zuzycia-osi.md](zmiany/ekran-zuzycia-osi.md) — ekran
+  `/zuzycie` (temat M, krok 3): podsumowanie bieżącej doby i wykresy
+  trendu per oś, sam podgląd, bez alarmów. Dziś tylko X/Y/Z.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

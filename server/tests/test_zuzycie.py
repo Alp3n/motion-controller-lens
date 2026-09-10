@@ -146,3 +146,36 @@ def test_read_today_zwraca_tylko_dzisiejsze_wpisy(tmp_path: Path):
     zuzycie.record_run(tmp_path, [_sample(x=1.0)], torque_measured=False, now=now)
     entries = zuzycie.read_today(tmp_path, now=now)
     assert len(entries) == 1
+
+
+# --- summarize_today ---------------------------------------------------------
+
+
+def test_summarize_today_agreguje_biezaca_dobe(tmp_path: Path):
+    now = datetime(2026, 9, 10, 9, 0, 0)
+    zuzycie.record_run(
+        tmp_path, [_sample(x=0.0, torque={"x": 2.0}), _sample(x=3.0, torque={"x": 4.0})],
+        torque_measured=True, now=now,
+    )
+    zuzycie.record_run(
+        tmp_path, [_sample(x=0.0, torque={"x": -10.0}), _sample(x=1.0, torque={"x": -1.0})],
+        torque_measured=True, now=now.replace(hour=11),
+    )
+    summary = zuzycie.summarize_today(tmp_path, now=now)
+    assert summary["x"]["liczba_przebiegow"] == 2
+    assert summary["x"]["dystans_mm_suma"] == pytest.approx(3.0 + 1.0)
+    assert summary["x"]["moment_max_pct"] == -10.0
+
+
+def test_summarize_today_puste_gdy_brak_danych(tmp_path: Path):
+    assert zuzycie.summarize_today(tmp_path, now=datetime(2026, 9, 10)) == {}
+
+
+def test_summarize_today_nie_dotyka_pliku_ani_trendu(tmp_path: Path):
+    """W przeciwieństwie do rollupu - samo podsumowanie nie kasuje pliku
+    dnia ani nic nie dopisuje do trendu (to nadal aktywna, dzisiejsza doba)."""
+    now = datetime(2026, 9, 10, 9, 0, 0)
+    zuzycie.record_run(tmp_path, [_sample(x=1.0)], torque_measured=False, now=now)
+    zuzycie.summarize_today(tmp_path, now=now)
+    assert (tmp_path / "2026-09-10.jsonl").exists()
+    assert not (tmp_path / zuzycie.TREND_FILENAME).exists()

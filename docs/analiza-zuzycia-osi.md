@@ -149,9 +149,10 @@ faktycznie poszedł).
    **zaimplementowane 2026-09-10**, `zmiany/zuzycie-osi-zbieranie.md`. Dane
    zaczynają się gromadzić od teraz, więc długoterminowy trend będzie
    rósł od tej daty.
-3. **Następny krok:** ekran z samym podglądem (bez alarmów/powiadomień) —
-   już przydatny sam w sobie.
-4. Definicje alarmów (wzorem `/smart`) — sprawdzane po każdym przebiegu,
+3. ~~Ekran z samym podglądem (bez alarmów/powiadomień)~~ —
+   **zaimplementowany 2026-09-10**, ekran `/zuzycie`,
+   `zmiany/ekran-zuzycia-osi.md`. Dziś tylko X/Y/Z.
+4. **Następny krok:** definicje alarmów (wzorem `/smart`) — sprawdzane po każdym przebiegu,
    w tym samym miejscu co zapis danych.
 5. Udostępnienie alarmów systemowi MES do odczytu (prawdopodobnie nowy
    endpoint `GET /api/zuzycie/alarmy`, wMES sam wysyła e-mail/FAP) —

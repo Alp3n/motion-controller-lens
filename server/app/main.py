@@ -1262,6 +1262,23 @@ async def sim_safety_enable(req: SimEnableRequest, user=Depends(require_operator
     return {"ok": True, "safety_enable": req.enabled}
 
 
+# --- zużycie osi (temat M, krok 3 — sam podgląd, bez alarmów) ------------
+
+
+@app.get("/api/zuzycie")
+async def get_zuzycie(user=Depends(require_technolog)):
+    """Podsumowanie bieżącej doby (na żywo) + trwały trend (temat M).
+
+    Tylko odczyt — bez alarmów/powiadomień, to świadomie osobny krok
+    (docs/analiza-zuzycia-osi.md). Jednostki: dystans w mm (suma), moment
+    w % maksimum (średnia/maksimum z przebiegów danego dnia).
+    """
+    return {
+        "dzisiaj": zuzycie.summarize_today(config.ZUZYCIE_DIR),
+        "trend": zuzycie.read_trend(config.ZUZYCIE_DIR),
+    }
+
+
 # --- ekran diagnostyczny (admin, temat G) --------------------------------
 
 
@@ -1394,6 +1411,11 @@ async def punkty_page(request: Request):
 @app.get("/nauczanie", include_in_schema=False)
 async def nauczanie_page(request: Request):
     return _page(request, "nauczanie.html", users.ROLE_ADMIN)
+
+
+@app.get("/zuzycie", include_in_schema=False)
+async def zuzycie_page(request: Request):
+    return _page(request, "zuzycie.html", users.ROLE_TECHNOLOG)
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
