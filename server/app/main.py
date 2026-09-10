@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import audit, axes, config, cycle, kalibracja, outputs, profiles, punkty, smart, spindle, users, zuzycie
+from .feetech_driver import FeetekDriver, FeetekError
 from .machine import (
     MachineError,
     MachineState,
@@ -41,11 +42,19 @@ async def lifespan(_app: FastAPI):
     task = None
     if isinstance(machine, SC4HubMachine):
         task = asyncio.create_task(_poll_loop())
+    # Niezależne od trybu X/Y/Z (sim albo sc4hub) — magistrala Feetech to
+    # osobny fizyczny kanał (RS485), może być podłączona w obu trybach.
+    # Sam sobie nic nie robi, jeśli brak skonfigurowanych osi "feetech"
+    # albo FEETECH_PORT (patrz _feetech_poll_loop).
+    feetech_task = asyncio.create_task(_feetech_poll_loop())
     yield
     if task:
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
+    feetech_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await feetech_task
 
 
 app = FastAPI(
@@ -240,6 +249,44 @@ async def _poll_loop() -> None:
                 pass
         _zuzycie_was_running = running
         await asyncio.sleep(0.2)
+
+
+def _read_feetech_status(feetech_ids: dict[str, int]) -> dict[str, dict]:
+    """Blokujące (termios) — wywoływać przez `asyncio.to_thread`, nigdy
+    bezpośrednio w pętli async, żeby nie zamrozić reszty serwera na czas
+    odpytywania portu szeregowego. Błąd pojedynczej osi nie blokuje reszty —
+    magistrala RS485 jest współdzielona, ale jedno milczące serwo nie
+    powinno ukryć odczytu z pozostałych."""
+    result: dict[str, dict] = {}
+    with FeetekDriver(config.FEETECH_PORT, baud=config.FEETECH_BAUD) as driver:
+        for axis_name, servo_id in feetech_ids.items():
+            try:
+                position, load = driver.read_position_and_load(servo_id)
+                result[axis_name] = {"position": position, "load": load}
+            except FeetekError as exc:
+                result[axis_name] = {"error": str(exc)}
+    return result
+
+
+async def _feetech_poll_loop() -> None:
+    """Odpytuje magistralę Feetech co ~1s — osobno od `_poll_loop` (X/Y/Z),
+    wolniej (odczyt po termios jest rzędu 0,1-0,3s na oś, nie mieści się w
+    budżecie 200ms tamtej pętli) i niezależnie od trybu MACHINE_MODE (RS485
+    to osobny fizyczny kanał, może być podłączony razem z symulatorem X/Y/Z
+    do testów). Etap 1 tematu L — patrz
+    docs/architektura-wielu-drajwerow-osi.md. Surowe jednostki rejestru,
+    NIE mm (kalibracja kierunku/przelicznika to etap 2)."""
+    while True:
+        await asyncio.sleep(1.0)
+        feetech_ids = axes.feetech_axes(machine.axes)
+        if not feetech_ids or not config.FEETECH_PORT:
+            continue
+        try:
+            machine.status.feetech_raw = await asyncio.to_thread(
+                _read_feetech_status, feetech_ids
+            )
+        except Exception:
+            pass  # magistrala niedostępna teraz — spróbuj ponownie za 1s
 
 
 # --- modele żądań ---------------------------------------------------------

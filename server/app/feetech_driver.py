@@ -138,6 +138,15 @@ class FeetekDriver:
     def read_position(self, servo_id: int) -> int:
         return fp.decode_signed16(self.read_raw(servo_id, fp.ADDR_PRESENT_POSITION_L, 2))
 
+    def read_position_and_load(self, servo_id: int) -> tuple[int, int]:
+        """Jeden odczyt (6 bajtów, rejestry 56-61: pozycja+prędkość+obciążenie)
+        zamiast trzech osobnych — mniej rund tam-i-z-powrotem, ważne przy
+        odpytywaniu wielu serw w pętli (`main.py::_feetech_poll_loop`)."""
+        data = self.read_raw(servo_id, fp.ADDR_PRESENT_POSITION_L, 6)
+        position = fp.decode_signed16(data, 0)
+        load = fp.decode_signed16(data, 4)
+        return position, load
+
     def read_status(self, servo_id: int) -> dict[str, int]:
         return {
             "position": fp.decode_signed16(self.read_raw(servo_id, fp.ADDR_PRESENT_POSITION_L, 2)),

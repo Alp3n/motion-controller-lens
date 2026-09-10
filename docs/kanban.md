@@ -332,9 +332,16 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       `DIRECTION_SIGN_CW` + `move_relative_cw()`. Pomiar dla serwa 2 miał
       jedną sprzeczną, odrzuconą próbę po drodze (do potwierdzenia
       ponownie przy integracji) — szczegóły: `zmiany/protokol-feetech.md`.
-- [ ] **Zostaje:** zintegrować `FeetekDriver` z resztą aplikacji (po
-      rozstrzygnięciu pytań otwartych wyżej: pełnoprawna oś w cyklu czy
-      pomocnicza, konwersja mm↔kroki enkodera przez `mm_per_rev`).
+- [x] **Etap 1 integracji (status) zrobiony 2026-09-10** — `Machine`
+      odpytuje `docik`/`podajnik` (`config/axes.json`: `driver: feetech`,
+      `feetech_id`), `GET /api/status` zwraca pozycję/obciążenie (jednostki
+      rejestru, nie mm — kalibracja to etap 2). Osobna pętla, niezależna od
+      X/Y/Z, zweryfikowana end-to-end na sprzęcie. Panel jeszcze nie
+      pokazuje tych danych wizualnie. Szczegóły: `zmiany/status-osi-feetech.md`.
+- [ ] **Zostaje:** etapy 2-5 z `architektura-wielu-drajwerow-osi.md` (JOG,
+      bazowanie, cykl maszyny, ew. program technologa) — JOG (etap 2)
+      wymaga kalibracji, czy CW = rosnące czy malejące mm per oś, dopiero
+      po fizycznym zamontowaniu serw (dziś leżą odłączone).
 
 ### M. Analiza zużycia osi/narzędzia i powiadomienia o incydentach
 - [x] **Krok 1-2 zaimplementowane 2026-09-10:** zbieranie zużycia osi

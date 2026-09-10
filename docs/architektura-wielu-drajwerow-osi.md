@@ -323,12 +323,13 @@ późniejsze zależą od wcześniejszych):
 - [x] **Etap 0 — protokół i driver.** `feetech_protocol.py` +
   `feetech_driver.py`, zweryfikowane fizycznie (PING, odczyt statusu,
   ruch, kierunek CW/CCW obu serw). Zrobione 2026-09-10.
-- [ ] **Etap 1 — status.** `Machine` otwiera `FeetekDriver` przy starcie
-  (jeśli skonfigurowane osie Feetech istnieją), `_poll_loop`/`poll_status`
-  dogrywa pozycję/moment tych osi do `MachineStatus` (dziś ma tylko
-  x/y/z/torque dict — trzeba rozszerzyć o dowolne nazwy osi, nie tylko
-  trzy stałe pola). Bez ruchu, tylko odczyt — najniższe ryzyko, daje
-  natychmiastową wartość (podgląd na panelu).
+- [x] **Etap 1 — status. Zrobione 2026-09-10.** Osobna pętla
+  `_feetech_poll_loop` (nie `_poll_loop` X/Y/Z — inny budżet czasowy,
+  odczyt termios to 0,1-0,3s na oś), `MachineStatus.feetech_raw` (nowy
+  słownik `{nazwa: {position, load}}`, jednostki rejestru). Zweryfikowane
+  end-to-end na sprzęcie (`GET /api/status` z oboma serwami podłączonymi).
+  Szczegóły: `zmiany/status-osi-feetech.md`. **Panel jeszcze nie pokazuje
+  tego wizualnie** — dane są w API, ekranu brak.
 - [ ] **Etap 2 — JOG.** `POST /api/machine/jog` dla osi Feetech woła
   `FeetekDriver.move_relative_cw()` (z przeliczeniem mm→kroki przez
   `mm_per_rev` i uwzględnieniem `DIRECTION_SIGN_CW`) zamiast ścieżki

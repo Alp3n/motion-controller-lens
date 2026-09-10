@@ -70,6 +70,15 @@ def test_read_status_zwraca_wszystkie_pola():
     }
 
 
+def test_read_position_and_load_jednym_odczytem():
+    data = fp.encode_signed16(100) + fp.encode_signed16(-5) + fp.encode_signed16(-30)
+    d = _driver_with_fake([_ok_response(1, data)])
+    position, load = d.read_position_and_load(1)
+    assert position == 100
+    assert load == -30
+    assert len(d.calls) == 1  # jeden odczyt, nie trzy
+
+
 def test_write_raw_z_bledem_serwa_rzuca():
     body = bytes([1, 2, 32])  # bit 32 = przeciążenie (ERRBIT_OVERLOAD w SDK)
     packet = b"\xff\xff" + body + bytes([fp.checksum(body)])

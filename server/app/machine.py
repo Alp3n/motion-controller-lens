@@ -170,6 +170,12 @@ class MachineStatus:
     # wiarygodna). Operator powinien obejrzeć maszynę, zanim użyje JEDŹ DO
     # ZERA albo ruchu ręcznego. Gaśnie dopiero przy kolejnym bazowaniu.
     resumed_without_homing: bool = False
+    # Odczyt SUROWY (jednostki rejestru serwa, NIE mm — kalibracja mm jeszcze
+    # nie zrobiona, patrz docs/architektura-wielu-drajwerow-osi.md etap 2) dla
+    # osi ze sterownikiem "feetech" (temat L): {nazwa osi: {"position":int,
+    # "load": int}}. Puste, dopóki nie ma skonfigurowanych osi Feetech albo
+    # magistrala nie odpowiada.
+    feetech_raw: dict[str, dict] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -192,6 +198,7 @@ class MachineStatus:
             "torque": {a: round(v, 1) for a, v in self.torque.items()},
             "torque_source": self.torque_source,
             "resumed_without_homing": self.resumed_without_homing,
+            "feetech_raw": self.feetech_raw,
         }
 
 

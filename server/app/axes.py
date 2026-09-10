@@ -50,6 +50,15 @@ HOME_MODE_HARDSTOP = "hardstop"
 HOME_MODE_SOFT = "programowe"
 HOME_MODES = (HOME_MODE_HARDSTOP, HOME_MODE_SOFT)
 
+# Sterownik osi (temat L, docs/architektura-wielu-drajwerow-osi.md).
+#   teknic   — dzisiejsza ścieżka: X/Y/Z zawsze, mostek SC4-Hub. Domyślne.
+#   feetech  — serwo FEETECH SM45BL (i podobne) po RS485, `feetech_id`
+#              obowiązkowe. X/Y/Z nie mogą być "feetech" — geometria .prg
+#              jest zdefiniowana wyłącznie w mostku Teknica.
+DRIVER_TEKNIC = "teknic"
+DRIVER_FEETECH = "feetech"
+DRIVERS = (DRIVER_TEKNIC, DRIVER_FEETECH)
+
 # tolerancja porównań [mm] — chroni przed odrzuceniem limitu równego granicy
 # zakresu tylko dlatego, że 300/2 zapisało się jako 149.99999999999997
 EPS = 1e-6
@@ -100,6 +109,10 @@ class AxisConfig:
     home_torque: float = DEFAULT_HOME_TORQUE  # Homing Torque Limit [%] — zapis dla ClearView
     home_offset: float = 0.0            # Offset Move [mm] — zapis dla ClearView
 
+    # --- sterownik (temat L) ---
+    driver: str = DRIVER_TEKNIC         # teknic | feetech
+    feetech_id: int | None = None       # ID serwa na magistrali — wymagane dla "feetech"
+
     # --- zakres fizyczny (wynika z długości i punktu bazowego) -------------
 
     def physical_range(self) -> tuple[float, float]:
@@ -125,6 +138,8 @@ class AxisConfig:
             "home_mode": self.home_mode,
             "home_torque": round(self.home_torque, 3),
             "home_offset": round(self.home_offset, 4),
+            "driver": self.driver,
+            "feetech_id": self.feetech_id,
             # pola wyliczane — tylko do odczytu, dla panelu i dokumentacji
             "phys_min": round(lo, 4),
             "phys_max": round(hi, 4),
@@ -182,6 +197,18 @@ class AxisConfig:
                 if "home_offset" in data
                 else 0.0
             ),
+            # sterownik — jak wyżej, plik sprzed tematu L dostaje domyślne
+            # "teknic" zamiast błędu przy starcie
+            driver=(
+                str(data["driver"]).strip().lower()
+                if "driver" in data
+                else DRIVER_TEKNIC
+            ),
+            feetech_id=(
+                int(_num(data["feetech_id"], f"{label}: ID serwa FEETECH"))
+                if data.get("feetech_id") is not None
+                else None
+            ),
         )
         cfg.validate(axis)
         return cfg
@@ -230,6 +257,25 @@ class AxisConfig:
                 f"wychodzą poza zakres fizyczny {_mm(lo)}..{_mm(hi)} — zmień długość "
                 f"osi albo punkt bazowania"
             )
+        if self.driver not in DRIVERS:
+            raise AxisConfigError(
+                f"{label}: nieznany sterownik '{self.driver}' — dozwolone: "
+                + ", ".join(DRIVERS)
+            )
+        if self.driver == DRIVER_FEETECH:
+            if axis in REQUIRED_AXES:
+                raise AxisConfigError(
+                    f"{label}: oś X/Y/Z nie może mieć sterownika 'feetech' — "
+                    "geometria programu jest zdefiniowana w mostku Teknica"
+                )
+            if self.feetech_id is None:
+                raise AxisConfigError(
+                    f"{label}: sterownik 'feetech' wymaga podania ID serwa (feetech_id)"
+                )
+            if not (0 <= self.feetech_id <= 253):
+                raise AxisConfigError(
+                    f"{label}: ID serwa FEETECH musi być w zakresie 0-253"
+                )
 
 
 def _mm(value: float) -> str:
@@ -333,6 +379,15 @@ def work_area(axes: dict[str, AxisConfig]) -> dict:
 
 def to_dict(axes: dict[str, AxisConfig]) -> dict:
     return {name: cfg.to_dict() for name, cfg in axes.items()}
+
+
+def feetech_axes(axes: dict[str, AxisConfig]) -> dict[str, int]:
+    """{nazwa osi: ID serwa} dla osi ze sterownikiem 'feetech' (temat L)."""
+    return {
+        name: cfg.feetech_id
+        for name, cfg in axes.items()
+        if cfg.driver == DRIVER_FEETECH and cfg.feetech_id is not None
+    }
 
 
 # --- bazowanie -------------------------------------------------------------

@@ -103,6 +103,12 @@ JOG_MAX_STEP = float(os.environ.get("JOG_MAX_STEP", "10"))
 # aktywności) jako zuzycie/trend.jsonl — app/zuzycie.py
 ZUZYCIE_DIR = Path(os.environ.get("ZUZYCIE_DIR", "config/zuzycie")).resolve()
 
+# Magistrala RS485 dla serw FEETECH (temat L) — osie z driver="feetech"
+# w AXES_CONFIG. None = brak konwertera podłączonego/skonfigurowanego;
+# Machine wtedy po prostu nie czyta/rusza tymi osiami (patrz app/main.py).
+FEETECH_PORT = os.environ.get("FEETECH_PORT")
+FEETECH_BAUD = int(os.environ.get("FEETECH_BAUD", "115200"))
+
 # Token dla integracji MES (POST /api/mes/select-order) — inny kanał niż
 # role/logowanie operatora, bo wywołuje to system, nie człowiek. Bez ustawienia
 # endpoint zostaje otwarty jak dotychczas (temat E, "otwarte po tej zmianie"

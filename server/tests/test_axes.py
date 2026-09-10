@@ -75,6 +75,82 @@ def test_invalid_axis_rejected(kwargs, fragment):
     assert fragment in str(exc.value)
 
 
+# --- sterownik (temat L) ----------------------------------------------------
+
+
+def _dodatkowa_os(**overrides):
+    params = dict(
+        length=10, home=axes.HOME_PLUS, soft_min=-9, soft_max=-2, mm_per_rev=0.25
+    )
+    params.update(overrides)
+    return axes.AxisConfig(**params)
+
+
+def test_domyslny_sterownik_to_teknic():
+    cfg = _dodatkowa_os()
+    assert cfg.driver == axes.DRIVER_TEKNIC
+    assert cfg.feetech_id is None
+    cfg.validate("docisk")  # nie rzuca
+
+
+def test_os_xyz_nie_moze_byc_feetech():
+    cfg = axes.AxisConfig(
+        length=300, home=axes.HOME_CENTER, soft_min=-100, soft_max=100,
+        mm_per_rev=5, driver=axes.DRIVER_FEETECH, feetech_id=1,
+    )
+    with pytest.raises(axes.AxisConfigError, match="X/Y/Z"):
+        cfg.validate("x")
+
+
+def test_feetech_bez_id_jest_odrzucony():
+    cfg = _dodatkowa_os(driver=axes.DRIVER_FEETECH)
+    with pytest.raises(axes.AxisConfigError, match="ID serwa"):
+        cfg.validate("docisk")
+
+
+def test_feetech_id_poza_zakresem_jest_odrzucony():
+    cfg = _dodatkowa_os(driver=axes.DRIVER_FEETECH, feetech_id=300)
+    with pytest.raises(axes.AxisConfigError, match="0-253"):
+        cfg.validate("docisk")
+
+
+def test_nieznany_sterownik_jest_odrzucony():
+    cfg = _dodatkowa_os(driver="clearcore")
+    with pytest.raises(axes.AxisConfigError, match="sterownik"):
+        cfg.validate("docisk")
+
+
+def test_feetech_konfiguracja_poprawna():
+    cfg = _dodatkowa_os(driver=axes.DRIVER_FEETECH, feetech_id=1)
+    cfg.validate("docisk")  # nie rzuca
+
+
+def test_driver_i_feetech_id_przechodza_przez_to_dict_from_dict():
+    cfg = _dodatkowa_os(driver=axes.DRIVER_FEETECH, feetech_id=2)
+    restored = axes.AxisConfig.from_dict("podajnik", cfg.to_dict())
+    assert restored.driver == axes.DRIVER_FEETECH
+    assert restored.feetech_id == 2
+
+
+def test_plik_sprzed_tematu_l_dostaje_domyslny_sterownik():
+    """Plik bez pola 'driver' (sprzed tej zmiany) nie rzuca błędu."""
+    data = _dodatkowa_os().to_dict()
+    del data["driver"]
+    del data["feetech_id"]
+    cfg = axes.AxisConfig.from_dict("docisk", data)
+    assert cfg.driver == axes.DRIVER_TEKNIC
+
+
+def test_feetech_axes_zwraca_tylko_skonfigurowane():
+    cfg = {
+        "x": axes.AxisConfig(length=300, home=axes.HOME_CENTER, soft_min=-100, soft_max=100, mm_per_rev=5),
+        "docisk": _dodatkowa_os(driver=axes.DRIVER_FEETECH, feetech_id=1),
+        "podajnik": _dodatkowa_os(driver=axes.DRIVER_FEETECH, feetech_id=2),
+        "inna": _dodatkowa_os(),  # teknic, pomijana
+    }
+    assert axes.feetech_axes(cfg) == {"docisk": 1, "podajnik": 2}
+
+
 def test_defaults_keep_work_area_from_env():
     area = {
         "x_min": -100, "x_max": 100,

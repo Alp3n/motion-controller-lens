@@ -235,8 +235,11 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   alarmów (temat M, krok 1-2). Pełna analiza: `analiza-zuzycia-osi.md`.
 - [zmiany/protokol-feetech.md](zmiany/protokol-feetech.md) — warstwa
   niska protokołu natywnego serw FEETECH (PING/READ/WRITE, nie Modbus
-  RTU), pierwszy krok pod przyszły `FeetekDriver` (temat L), jeszcze
-  niezintegrowana z `Machine`. Pełna analiza:
-  `architektura-wielu-drajwerow-osi.md`.
+  RTU) + `FeetekDriver`, zmierzony fizycznie kierunek CW/CCW obu serw
+  (temat L). Pełna analiza: `architektura-wielu-drajwerow-osi.md`.
+- [zmiany/status-osi-feetech.md](zmiany/status-osi-feetech.md) — etap 1
+  integracji `FeetekDriver` z `Machine`: pozycja/obciążenie osi `docik`/
+  `podajnik` w `GET /api/status` (jednostki rejestru, nie mm), osobna
+  pętla odpytująca niezależna od X/Y/Z. Zweryfikowane na sprzęcie.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.
