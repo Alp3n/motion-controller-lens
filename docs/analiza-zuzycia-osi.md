@@ -152,9 +152,13 @@ faktycznie poszedł).
 3. ~~Ekran z samym podglądem (bez alarmów/powiadomień)~~ —
    **zaimplementowany 2026-09-10**, ekran `/zuzycie`,
    `zmiany/ekran-zuzycia-osi.md`. Dziś tylko X/Y/Z.
-4. **Następny krok:** definicje alarmów (wzorem `/smart`) — sprawdzane po każdym przebiegu,
-   w tym samym miejscu co zapis danych.
-5. Udostępnienie alarmów systemowi MES do odczytu (prawdopodobnie nowy
-   endpoint `GET /api/zuzycie/alarmy`, wMES sam wysyła e-mail/FAP) —
-   ostatni krok, bo najmniej pilny przy dzisiejszej decyzji o podziale
+4. ~~Definicje alarmów (wzorem `/smart`)~~ — **zaimplementowane
+   2026-09-10**, `app/zuzycie_alarmy.py`, CRUD na ekranie `/zuzycie`
+   (`zmiany/ekran-zuzycia-osi.md`). Ocena po każdym przebiegu, w tym samym
+   miejscu co zapis danych. Stan tylko w pamięci procesu — nietrwały.
+5. **Następny krok:** udostępnienie alarmów systemowi MES do odczytu
+   (endpoint `GET /api/zuzycie/alarmy` już istnieje i zwraca definicje —
+   do ustalenia, czy to wystarczy wMES, czy potrzebny osobny format/trwałość
+   stanu; wMES sam wysyła e-mail/FAP) — ostatni krok, bo najmniej pilny
+   przy dzisiejszej decyzji o podziale
    odpowiedzialności.

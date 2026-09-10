@@ -357,15 +357,22 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       `analiza-zuzycia-osi.md`.
 - [x] **Krok 3 zaimplementowany 2026-09-10:** ekran `/zuzycie` — tabela
       „dzisiaj" per oś (przebiegi, dystans, moment śr./maks.) i wykresy
-      trendu (słupkowe, jeden per oś, małe wielokrotności). Sam podgląd,
-      bez alarmów. **Dziś tylko X/Y/Z** — osie FEETECH jeszcze nie
-      wliczane do zużycia (osobna praca, przecięcie tematów L i M).
-      Zweryfikowane end-to-end (izolowany katalog danych), zrestartowana
-      usługa produkcyjna. Szczegóły: `zmiany/ekran-zuzycia-osi.md`.
-- [ ] **Zostaje:** definicje alarmów wzorem `/smart` (krok 4), endpoint do
-      odczytu przez wMES (krok 5, np. `GET /api/zuzycie/alarmy`) —
-      dokładny kształt do ustalenia. Ewentualnie: rozszerzenie zbierania
-      zużycia o osie FEETECH (nieustalone, nie w pierwotnym planie kroków).
+      trendu (słupkowe, jeden per oś, małe wielokrotności). **Dziś tylko
+      X/Y/Z** — osie FEETECH jeszcze nie wliczane do zużycia (osobna
+      praca, przecięcie tematów L i M). Szczegóły: `zmiany/ekran-zuzycia-osi.md`.
+- [x] **Krok 4 zaimplementowany 2026-09-10:** definicje alarmów zużycia
+      wzorem `/smart` (`app/zuzycie_alarmy.py`, `GET/PUT
+      /api/zuzycie/alarmy`, CRUD na ekranie `/zuzycie` — podniesionym do
+      `require_admin` z tego powodu) — oś + metryka (dystans/moment maks.)
+      + okres (dzień/tydzień) + próg. Ocena po każdym zakończonym
+      przebiegu (ten sam punkt co zapis danych), stan tylko w pamięci
+      procesu (nietrwały). **Bez wysyłki powiadomień** — to robi wMES.
+      Zweryfikowane end-to-end na produkcji (zapis/odczyt/sprzątanie przez
+      `curl`), 23 nowe testy. Szczegóły: `zmiany/ekran-zuzycia-osi.md`.
+- [ ] **Zostaje:** krok 5 — sposób, w jaki wMES odczyta stan alarmów
+      (dokładny kształt nieustalony; dziś widoczny tylko na ekranie, nie
+      trwały). Ewentualnie: rozszerzenie zbierania zużycia o osie FEETECH
+      (nieustalone, nie w pierwotnym planie kroków).
 
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`

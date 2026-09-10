@@ -103,6 +103,11 @@ JOG_MAX_STEP = float(os.environ.get("JOG_MAX_STEP", "10"))
 # aktywności) jako zuzycie/trend.jsonl — app/zuzycie.py
 ZUZYCIE_DIR = Path(os.environ.get("ZUZYCIE_DIR", "config/zuzycie")).resolve()
 
+# plik definicji alarmów zużycia (temat M, krok 4) — oś+metryka+okres+próg
+ZUZYCIE_ALARMY_FILE = Path(
+    os.environ.get("ZUZYCIE_ALARMY_CONFIG", "config/zuzycie_alarmy.json")
+).resolve()
+
 # Magistrala RS485 dla serw FEETECH (temat L) — osie z driver="feetech"
 # w AXES_CONFIG. None = brak konwertera podłączonego/skonfigurowanego;
 # Machine wtedy po prostu nie czyta/rusza tymi osiami (patrz app/main.py).

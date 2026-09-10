@@ -53,6 +53,67 @@ temat L).</p>
         trendu dopiero następnego dnia).
       </p>
     </section>
+
+    <section class="panel">
+      <h2>Alarmy zużycia</h2>
+      <p class="muted" style="margin-top:-6px">
+        Krok 4 — sama definicja i ocena progów. Wysyłkę powiadomień
+        (e-mail, zgłoszenie do modułu FAP systemu MES) robi <b>wMES</b>,
+        nie ten serwer (decyzja 2026-09-10) — sposób, w jaki wMES odczyta
+        te alarmy, to osobny, jeszcze nieustalony krok. Ocena liczy się po
+        każdym zakończonym przebiegu, nie na żywo.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Nazwa</th><th>Oś</th><th>Metryka</th><th>Okres</th><th>Próg</th><th>Wartość</th><th>Stan</th></tr>
+        </thead>
+        <tbody id="alarmy-status-tabela"></tbody>
+      </table>
+      <p class="muted" id="alarmy-status-puste" style="display:none; margin-top:10px">
+        Brak zdefiniowanych alarmów.
+      </p>
+
+      <h3 style="margin-top:20px">Definicje</h3>
+      <table>
+        <thead>
+          <tr><th>Nazwa</th><th>Oś</th><th>Metryka</th><th>Okres</th><th>Próg</th><th>Aktywny</th><th>Uwagi</th><th></th></tr>
+        </thead>
+        <tbody id="alarmy-def-tabela"></tbody>
+      </table>
+
+      <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-top:14px">
+        <div class="field">
+          <label>Nazwa</label>
+          <input id="def-name" placeholder="np. X-zuzycie-tygodniowe">
+        </div>
+        <div class="field">
+          <label>Oś</label>
+          <select id="def-os">
+            <option value="x">X</option>
+            <option value="y">Y</option>
+            <option value="z">Z</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Metryka</label>
+          <select id="def-metryka"></select>
+        </div>
+        <div class="field">
+          <label>Okres</label>
+          <select id="def-okres"></select>
+        </div>
+        <div class="field">
+          <label>Próg</label>
+          <input id="def-prog" type="number" step="0.1" min="0.01">
+        </div>
+        <div class="field">
+          <label>Uwagi</label>
+          <input id="def-note" placeholder="opcjonalnie">
+        </div>
+        <button class="small" id="btn-dodaj-alarm">+ Dodaj alarm</button>
+      </div>
+      <p id="alarmy-msg" class="msg"></p>
+    </section>
   </main>
 
   <script src="/static/zuzycie.js"></script>

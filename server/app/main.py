@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import audit, axes, config, cycle, kalibracja, outputs, profiles, punkty, smart, spindle, users, zuzycie
+from . import audit, axes, config, cycle, kalibracja, outputs, profiles, punkty, smart, spindle, users, zuzycie, zuzycie_alarmy
 from .feetech_driver import FeetekDriver, FeetekError
 from .machine import (
     MachineError,
@@ -84,6 +84,12 @@ machine.apply_profiles(profiles_cfg, active_profile)
 # odwołują się do definicji po nazwie.
 smart_cfg = smart.load(config.SMART_FILE)
 machine.apply_smart(smart_cfg)
+
+# Definicje alarmów zużycia (temat M, krok 4) — dane pomocnicze, nie
+# parametr bezpieczeństwa: błędny/brakujący plik nie przerywa startu
+# (powód w app/zuzycie_alarmy.py; alarmy same w sobie nie sterują maszyną).
+zuzycie_alarmy_cfg = zuzycie_alarmy.load(config.ZUZYCIE_ALARMY_FILE)
+_zuzycie_alarm_status: list[zuzycie_alarmy.AlarmStatus] = []
 
 # Kalibracja moment -> siła (etap 2 tematu K) — pary (moment %, siła N)
 # wpisane po pomiarze siłomierzem. Dane pomocnicze do dobierania progów,
@@ -222,7 +228,7 @@ _zuzycie_was_running = False
 
 
 async def _poll_loop() -> None:
-    global _zuzycie_was_running
+    global _zuzycie_was_running, _zuzycie_alarm_status
     while True:
         with contextlib.suppress(MachineError):
             await machine.poll_status()
@@ -244,6 +250,15 @@ async def _poll_loop() -> None:
                     config.ZUZYCIE_DIR,
                     machine.recording,
                     torque_measured=machine.status.torque_source == "sterownik",
+                )
+                # Ocena alarmów zużycia (temat M, krok 4) — tu samo, w tym
+                # samym miejscu co zapis danych, zgodnie z "po cyklu, na
+                # spokojnie". Tylko OCENA; wysyłkę powiadomień robi wMES
+                # (krok 5, nieustalone).
+                _zuzycie_alarm_status = zuzycie_alarmy.evaluate(
+                    zuzycie_alarmy_cfg,
+                    zuzycie.summarize_today(config.ZUZYCIE_DIR),
+                    zuzycie.read_trend(config.ZUZYCIE_DIR),
                 )
             except Exception:
                 pass
@@ -418,6 +433,14 @@ class SmartRequest(BaseModel):
 
     definitions: dict[str, dict] = Field(
         ..., description="nazwa definicji -> {procedure, params, note}"
+    )
+
+
+class ZuzycieAlarmyRequest(BaseModel):
+    """Definicje alarmów zużycia z ekranu /zuzycie (temat M, krok 4)."""
+
+    alarmy: dict[str, dict] = Field(
+        ..., description="nazwa alarmu -> {os, metryka, okres, prog, aktywny, note}"
     )
 
 
@@ -1262,21 +1285,53 @@ async def sim_safety_enable(req: SimEnableRequest, user=Depends(require_operator
     return {"ok": True, "safety_enable": req.enabled}
 
 
-# --- zużycie osi (temat M, krok 3 — sam podgląd, bez alarmów) ------------
+# --- zużycie osi (temat M, krok 3-4) --------------------------------------
 
 
 @app.get("/api/zuzycie")
 async def get_zuzycie(user=Depends(require_technolog)):
-    """Podsumowanie bieżącej doby (na żywo) + trwały trend (temat M).
+    """Podsumowanie bieżącej doby (na żywo) + trwały trend + stan alarmów
+    zużycia (temat M). Jednostki: dystans w mm (suma), moment w % maksimum
+    (średnia/maksimum z przebiegów danego dnia).
 
-    Tylko odczyt — bez alarmów/powiadomień, to świadomie osobny krok
-    (docs/analiza-zuzycia-osi.md). Jednostki: dystans w mm (suma), moment
-    w % maksimum (średnia/maksimum z przebiegów danego dnia).
+    Alarmy: ocena z ostatniego zakończonego przebiegu (`_poll_loop`,
+    zaraz po `zuzycie.record_run()`) — NIE liczona na żywo przy każdym
+    zapytaniu, z tego samego powodu co zapis danych („po cyklu, na
+    spokojnie"). Wysyłkę powiadomień (e-mail, MES/FAP) robi wMES, nie ten
+    serwer — krok 5, nieustalone jeszcze, jak wMES ma to odczytać.
     """
     return {
         "dzisiaj": zuzycie.summarize_today(config.ZUZYCIE_DIR),
         "trend": zuzycie.read_trend(config.ZUZYCIE_DIR),
+        "alarmy": [s.to_dict() for s in _zuzycie_alarm_status],
     }
+
+
+@app.get("/api/zuzycie/alarmy")
+async def get_zuzycie_alarmy(user=Depends(require_technolog)):
+    """Definicje alarmów zużycia (krok 4) — CRUD wzorem `/api/smart`."""
+    return {
+        "alarmy": zuzycie_alarmy.to_dict(zuzycie_alarmy_cfg),
+        "metryki": list(zuzycie_alarmy.METRYKI),
+        "okresy": list(zuzycie_alarmy.OKRESY),
+        "file": str(config.ZUZYCIE_ALARMY_FILE),
+    }
+
+
+@app.put("/api/zuzycie/alarmy")
+async def put_zuzycie_alarmy(req: ZuzycieAlarmyRequest, user=Depends(require_admin)):
+    global zuzycie_alarmy_cfg
+    try:
+        new_defs = zuzycie_alarmy.parse_definitions({"alarmy": req.alarmy})
+    except zuzycie_alarmy.AlarmError as exc:
+        raise HTTPException(422, str(exc))
+    try:
+        zuzycie_alarmy.save(config.ZUZYCIE_ALARMY_FILE, new_defs)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.ZUZYCIE_ALARMY_FILE}: {exc}")
+    zuzycie_alarmy_cfg = new_defs
+    _log(user, "zapis definicji alarmów zużycia", ", ".join(sorted(new_defs)))
+    return {"ok": True, "alarmy": zuzycie_alarmy.to_dict(new_defs)}
 
 
 # --- ekran diagnostyczny (admin, temat G) --------------------------------
@@ -1415,7 +1470,10 @@ async def nauczanie_page(request: Request):
 
 @app.get("/zuzycie", include_in_schema=False)
 async def zuzycie_page(request: Request):
-    return _page(request, "zuzycie.html", users.ROLE_TECHNOLOG)
+    # ROLE_ADMIN, nie TECHNOLOG jak w kroku 3 — strona ma teraz też CRUD
+    # definicji alarmów (krok 4), a PUT /api/zuzycie/alarmy wymaga admina;
+    # spójne z /smart (ta sama różnica: podgląd niżej, edycja wyżej).
+    return _page(request, "zuzycie.html", users.ROLE_ADMIN)
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
