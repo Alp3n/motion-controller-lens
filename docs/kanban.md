@@ -274,18 +274,24 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
 ### L. Architektura wielu sterowników (drajwerów) osi
 - [ ] **Propozycja spisana 2026-09-09** (nie zdecydowane, nie kodowane):
       driver per oś zamiast jednej klasy `Machine` na cały sprzęt, pod
-      planowaną oś 4 (FEETECH SM45BL, Modbus RTU) i moduł ClearCore
-      (kroki + I/O). Cztery pytania do ustalenia przed kodowaniem, w tym
-      czy oś 4 jest pełnoprawna w cyklu/programie czy pomocnicza.
-      Ustalone przy okazji: ClearCore to firmware do napisania od zera
-      (Microchip Studio/Windows), nie gotowe SDK — drugi projekt w stylu
-      `bridge/`. Materiały do SM45BL (mapa rejestrów Modbus, Python SDK)
-      jeszcze nie dostarczone — `doc.feetech.cn` niedostępny z sesji
-      Claude, GitHub/Gitee producenta pokrywają inny protokół (bus servo
-      SMS/STS, nie Modbus RTU). Konwertery na jutrzejszy test łączności
-      ustalone (USB→RS485 z izolacją), narzędzie gotowe:
-      `tools/test_modbus_servo.py`. Szczegóły:
-      `architektura-wielu-drajwerow-osi.md`.
+      planowaną oś 4 (FEETECH SM45BL) i moduł ClearCore (kroki + I/O).
+      Cztery pytania do ustalenia przed kodowaniem, w tym czy oś 4 jest
+      pełnoprawna w cyklu/programie czy pomocnicza. Ustalone przy okazji:
+      ClearCore to firmware do napisania od zera (Microchip Studio/
+      Windows), nie gotowe SDK — drugi projekt w stylu `bridge/`.
+- [x] **Materiały SM45BL dostarczone i przeanalizowane 2026-09-10** —
+      **protokół OSTATECZNIE ustalony: to NIE Modbus RTU** (wcześniejsze
+      dwa założenia, „gołe PWM" i „Modbus RTU", obie mylne) — SM45BL
+      (seria SMBL) używa **tego samego protokołu co SMS/STS** (ramka jak
+      Dynamixel Protocol 1.0), potwierdzone wprost w oficjalnym tutorialu
+      producenta i w kodzie `FTServo_Python`. Odczyt pozycji/prędkości/
+      **obciążenia**/napięcia/prądu/temperatury potwierdzony konkretnymi
+      adresami rejestrów — oś nie jest „głucha". Narzędzie testowe
+      poprawione pod właściwy protokół: `tools/test_feetech_servo.py`
+      (nowe, główne), `tools/test_modbus_servo.py` zostaje jako zapasowe.
+      Szczegóły: `architektura-wielu-drajwerow-osi.md`.
+- [ ] Test łączności fizycznej na sprzęcie — zaplanowany, jeszcze nie
+      wykonany.
 
 ### M. Analiza zużycia osi/narzędzia i powiadomienia o incydentach
 - [x] **Krok 1-2 zaimplementowane 2026-09-10:** zbieranie zużycia osi

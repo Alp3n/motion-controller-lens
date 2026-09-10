@@ -46,17 +46,50 @@ To nie jest tylko kwestia różnych protokołów transportowych — to różne
 - **ClearPath-SC (dziś, X/Y/Z):** serwo z enkoderem, zamknięta pętla,
   odczyt momentu (`TrqMeasured`), limit momentu jako twardy sufit,
   faulty/alarmy zgłaszane przez sterownik.
-- **Feetech SM45BL (skorygowane 2026-09-09 — konkretny model podany przez
-  użytkownika):** to **nie** jest hobbystyczne serwo RC sterowane gołym
-  sygnałem PWM, jak pierwotnie założyłem niżej w tym dokumencie na
-  podstawie samego słowa „PWM" w pierwszym zgłoszeniu — to przemysłowy
-  serwonapęd **brushless z komunikacją Modbus RTU** (RS485, rejestry).
-  Modbus RTU zwykle daje hostowi odczyt pozycji i często prądu/momentu z
-  powrotem przez rejestry — więc ta oś prawdopodobnie **nie** jest głucha
-  jak zakładałem. **Nadal do potwierdzenia u źródła** (dopiero instrukcja/
-  mapa rejestrów SM45BL rozstrzygnie, jakie dane faktycznie wraca i w jakim
-  trybie pracy — pozycja/prędkość/moment), patrz materiały do przygotowania
-  niżej.
+- **Feetech SM45BL (ROZSTRZYGNIĘTE OSTATECZNIE 2026-09-10, z oficjalnych
+  materiałów producenta w `zbyszek/`):** ani pierwsze założenie („gołe
+  PWM"), ani drugie („Modbus RTU") nie było trafne. Cytat wprost z
+  `zbyszek/SM45BL start tutorial201015_3.pdf` (str. 7, tabela serii): SM45BL
+  należy do **serii SMBL** (brushless, RS485), a „The communication
+  protocols of the three series [SCS/STS/SMBL] are identical and
+  interworking" — to znaczy **ten sam protokół pakietowy co SMS/STS**
+  (ramka w stylu Dynamixel Protocol 1.0: `FF FF <ID> <DŁUGOŚĆ> <INSTRUKCJA>
+  [parametry] <SUMA_KONTROLNA>`), **nie standardowy Modbus RTU** — mimo że
+  tak było opisane w ogłoszeniu sprzedażowym. Potwierdzone w kodzie
+  źródłowym `zbyszek/FTServo_Python-main.zip`
+  (`scservo_sdk/protocol_packet_handler.py`, `scservo_sdk/scservo_def.py`).
+  **To odwraca wcześniejszy wniosek** (niżej w tym dokumencie), że
+  GitHub/Gitee producenta „nie pokrywają" SM45BL — pokrywają, bo to ten sam
+  protokół co SMS/STS, tylko inna etykieta na pudełku.
+
+  **Oś NIE jest głucha — realny odczyt potwierdzony adresami rejestrów**
+  (`scservo_sdk/sms_sts.py`): `PRESENT_POSITION` (56-57),
+  `PRESENT_SPEED` (58-59), **`PRESENT_LOAD`** (60-61 — bezpośredni
+  odpowiednik naszego `TrqMeasured`/`torque_pct`), `PRESENT_VOLTAGE` (62),
+  `PRESENT_TEMPERATURE` (63), `PRESENT_CURRENT` (69-70), `TORQUE_ENABLE`
+  (40), `GOAL_POSITION` (42-43), `MODE` (33). Karta katalogowa
+  (`zbyszek/Feetech karta katalogowa SM45BL 001.pdf`) potwierdza to samo
+  wprost pod „Feedback": Load/Position/Speed/Input Voltage/Current/
+  Temperature. **Uwaga o kolejności bajtów** (tutorial, pyt. 11): „SCS
+  series high byte first, SMS low byte first" — SM45BL (seria SM) więc
+  **low byte first**, inaczej niż SCS.
+
+  Domyślny baudrate serii SM: **115200** (karta katalogowa i tutorial FAQ
+  zgodnie). Zasilanie serwa **osobne od RS485**, 9-24V. Narzędzie
+  producenta do debugowania/konfiguracji: oprogramowanie „FD" / „Servo
+  Debugging Assistant" (Windows) + dongle USB SCPC-3 (CH340E) —
+  `zbyszek/Instrukcja obsługi serwa z PC- FE-SCPC-C003.docx`; Waveshare
+  USB-RS485, które ma użytkownik, powinien działać z tym softem tak samo
+  jak SCPC-3 (obu chodzi tylko o port COM z właściwym baudrate'em).
+
+  **Plik `zbyszek/Tabela pamięci protokół serw SM45BL_001.xlsx`** — mimo
+  że pierwszy arkusz nazywa się po chińsku „磁编码SMS&STS-内存表解析"
+  (analiza tabeli pamięci magnetycznego kodowania SMS&STS), **to
+  prawdopodobnie właściwy, aktualny plik** (data w nazwie 220328 = nowszy
+  niż tabela z 2017 wymieniona w tutorialu dla SM30BL/SM40BL) — zgodne z
+  ustaleniem wyżej, że SMBL dzieli protokół/tabelę pamięci z SMS/STS. Nie
+  przeanalizowano jeszcze wiersz po wierszu (do zrobienia jako następny
+  krok, zamiast dalszego zgadywania nowych plików).
 - **ClearCore (kroki + I/O):** silniki krokowe to zwykle sterowanie w
   pętli otwartej **bez enkodera** (chyba że dokupiony osobno) — brak
   informacji zwrotnej o rzeczywistej pozycji, zgubienie kroków pod
@@ -93,8 +126,16 @@ fałszywie zielonych pól.
 
 ## Materiały do przygotowania (FEETECH SM45BL) — `zbyszek/`
 
-Wzorem tego, co już tam jest dla Teknica (instrukcja użytkownika, referencja
-SDK, przykłady kodu — patrz listing katalogu), pod SM45BL przydałoby się:
+**Dostarczone przez użytkownika 2026-09-10** (przez upload na GitHub, nie
+`doc.feetech.cn` — ta strona zostaje niedostępna z tej sesji): karta
+katalogowa SM45BL, tabela pamięci (xlsx), tutorial startowy, instrukcja
+oprogramowania PC (SCPC-3/FD), `FTServo_Linux-main.zip` i
+`FTServo_Python-main.zip`, oraz sterownik FTDI `libftd2xx-linux-x86_64-
+1.4.33.tgz` (sugeruje, że konwerter USB-RS485 może być oparty na chipie
+FTDI — do potwierdzenia, standardowy sterownik jądra `ftdi_sio` zwykle
+też wystarcza bez tego pakietu). Punkty 1-4 poniżej w praktyce
+zaspokojone, zostawiam oryginalną listę jako zapis, czego szukaliśmy i
+dlaczego. Analiza materiałów: sekcja „Największy kompromis" wyżej.
 
 1. **Instrukcja/karta katalogowa SM45BL** (specyfikacja mechaniczna i
    elektryczna: napięcie zasilania, prąd znamionowy/szczytowy, moment,
@@ -191,20 +232,23 @@ Linux/Python, nie embedded), pozostałe rodziny serw (HLS/SMS/STS/SCS/FU/
 SHC) i pozostałe protokoły (UAVCAN/CAN2.0A/CANopen) — dotyczą innych
 modeli niż SM45BL.
 
-**Sprawdzone 2026-09-09, wniosek: GitHub/Gitee producenta NIE pokrywają
-Modbus RTU / SM45BL.** Organizacja `github.com/ftservo` (główna strona
-sprawdzona na prośbę użytkownika) ma cztery repozytoria —
-`FTServo_Arduino`, `FTServo_Python`, `FTServo_Linux`, `FTServo_stm32HAL` —
-wszystkie dla tej samej rodziny **protokołu magistralowego „bus servo"**
-(katalogi `sms_sts`/`scservo_sdk`/`scscl`/`hls` w `FTServo_Python`), czyli
-serie SMS/STS/SCS/HLS z menu strony dokumentacji, **nie** Modbus RTU. Ani
-`gitee.com/ftservo/FTServo_Linux` (sprawdzone wcześniej), ani żadne z tych
-czterech repo nie wspominają SM45BL ani Modbus RTU. **Wniosek: kod/SDK dla
-SM45BL trzeba wziąć wyłącznie z `doc.feetech.cn`** (sekcja „Serwomechanizmy
-serii MODBUS-RTU" / „Protokół MODBUS-RTU" / „Pobierz Python SDK" —
-prawdopodobnie osobny pakiet SDK niż `FTServo_Python`, mimo podobnej
-nazwy) — dalsze zgadywanie repozytoriów na GitHubie/Gitee nie ma sensu,
-strona producenta to jedyne potwierdzone źródło.
+**Sprawdzone 2026-09-09, WNIOSEK ODWRÓCONY 2026-09-10 po materiałach od
+producenta (patrz sekcja „Największy kompromis" wyżej).** Pierwotnie
+uznałem: GitHub/Gitee (`github.com/ftservo`: `FTServo_Arduino/_Python/
+_Linux/_stm32HAL`, oraz `gitee.com/ftservo/FTServo_Linux`) pokrywają tylko
+protokół „bus servo" (katalogi `sms_sts`/`scservo_sdk`/`scscl`/`hls`), czyli
+serie SMS/STS/SCS/HLS — **nie** Modbus RTU, więc niby nieprzydatne dla
+SM45BL. **To była pomyłka wynikająca z zaufania etykiecie „Modbus RTU" z
+ogłoszenia sprzedażowego, nie ze sprawdzenia u źródła.** Oficjalna
+dokumentacja Feetecha (dostarczona przez użytkownika 2026-09-10,
+`zbyszek/SM45BL start tutorial201015_3.pdf`) mówi wprost, że SM45BL (seria
+SMBL) używa **tego samego protokołu co SMS/STS** — więc `FTServo_Python`/
+`FTServo_Linux` **są jednak właściwym SDK**, tylko trzeba użyć modułu
+`scservo_sdk`/`sms_sts` z innym baudrate'em (115200 zamiast 1000000 dla
+STS). `doc.feetech.cn` (dalej niedostępny z tej sesji) nie jest już
+jedynym źródłem — mamy już wystarczająco materiału w `zbyszek/`, żeby
+zacząć pisać `FeetekDriver` opierając się na źródłach SDK, bez czekania na
+tę stronę.
 
 ## Sprawdzone 2026-09-09: ClearCore to osobny mikrokontroler, nie SDK do podłączenia
 
@@ -234,25 +278,29 @@ stronie Pythona nad istniejącym protokołem producenta; `ClearCoreDriver`
 to dodatkowo praca firmware'owa od zera, zanim jakikolwiek driver Pythona
 będzie miał z czym rozmawiać.
 
-## Narzędzie do testu jutro: `tools/test_modbus_servo.py`
+## Narzędzia do testu łączności: `tools/test_feetech_servo.py` (główne) + `tools/test_modbus_servo.py` (zapasowe)
 
-Użytkownik znalazł jeszcze jeden konwerter tej samej firmy: **USB→RS485
-z izolacją** (symbol do ustalenia jutro) — to zamyka pytanie o
-podłączenie fizyczne, prościej niż łańcuch TTL/RS232 rozważany wyżej.
+Użytkownik ma konwerter **USB→RS485 z izolacją** (Waveshare, symbol do
+ustalenia) — zamyka pytanie o podłączenie fizyczne.
 
-Napisane narzędzie (bez zewnętrznych bibliotek, jak reszta `tools/` —
-sam port szeregowy przez `termios`, sam Modbus RTU: funkcja 0x03 + CRC16)
-do sprawdzenia samej łączności, zanim mamy mapę rejestrów SM45BL:
-skanuje `/dev/ttyUSB*`, typowe baudrate'y Modbus (9600-115200) i adres
-węzła 1 (domyślny dla wielu serw — **do potwierdzenia** w dokumentacji
-SM45BL, nie pewnik), wysyła „Read Holding Registers" na rejestr 0 i
-pokazuje surową odpowiedź (albo jej brak) dla każdej kombinacji.
-Użycie: `tools/test_modbus_servo.py --help`.
+**`tools/test_feetech_servo.py` (dodane 2026-09-10, po ustaleniu prawdziwego
+protokołu — patrz sekcja „Największy kompromis" wyżej):** wysyła PING w
+natywnym protokole SCS/SMS (ramka `FF FF <ID> <DŁ> 0x01 <suma kontrolna>`),
+nie Modbus. Skanuje `/dev/ttyUSB*`, baudrate'y 115200 i 1000000 (domyślny
+serii SM to 115200), ID serwa 1. To jest teraz **właściwe pierwsze
+narzędzie do jutrzejszego testu** — protokół potwierdzony u źródła, nie
+zgadywany.
 
-**To NIE jest właściwy sterownik osi** — nie zna rzeczywistych rejestrów
-SM45BL (bo ich jeszcze nie mamy), tylko potwierdza, że coś w ogóle
-odpowiada na danym porcie/baudrate. Właściwy `FeetekModbusDriver`
-(sekcja „Co proponuję" niżej) powstanie dopiero po mapie rejestrów.
+**`tools/test_modbus_servo.py` (starsze, z 2026-09-09, zanim ustalono
+prawdziwy protokół):** prawdziwy Modbus RTU (funkcja 0x03 + CRC16) — zostaje
+jako **zapasowe** podejście, na wypadek gdyby ten konkretny egzemplarz
+serwa jednak miał przełączalny tryb Modbus (nieprawdopodobne wg
+dokumentacji, ale tanie do sprawdzenia, skoro narzędzie już istnieje).
+
+Żadne z nich nie jest jeszcze właściwym sterownikiem osi — to tylko test
+łączności. Właściwy `FeetekDriver` (sekcja „Co proponuję" niżej) powstanie
+po analizie `scservo_sdk` z `zbyszek/FTServo_Python-main.zip` (adresy
+rejestrów już znane, patrz wyżej) i próbie PING na sprzęcie.
 
 ## Co proponuję jako pierwszy krok
 

@@ -375,11 +375,11 @@ Pomiary i testy:
 ## L. Architektura wielu sterowników (drajwerów) osi
 
 Nowy temat (2026-09-09): planowana oś 4 na serwie **FEETECH SM45BL**
-(przemysłowe, brushless, **Modbus RTU**) oraz w dalszej perspektywie moduł
-**Teknic ClearCore** do silników krokowych i I/O. Dziś cała maszyna to
-jedna klasa `Machine` obsługująca wszystkie osie jednym protokołem —
-osie dodatkowe w ogóle się nie ruszają (tylko zapis w konfiguracji, patrz
-temat C). Pełna analiza i propozycja: `architektura-wielu-drajwerow-osi.md`.
+oraz w dalszej perspektywie moduł **Teknic ClearCore** do silników
+krokowych i I/O. Dziś cała maszyna to jedna klasa `Machine` obsługująca
+wszystkie osie jednym protokołem — osie dodatkowe w ogóle się nie ruszają
+(tylko zapis w konfiguracji, patrz temat C). Pełna analiza i propozycja:
+`architektura-wielu-drajwerow-osi.md`.
 
 - [ ] **Propozycja, nie zdecydowane:** driver per oś (X/Y/Z zostają na
       dzisiejszym Teknicu, nowe osie dostają własne implementacje
@@ -389,14 +389,19 @@ temat C). Pełna analiza i propozycja: `architektura-wielu-drajwerow-osi.md`.
 - [x] Sprawdzone: ClearCore to nie SDK do podłączenia, tylko firmware do
       napisania od zera (Microchip Studio, Windows) + protokół host↔płytka
       do zaprojektowania — drugi projekt w stylu `bridge/`.
-- [ ] Materiały do SM45BL (mapa rejestrów Modbus RTU, Python SDK) — jeszcze
-      niedostarczone. `doc.feetech.cn` niedostępny z sesji Claude
-      (zablokowany dostęp sieciowy); GitHub/Gitee producenta sprawdzone i
-      pokrywają inny protokół (bus servo SMS/STS), nie Modbus RTU.
+- [x] **Materiały SM45BL dostarczone i przeanalizowane 2026-09-10 —
+      protokół ostatecznie ustalony.** Dwa wcześniejsze założenia („gołe
+      PWM", potem „Modbus RTU") były mylne — SM45BL (seria SMBL) używa
+      **tego samego protokołu co SMS/STS** (potwierdzone w oficjalnym
+      tutorialu producenta i w kodzie `FTServo_Python`), z realnym
+      odczytem pozycji/prędkości/obciążenia/napięcia/prądu/temperatury
+      pod znanymi adresami rejestrów. `FTServo_Python`/`FTServo_Linux`,
+      wcześniej odrzucone jako „zła rodzina protokołu", są jednak
+      właściwym punktem startu dla `FeetekDriver`.
 - [ ] Test łączności fizycznej — zaplanowany, konwerter USB→RS485 z
-      izolacją ustalony jako właściwy sprzęt, narzędzie gotowe:
-      `tools/test_modbus_servo.py` (skanuje porty/baudrate'y/adres węzła,
-      bez znajomości mapy rejestrów — tylko potwierdza łączność).
+      izolacją ustalony jako właściwy sprzęt, narzędzie poprawione pod
+      właściwy protokół: `tools/test_feetech_servo.py` (główne),
+      `tools/test_modbus_servo.py` zostaje jako zapasowe.
 
 ## M. Analiza zużycia osi/narzędzia i powiadomienia o incydentach
 
