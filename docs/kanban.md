@@ -333,7 +333,7 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       jedną sprzeczną, odrzuconą próbę po drodze (do potwierdzenia
       ponownie przy integracji) — szczegóły: `zmiany/protokol-feetech.md`.
 - [x] **Etap 1 integracji (status) zrobiony 2026-09-10** — `Machine`
-      odpytuje `docik`/`podajnik` (`config/axes.json`: `driver: feetech`,
+      odpytuje `docisk`/`podajnik` (`config/axes.json`: `driver: feetech`,
       `feetech_id`), `GET /api/status` zwraca pozycję/obciążenie (jednostki
       rejestru, nie mm — kalibracja to etap 2). Osobna pętla, niezależna od
       X/Y/Z, zweryfikowana end-to-end na sprzęcie. Panel jeszcze nie

@@ -262,9 +262,9 @@ def _read_feetech_status(feetech_ids: dict[str, int]) -> dict[str, dict]:
         for axis_name, servo_id in feetech_ids.items():
             try:
                 position, load = driver.read_position_and_load(servo_id)
-                result[axis_name] = {"position": position, "load": load}
+                result[axis_name] = {"position": position, "load": load, "id": servo_id}
             except FeetekError as exc:
-                result[axis_name] = {"error": str(exc)}
+                result[axis_name] = {"error": str(exc), "id": servo_id}
     return result
 
 

@@ -47,7 +47,11 @@ function renderFeetech(feetechRaw) {
     const div = document.createElement("div");
     div.className = "axis";
     const label = document.createElement("span");
-    label.textContent = name;
+    // "X{id}_Nazwa" (np. X1_Docisk) — prefiks z ID serwa, nazwa z pierwszą
+    // wielką literą; bez twardego kodowania konkretnych osi, żeby kolejne
+    // serwo (X3_...) działało bez zmian w panelu.
+    const niceName = name.charAt(0).toUpperCase() + name.slice(1);
+    label.textContent = data.id != null ? `X${data.id}_${niceName}` : niceName;
     const value = document.createElement("span");
     value.textContent = data.error
       ? "błąd: " + data.error

@@ -238,7 +238,7 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   RTU) + `FeetekDriver`, zmierzony fizycznie kierunek CW/CCW obu serw
   (temat L). Pełna analiza: `architektura-wielu-drajwerow-osi.md`.
 - [zmiany/status-osi-feetech.md](zmiany/status-osi-feetech.md) — etap 1
-  integracji `FeetekDriver` z `Machine`: pozycja/obciążenie osi `docik`/
+  integracji `FeetekDriver` z `Machine`: pozycja/obciążenie osi `docisk`/
   `podajnik` w `GET /api/status` (jednostki rejestru, nie mm), osobna
   pętla odpytująca niezależna od X/Y/Z. Zweryfikowane na sprzęcie.
 

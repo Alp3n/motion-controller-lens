@@ -1,7 +1,7 @@
 # Status osi FEETECH na panelu — etap 1 integracji (temat L)
 
 Pierwszy krok integracji `FeetekDriver` z resztą aplikacji: `Machine`
-odczytuje pozycję i obciążenie skonfigurowanych osi FEETECH (`docik`,
+odczytuje pozycję i obciążenie skonfigurowanych osi FEETECH (`docisk`,
 `podajnik`) i wystawia je w `GET /api/status`. **Bez ruchu** — to tylko
 odczyt, zero zmiany zachowania dla X/Y/Z. Zweryfikowane end-to-end na
 fizycznym sprzęcie (oba serwa podłączone razem).
@@ -24,7 +24,7 @@ fizycznym sprzęcie (oba serwa podłączone razem).
   fizyczny, może być podłączony razem z symulatorem X/Y/Z). Blokujące I/O
   przez `asyncio.to_thread()`, żeby nie zamrażać reszty serwera. `config.py`:
   `FEETECH_PORT`/`FEETECH_BAUD` (domyślnie 115200).
-- `config/axes.json` — `docik` → `driver: feetech, feetech_id: 1`,
+- `config/axes.json` — `docisk` → `driver: feetech, feetech_id: 1`,
   `podajnik` → `driver: feetech, feetech_id: 2` (zgodnie ze zmierzonym
   wcześniej przypisaniem ID).
 - `server/tests/test_axes.py` — 9 testów walidacji `driver`/`feetech_id`
@@ -48,7 +48,7 @@ fizycznym sprzęcie (oba serwa podłączone razem).
 - **Panel dopisany 2026-09-10:** `index.html`/`app.js` — sekcja „Osie
   dodatkowe (FEETECH)" pod „Obciążenie osi", ukryta gdy `feetech_raw`
   puste. Lista osi budowana dynamicznie z kluczy odpowiedzi (nie na
-  sztywno „docik"/„podajnik"), żeby dodanie kolejnej osi nie wymagało
+  sztywno „docisk"/„podajnik"), żeby dodanie kolejnej osi nie wymagało
   zmian w panelu. Jawna adnotacja pod panelem: jednostki rejestru, nie mm.
   Zweryfikowane przez odczyt żywego HTML/JS z produkcji (`curl`) — bez
   pełnej weryfikacji wizualnej w przeglądarce (rozszerzenie Claude in
