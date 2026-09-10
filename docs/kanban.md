@@ -299,8 +299,22 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       niezintegrowane z `Machine`** — czeka na test fizyczny i na
       rozstrzygnięcie pytań otwartych wyżej. Szczegóły:
       `zmiany/protokol-feetech.md`.
-- [ ] Test łączności fizycznej na sprzęcie — w toku (użytkownik podłącza
-      konwerter, serwo i zasilanie 24VDC).
+- [x] **Test łączności fizycznej — UDANY 2026-09-10.** Konwerter Waveshare
+      SKU 15817 (USB↔RS232/RS485/TTL) na `/dev/ttyUSB0`, jedno serwo
+      SM-45BL-C001 (ID:1, 115200 wg etykiety), zasilanie 24VDC. PING
+      zwrócił poprawną ramkę (`ff ff 01 02 00 fc`), odczyt statusu
+      sensowny: napięcie 23,0V (przy zasilaniu 24VDC), temperatura 27°C,
+      pozycja/prędkość/obciążenie 0 (spoczynek). **Protokół natywny SMS
+      potwierdzony fizycznie**, nie tylko z dokumentacji. Po drodze:
+      dwa serwa naraz na ID:1 nie odpowiadały (kolizja magistrali) —
+      potwierdzona potrzeba zmiany ID przed łączeniem obu razem (patrz
+      FAQ producenta). Szczegóły debugowania: `zmiany/protokol-feetech.md`.
+- [ ] **Zostaje:** zmienić ID drugiego serwa (na 2) przed podłączeniem
+      obu naraz; napisać `FeetekDriver` łączący protokół z resztą
+      aplikacji (po rozstrzygnięciu pytań otwartych wyżej); jakikolwiek
+      test ruchu (WRITE goal position) — **świadomie jeszcze nie zrobiony
+      — to już realny ruch fizycznego serwa, do zrobienia z Twoją
+      obecnością/zgodą, nie samodzielnie.**
 
 ### M. Analiza zużycia osi/narzędzia i powiadomienia o incydentach
 - [x] **Krok 1-2 zaimplementowane 2026-09-10:** zbieranie zużycia osi

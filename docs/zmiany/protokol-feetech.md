@@ -29,6 +29,23 @@ czeka na fizyczne potwierdzenie protokołu i decyzje z
   pozycji/prędkości; dla obciążenia to założenie przez analogię (typowe
   dla tej rodziny protokołu). Do zweryfikowania na sprzęcie, zanim
   cokolwiek się na tym oprze poza podglądem.
-- Nie zweryfikowane fizycznie — czeka na test łączności
-  (`tools/test_feetech_servo.py --read`) po podłączeniu konwertera i
-  zasilania 24VDC.
+- **Zweryfikowane fizycznie 2026-09-10.** Konwerter Waveshare SKU 15817
+  (USB↔RS232/RS485/TTL) na `/dev/ttyUSB0`, jedno serwo SM-45BL-C001
+  (ID:1, 115200), zasilanie 24VDC. `tools/test_feetech_servo.py --read`
+  zwrócił poprawną ramkę PING i sensowny status (napięcie 23,0V, temp.
+  27°C, pozycja/prędkość/obciążenie 0 w spoczynku). Po drodze: dwa serwa
+  naraz na tym samym ID:1 nie odpowiadały wcale (kolizja na magistrali,
+  zgodnie z ostrzeżeniem w FAQ producenta) — jedno serwo odłączone na
+  czas testu, drugie do przełączenia na inne ID przed wspólnym
+  podłączeniem. Konwerter podłączony do tego komputera (`walkner`) wymagał
+  dodania konta do grupy `dialout` (`sudo usermod -aG dialout walkner` +
+  `sudo systemctl restart ssh`) — restart ssh tym razem NIE odświeżył
+  uprawnień już otwartej sesji Claude Code (w przeciwieństwie do
+  wcześniejszego przypadku z grupą `motionctl`, patrz `~/.claude/CLAUDE.md`
+  na tym hoście) — obejściem był `sg dialout -c '...'` per komenda, bez
+  potrzeby nowego logowania.
+- Dekodowanie `present_voltage`/`present_temperature` jako wartości ×0,1
+  (230 → 23,0V) — **spójne z wynikiem, ale nie potwierdzone wprost w
+  SDK/dokumentacji jako jednostka tego konkretnego rejestru**, do
+  ostatecznego potwierdzenia przy okazji pełniejszej analizy tabeli
+  pamięci (`zbyszek/Tabela pamięci protokół serw SM45BL_001.xlsx`).
