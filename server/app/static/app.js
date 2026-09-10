@@ -29,6 +29,35 @@ async function api(method, url, body) {
 
 // --- status na żywo -------------------------------------------------------
 
+/* Osie dodatkowe ze sterownikiem FEETECH (temat L, etap 1) — lista osi
+   pochodzi z konfiguracji (config/axes.json), nie jest tu na sztywno,
+   żeby dodanie kolejnej osi (feetech_id) nie wymagało zmian w panelu.
+   Wartości to surowe jednostki rejestru (0-4095/obrót), NIE mm — patrz
+   opis pod panelem w index.html. */
+function renderFeetech(feetechRaw) {
+  const panel = $("feetech-panel");
+  const names = Object.keys(feetechRaw);
+  panel.style.display = names.length ? "" : "none";
+  if (!names.length) return;
+
+  const container = $("feetech-axes");
+  container.innerHTML = "";
+  for (const name of names.sort()) {
+    const data = feetechRaw[name];
+    const div = document.createElement("div");
+    div.className = "axis";
+    const label = document.createElement("span");
+    label.textContent = name;
+    const value = document.createElement("span");
+    value.textContent = data.error
+      ? "błąd: " + data.error
+      : `poz. ${data.position}  obc. ${data.load}`;
+    div.appendChild(label);
+    div.appendChild(value);
+    container.appendChild(div);
+  }
+}
+
 function applyStatus(st) {
   const stateEl = $("state");
   stateEl.textContent = st.state;
@@ -98,6 +127,8 @@ function applyStatus(st) {
       srcEl.className = "muted";
     }
   }
+
+  renderFeetech(st.feetech_raw || {});
 
   const released = st.released_axes || [];
   document.querySelectorAll(".rel").forEach((btn) => {

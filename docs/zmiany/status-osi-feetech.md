@@ -45,6 +45,12 @@ fizycznym sprzęcie (oba serwa podłączone razem).
 - **Zweryfikowane end-to-end 2026-09-10** — pełny serwer (TestClient),
   `MACHINE_MODE=sim` + prawdziwy `FEETECH_PORT=/dev/ttyUSB0`, oba serwa
   podłączone: `GET /api/status` zwrócił realną pozycję/obciążenie obu osi.
-- Panel (`index.html`/`app.js`) **jeszcze nie pokazuje** `feetech_raw` —
-  dane są w API, ale nie ma jeszcze widoku. Do zrobienia, jeśli chcesz to
-  widzieć na ekranie, nie tylko przez API.
+- **Panel dopisany 2026-09-10:** `index.html`/`app.js` — sekcja „Osie
+  dodatkowe (FEETECH)" pod „Obciążenie osi", ukryta gdy `feetech_raw`
+  puste. Lista osi budowana dynamicznie z kluczy odpowiedzi (nie na
+  sztywno „docik"/„podajnik"), żeby dodanie kolejnej osi nie wymagało
+  zmian w panelu. Jawna adnotacja pod panelem: jednostki rejestru, nie mm.
+  Zweryfikowane przez odczyt żywego HTML/JS z produkcji (`curl`) — bez
+  pełnej weryfikacji wizualnej w przeglądarce (rozszerzenie Claude in
+  Chrome niepodłączone w tej sesji), więc warto rzucić okiem przy
+  najbliższej obecności przy panelu.
