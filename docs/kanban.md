@@ -309,8 +309,14 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       dwa serwa naraz na ID:1 nie odpowiadały (kolizja magistrali) —
       potwierdzona potrzeba zmiany ID przed łączeniem obu razem (patrz
       FAQ producenta). Szczegóły debugowania: `zmiany/protokol-feetech.md`.
-- [ ] **Zostaje:** zmienić ID drugiego serwa (na 2) przed podłączeniem
-      obu naraz; napisać `FeetekDriver` łączący protokół z resztą
+- [x] **ID drugiego serwa zmienione 2026-09-10** —
+      `tools/test_feetech_servo.py --set-id` (nowa flaga: odblokuj EPROM →
+      zapisz ID → zablokuj → PING pod nowym ID). Oba serwa podłączone
+      razem, bez kolizji: **ID 1 = docisk** (pozycja 4094, 23,1V, 23°C),
+      **ID 2 = podajnik** (pozycja 0, 23,0V, 27°C) — nazwy zgodne z osiami
+      dodanymi wcześniej w `config/axes.json`. Szczegóły debugowania:
+      `zmiany/protokol-feetech.md`.
+- [ ] **Zostaje:** napisać `FeetekDriver` łączący protokół z resztą
       aplikacji (po rozstrzygnięciu pytań otwartych wyżej); jakikolwiek
       test ruchu (WRITE goal position) — **świadomie jeszcze nie zrobiony
       — to już realny ruch fizycznego serwa, do zrobienia z Twoją

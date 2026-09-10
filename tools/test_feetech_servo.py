@@ -131,6 +131,31 @@ def read_status(path: str, baud: int, servo_id: int) -> dict[str, object]:
     return result
 
 
+def set_id(path: str, baud: int, current_id: int, new_id: int) -> dict[str, str]:
+    """Zmienia ID serwa: odblokuj EPROM (adres 55=0) -> zapisz nowe ID
+    (adres 5) -> zablokuj EPROM pod NOWYM id (55=1) -> PING pod nowym id
+    jako ostateczne potwierdzenie. Każdy krok raportowany osobno — surowa
+    odpowiedź (albo jej brak), żeby było widać, na którym kroku coś nie
+    wyszło, gdyby coś poszło nie tak."""
+    fd = open_serial(path, baud)
+    steps: dict[str, str] = {}
+    try:
+        raw = _exchange(fd, fp.build_write(current_id, fp.ADDR_LOCK, bytes([0])))
+        steps["1. odblokuj EPROM"] = raw.hex(" ") if raw else "brak odpowiedzi"
+
+        raw = _exchange(fd, fp.build_write(current_id, fp.ADDR_ID, bytes([new_id])))
+        steps["2. zapisz nowe ID"] = raw.hex(" ") if raw else "brak odpowiedzi"
+
+        raw = _exchange(fd, fp.build_write(new_id, fp.ADDR_LOCK, bytes([1])))
+        steps["3. zablokuj EPROM (pod nowym ID)"] = raw.hex(" ") if raw else "brak odpowiedzi"
+
+        raw = _exchange(fd, fp.build_ping(new_id))
+        steps[f"4. PING pod nowym ID ({new_id})"] = raw.hex(" ") if raw else "brak odpowiedzi"
+    finally:
+        os.close(fd)
+    return steps
+
+
 def discover_ports() -> list[str]:
     return sorted(glob.glob("/dev/ttyUSB*")) + sorted(glob.glob("/dev/ttyACM*"))
 
@@ -141,7 +166,14 @@ def main() -> int:
     parser.add_argument("--baud", type=int, help="jeden baudrate zamiast domyślnej listy (115200, 1000000)")
     parser.add_argument("--id", type=int, default=1, help="ID serwa (domyślnie 1)")
     parser.add_argument("--read", action="store_true", help="po udanym PING odczytaj status (pozycja/prędkość/obciążenie/napięcie/temperatura)")
+    parser.add_argument("--set-id", type=int, metavar="NOWE_ID",
+                         help="zmień ID serwa z --id (domyślnie 1) na podane — TYLKO gdy na magistrali "
+                              "jest fizycznie podłączone JEDNO serwo (dwa serwa na tym samym --id kolidują)")
     args = parser.parse_args()
+
+    if args.set_id is not None and not args.port:
+        print("--set-id wymaga podania konkretnego portu (nie skanowania) — np. tools/test_feetech_servo.py /dev/ttyUSB0 --set-id 2")
+        return 1
 
     ports = [args.port] if args.port else discover_ports()
     if not ports:
@@ -181,6 +213,15 @@ def main() -> int:
             print(f"\nOdczyt statusu ({path} @ {baud}, id={args.id}):")
             for name, value in read_status(path, baud, args.id).items():
                 print(f"  {name}: {value}")
+
+    if args.set_id is not None:
+        if found is None:
+            print(f"\n--set-id: pominięte, PING pod id={args.id} nie dostał odpowiedzi.")
+        else:
+            path, baud = found
+            print(f"\nZmiana ID {args.id} -> {args.set_id} ({path} @ {baud}):")
+            for step, value in set_id(path, baud, args.id, args.set_id).items():
+                print(f"  {step}: {value}")
 
     print(
         "\nBrak odpowiedzi na wszystkich kombinacjach? Sprawdź kolejno: zasilanie "

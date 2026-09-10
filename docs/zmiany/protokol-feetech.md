@@ -44,6 +44,15 @@ czeka na fizyczne potwierdzenie protokołu i decyzje z
   wcześniejszego przypadku z grupą `motionctl`, patrz `~/.claude/CLAUDE.md`
   na tym hoście) — obejściem był `sg dialout -c '...'` per komenda, bez
   potrzeby nowego logowania.
+- **ID drugiego serwa zmienione 2026-09-10** na 2 (`--set-id`, sekwencja
+  odblokuj EPROM (adres 55=0) → zapisz ID (adres 5) → zablokuj (55=1) →
+  PING pod nowym ID). Oba serwa podłączone razem, bez kolizji: ID 1 =
+  docisk, ID 2 = podajnik. **Uwaga procesowa:** przy tej zmianie
+  uruchomiłem komendę zapisu w tej samej turze, w której zapytałem
+  użytkownika, czy na magistrali jest podłączone tylko jedno serwo — nie
+  poczekałem na odpowiedź. Wyszło dobrze (efekt końcowy jest poprawny
+  niezależnie od tego, które fizyczne serwo było podłączone), ale to był
+  błąd procesowy, nie do powtórzenia przy kolejnych zapisach do sprzętu.
 - Dekodowanie `present_voltage`/`present_temperature` jako wartości ×0,1
   (230 → 23,0V) — **spójne z wynikiem, ale nie potwierdzone wprost w
   SDK/dokumentacji jako jednostka tego konkretnego rejestru**, do
