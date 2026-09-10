@@ -7,28 +7,23 @@ protokołu co SMS/STS — cytat wprost: „The communication protocols of the
 three series are identical and interworking" (`zbyszek/SM45BL start
 tutorial201015_3.pdf`, str. 7, tabela serii SCS/STS/SMBL). To protokół
 pakietowy w stylu Dynamixel Protocol 1.0, **nie standardowy Modbus RTU**
-(inny nagłówek, inna suma kontrolna, inne kody instrukcji) — mimo że tak
-było opisane w ogłoszeniu sprzedażowym. Potwierdzone w kodzie źródłowym
-`zbyszek/FTServo_Python-main.zip` (`scservo_sdk/protocol_packet_handler.py`,
-`scservo_sdk/scservo_def.py`).
+— mimo że tak było opisane w ogłoszeniu sprzedażowym. Budowanie/parsowanie
+ramek: `server/app/feetech_protocol.py` (tam też pełne wyjaśnienie i
+adresy rejestrów).
 
 Ten skrypt zastępuje `tools/test_modbus_servo.py` dla tego serwa — tamten
 zostaje na wypadek, gdyby konkretny egzemplarz jednak miał przełączalny
 tryb Modbus (do sprawdzenia eksperymentalnie, nie zakładane na pewno).
 
-Format ramki:
-
-    0xFF 0xFF <ID> <DŁUGOŚĆ> <INSTRUKCJA> [parametry...] <SUMA_KONTROLNA>
-
-Suma kontrolna = ~(ID + DŁUGOŚĆ + INSTRUKCJA + parametry) & 0xFF (bez
-nagłówka FF FF). PING (instrukcja 0x01) nie ma parametrów, DŁUGOŚĆ=2.
-
-Bez zewnętrznych bibliotek (jak reszta `tools/`) — sam port przez termios.
-
 Użycie:
-    tools/test_feetech_servo.py                    # skanuje /dev/ttyUSB*
+    tools/test_feetech_servo.py                    # skanuje /dev/ttyUSB*, sam PING
     tools/test_feetech_servo.py /dev/ttyUSB0
     tools/test_feetech_servo.py /dev/ttyUSB0 --id 1 --baud 115200
+    tools/test_feetech_servo.py --read              # PING + odczyt statusu
+
+`--read` po udanym PING dodatkowo odpytuje pozycję/prędkość/obciążenie/
+napięcie/temperaturę (jedna kombinacja port/baud/ID, która odpowiedziała
+jako pierwsza — po znalezieniu przestaje skanować pozostałe).
 
 Domyślny baudrate serii SM to **115200** (potwierdzone w tutorialu, str. 2
 i FAQ str. 9) — inny niż STS (1000000, też próbowany domyślnie). Domyślne
@@ -43,8 +38,13 @@ from __future__ import annotations
 import argparse
 import glob
 import os
+import sys
 import termios
 import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server"))
+from app import feetech_protocol as fp  # noqa: E402
 
 BAUD_CONST = {
     9600: termios.B9600,
@@ -57,16 +57,6 @@ if hasattr(termios, "B1000000"):
     BAUD_CONST[1000000] = termios.B1000000
 
 DEFAULT_BAUDS = [b for b in (115200, 1000000) if b in BAUD_CONST]
-INST_PING = 0x01
-
-
-def checksum(payload: bytes) -> int:
-    return (~sum(payload)) & 0xFF
-
-
-def build_ping(servo_id: int) -> bytes:
-    body = bytes([servo_id, 0x02, INST_PING])
-    return b"\xff\xff" + body + bytes([checksum(body)])
 
 
 def open_serial(path: str, baud: int, timeout_s: float = 0.3) -> int:
@@ -92,18 +82,52 @@ def open_serial(path: str, baud: int, timeout_s: float = 0.3) -> int:
     return fd
 
 
+def _exchange(fd: int, packet: bytes, read_len: int = 64, settle: float = 0.1) -> bytes | None:
+    os.write(fd, packet)
+    time.sleep(settle)
+    try:
+        response = os.read(fd, read_len)
+    except OSError:
+        response = b""
+    return response or None
+
+
 def try_ping(path: str, baud: int, servo_id: int) -> bytes | None:
     fd = open_serial(path, baud)
     try:
-        os.write(fd, build_ping(servo_id))
-        time.sleep(0.1)
-        try:
-            response = os.read(fd, 64)
-        except OSError:
-            response = b""
-        return response or None
+        return _exchange(fd, fp.build_ping(servo_id))
     finally:
         os.close(fd)
+
+
+def read_status(path: str, baud: int, servo_id: int) -> dict[str, object]:
+    """Ponowne otwarcie portu i seria odczytów statusu — jedna kombinacja,
+    która już przeszła PING. Błędy pojedynczych odczytów nie przerywają
+    reszty (drukowane osobno), żeby nie tracić informacji o pozostałych."""
+    fd = open_serial(path, baud)
+    result: dict[str, object] = {}
+    try:
+        reads = {
+            "present_position": (fp.ADDR_PRESENT_POSITION_L, 2, fp.decode_signed16),
+            "present_speed": (fp.ADDR_PRESENT_SPEED_L, 2, fp.decode_signed16),
+            "present_load": (fp.ADDR_PRESENT_LOAD_L, 2, fp.decode_signed16),
+            "present_voltage": (fp.ADDR_PRESENT_VOLTAGE, 1, lambda d: d[0]),
+            "present_temperature": (fp.ADDR_PRESENT_TEMPERATURE, 1, lambda d: d[0]),
+        }
+        for name, (address, count, decode) in reads.items():
+            packet = fp.build_read(servo_id, address, count)
+            raw = _exchange(fd, packet)
+            if raw is None:
+                result[name] = "brak odpowiedzi"
+                continue
+            try:
+                _, error, data = fp.parse_response(raw)
+                result[name] = decode(data) if error == 0 else f"błąd serwa: {error:#04x}"
+            except fp.ProtocolError as exc:
+                result[name] = f"błąd ramki: {exc}"
+    finally:
+        os.close(fd)
+    return result
 
 
 def discover_ports() -> list[str]:
@@ -115,6 +139,7 @@ def main() -> int:
     parser.add_argument("port", nargs="?", help="np. /dev/ttyUSB0 (domyślnie: skanuj wszystkie)")
     parser.add_argument("--baud", type=int, help="jeden baudrate zamiast domyślnej listy (115200, 1000000)")
     parser.add_argument("--id", type=int, default=1, help="ID serwa (domyślnie 1)")
+    parser.add_argument("--read", action="store_true", help="po udanym PING odczytaj status (pozycja/prędkość/obciążenie/napięcie/temperatura)")
     args = parser.parse_args()
 
     ports = [args.port] if args.port else discover_ports()
@@ -128,6 +153,7 @@ def main() -> int:
     print(f"ID serwa: {args.id}")
     print("Wysyłam PING (protokół SCS/SMS, nie Modbus)...\n")
 
+    found = None
     for path in ports:
         for baud in bauds:
             label = f"{path} @ {baud} id={args.id}"
@@ -141,8 +167,19 @@ def main() -> int:
                 continue
             if response:
                 print(f"{label}: ODPOWIEDŹ {response.hex(' ')}")
+                if found is None:
+                    found = (path, baud)
             else:
                 print(f"{label}: brak odpowiedzi")
+
+    if args.read:
+        if found is None:
+            print("\n--read: pominięte, żaden PING nie dostał odpowiedzi.")
+        else:
+            path, baud = found
+            print(f"\nOdczyt statusu ({path} @ {baud}, id={args.id}):")
+            for name, value in read_status(path, baud, args.id).items():
+                print(f"  {name}: {value}")
 
     print(
         "\nBrak odpowiedzi na wszystkich kombinacjach? Sprawdź kolejno: zasilanie "

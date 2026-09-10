@@ -290,8 +290,17 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       poprawione pod właściwy protokół: `tools/test_feetech_servo.py`
       (nowe, główne), `tools/test_modbus_servo.py` zostaje jako zapasowe.
       Szczegóły: `architektura-wielu-drajwerow-osi.md`.
-- [ ] Test łączności fizycznej na sprzęcie — zaplanowany, jeszcze nie
-      wykonany.
+- [x] **Warstwa niska protokołu napisana 2026-09-10** (przed
+      potwierdzeniem fizycznym, żeby nie czekać bezczynnie) —
+      `server/app/feetech_protocol.py` (budowanie/parsowanie ramek
+      PING/READ/WRITE, 11 testów bez sprzętu), `tools/test_feetech_servo.py`
+      przepisany pod ten moduł + flaga `--read` (odczyt pozycji/prędkości/
+      obciążenia/napięcia/temperatury po udanym PING). **Świadomie
+      niezintegrowane z `Machine`** — czeka na test fizyczny i na
+      rozstrzygnięcie pytań otwartych wyżej. Szczegóły:
+      `zmiany/protokol-feetech.md`.
+- [ ] Test łączności fizycznej na sprzęcie — w toku (użytkownik podłącza
+      konwerter, serwo i zasilanie 24VDC).
 
 ### M. Analiza zużycia osi/narzędzia i powiadomienia o incydentach
 - [x] **Krok 1-2 zaimplementowane 2026-09-10:** zbieranie zużycia osi
