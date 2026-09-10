@@ -44,6 +44,36 @@
       "home_offset": 0.0,
       "phys_min": -50.0,
       "phys_max": 50.0
+    },
+    "docik": {
+      "length": 10.0,
+      "home": "plus",
+      "soft_min": -9.0,
+      "soft_max": -2.0,
+      "mm_per_rev": 0.25,
+      "vel_jog": 500.0,
+      "vel_home": 1000.0,
+      "home_order": 0,
+      "home_mode": "programowe",
+      "home_torque": 20.0,
+      "home_offset": 0.0,
+      "phys_min": -10.0,
+      "phys_max": 0.0
+    },
+    "podajnik": {
+      "length": 200.0,
+      "home": "plus",
+      "soft_min": -190.0,
+      "soft_max": -5.0,
+      "mm_per_rev": 4.5,
+      "vel_jog": 500.0,
+      "vel_home": 1000.0,
+      "home_order": 0,
+      "home_mode": "programowe",
+      "home_torque": 20.0,
+      "home_offset": 0.0,
+      "phys_min": -200.0,
+      "phys_max": 0.0
     }
   }
 }

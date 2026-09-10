@@ -108,6 +108,7 @@ def read_status(path: str, baud: int, servo_id: int) -> dict[str, object]:
     result: dict[str, object] = {}
     try:
         reads = {
+            "model_number": (fp.ADDR_MODEL_L, 2, fp.decode_u16),
             "present_position": (fp.ADDR_PRESENT_POSITION_L, 2, fp.decode_signed16),
             "present_speed": (fp.ADDR_PRESENT_SPEED_L, 2, fp.decode_signed16),
             "present_load": (fp.ADDR_PRESENT_LOAD_L, 2, fp.decode_signed16),
