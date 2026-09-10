@@ -38,6 +38,40 @@ z `Machine` — czeka na decyzje z `docs/architektura-wielu-drajwerow-osi.md`.
   enkodera, wolno) do sprawdzenia kierunku obrotu na sprzęcie; czeka na
   koniec ruchu odpytując rejestr MOVING, wypisuje pozycję przed/po.
   **Realnie rusza serwem — do uruchamiania tylko przy maszynie.**
+- `server/app/feetech_driver.py` — `DIRECTION_SIGN_CW` (słownik ID→znak) i
+  `FeetekDriver.move_relative_cw()` — ruch względny w jednoznacznym
+  kierunku „zgodnie z zegarem", niezależnie od tego, czy dla danego ID
+  rejestr rośnie czy maleje przy CW. Rzuca `KeyError` dla ID bez
+  zmierzonego kierunku (celowo, zamiast zgadywać znak).
+
+## Kierunek obrotu — zmierzone fizycznie 2026-09-10
+
+Karta katalogowa SM45BL deklaruje „Clockwise(0→4096)" (rosnąca pozycja =
+zgodnie z zegarem) dla całej serii — **u nas zmierzono inaczej dla
+serwa 1**, prawdopodobnie kwestia strony obserwacji (od wału vs od tyłu
+obudowy), nie błąd pomiaru. Liczy się wynik zmierzony na tym konkretnym
+okablowaniu, nie deklaracja producenta:
+
+| ID | Oś (dzisiejsze okablowanie) | CW (zgodnie z zegarem) odpowiada... |
+|---|---|---|
+| 1 | docisk | **malejącej** pozycji rejestru |
+| 2 | podajnik | **rosnącej** pozycji rejestru |
+
+**Metoda:** `tools/feetech_jog.py` z małym, wolnym ruchem (docisk: 200,
+potem 1000 kroków przy prędkości 8-30; podajnik: 200, potem 1000, potem
+500 kroków), operator przy maszynie zgłaszał obserwowany kierunek po
+każdym ruchu.
+
+**Zastrzeżenie o jakości pomiaru dla serwa 2:** pierwszy odczyt (ruch
++200, zaraz po zmianie ID, operator jeszcze nie przy maszynie) dał „w
+lewo" (CCW) dla rosnącej pozycji — **sprzeczne** z późniejszym, spokojnym,
+pojedynczym testem (+500, operator skupiony wyłącznie na obserwacji),
+który dał „w prawo" (CW). Przyjęty **drugi, spokojniejszy odczyt** jako
+wiarygodniejszy — pierwszy najpewniej był pomyłką obserwacji przy szybkich
+testach pod rząd (operator sam wyraził wątpliwość zaraz potem: „nie
+widzę ruch, zrobiłem znaki"). **To nie jest zweryfikowane podwójnie** —
+jeśli przy integracji z `Machine` kierunek serwa 2 okaże się zły, to
+pierwsze podejrzenie.
 
 ## Uwagi
 

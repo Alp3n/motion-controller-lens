@@ -316,11 +316,18 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       **ID 2 = podajnik** (pozycja 0, 23,0V, 27°C) — nazwy zgodne z osiami
       dodanymi wcześniej w `config/axes.json`. Szczegóły debugowania:
       `zmiany/protokol-feetech.md`.
-- [ ] **Zostaje:** napisać `FeetekDriver` łączący protokół z resztą
-      aplikacji (po rozstrzygnięciu pytań otwartych wyżej); jakikolwiek
-      test ruchu (WRITE goal position) — **świadomie jeszcze nie zrobiony
-      — to już realny ruch fizycznego serwa, do zrobienia z Twoją
-      obecnością/zgodą, nie samodzielnie.**
+- [x] **`FeetekDriver` napisany i test ruchu wykonany 2026-09-10** —
+      `server/app/feetech_driver.py` (ping/read/write/move_to, 18 testów
+      bez sprzętu). Pierwszy realny ruch obu serw na maszynie
+      (`tools/feetech_jog.py`, operator obserwował fizycznie) i
+      **kierunek CW/CCW zmierzony**: serwo 1 (docisk) — CW = malejąca
+      pozycja; serwo 2 (podajnik) — CW = rosnąca pozycja. Zapisane jako
+      `DIRECTION_SIGN_CW` + `move_relative_cw()`. Pomiar dla serwa 2 miał
+      jedną sprzeczną, odrzuconą próbę po drodze (do potwierdzenia
+      ponownie przy integracji) — szczegóły: `zmiany/protokol-feetech.md`.
+- [ ] **Zostaje:** zintegrować `FeetekDriver` z resztą aplikacji (po
+      rozstrzygnięciu pytań otwartych wyżej: pełnoprawna oś w cyklu czy
+      pomocnicza, konwersja mm↔kroki enkodera przez `mm_per_rev`).
 
 ### M. Analiza zużycia osi/narzędzia i powiadomienia o incydentach
 - [x] **Krok 1-2 zaimplementowane 2026-09-10:** zbieranie zużycia osi

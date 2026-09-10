@@ -47,6 +47,22 @@ class FeetekError(Exception):
     """Brak odpowiedzi, zła ramka, albo serwo zgłosiło błąd (bajt error != 0)."""
 
 
+# Kierunek fizyczny vs znak rejestru pozycji — zmierzone empirycznie na
+# sprzęcie 2026-09-10 (`tools/feetech_jog.py`, obserwacja operatora przy
+# maszynie), NIE z dokumentacji (karta katalogowa mówi "Clockwise(0→4096)"
+# dla WSZYSTKICH serw — u nas serwo 1 zachowuje się odwrotnie; prawdopodobnie
+# kwestia strony, z której patrzy operator, nie błąd pomiaru, ale liczy się
+# zmierzony wynik, nie założenie). Pierwszy odczyt dla serwa 2 (przy szybkich
+# testach pod rząd) był błędny ("w lewo" dla rosnącej pozycji) — poprawiony
+# po spokojnym, pojedynczym teście na "w prawo". Klucz: ID serwa PRZY
+# DZISIEJSZYM OKABLOWANIU (1=docisk, 2=podajnik) — jeśli fizyczne
+# podłączenie/ID się zmieni, ten słownik trzeba zweryfikować ponownie.
+#
+#   serwo 1 (docisk):   malejąca pozycja rejestru = zgodnie z zegarem (CW)
+#   serwo 2 (podajnik): rosnąca pozycja rejestru  = zgodnie z zegarem (CW)
+DIRECTION_SIGN_CW = {1: -1, 2: 1}
+
+
 class FeetekDriver:
     """Jedna magistrala RS485, wiele serw po ID. `open()`/`close()` albo
     użycie jako context manager (`with FeetekDriver(...) as d:`)."""
@@ -146,3 +162,19 @@ class FeetekDriver:
             + struct.pack("<H", speed)
         )
         self.write_raw(servo_id, fp.ADDR_ACC, payload)
+
+    def move_relative_cw(self, servo_id: int, counts_cw: int, speed: int = 100, acc: int = 20) -> int:
+        """Jak `move_to`, ale kierunek zawsze "zgodnie z zegarem = dodatnie",
+        niezależnie od tego, czy dla tego konkretnego ID rejestr rośnie czy
+        maleje przy CW (patrz `DIRECTION_SIGN_CW`, zmierzone empirycznie).
+        Zwraca docelową pozycję W JEDNOSTKACH REJESTRU (do odczytu/logowania).
+
+        Rzuca `KeyError`, jeśli `servo_id` nie ma jeszcze zmierzonego
+        kierunku w `DIRECTION_SIGN_CW` — celowo, żeby nie zgadywać znaku dla
+        nieprzetestowanego serwa.
+        """
+        sign = DIRECTION_SIGN_CW[servo_id]
+        current = self.read_position(servo_id)
+        target = current + sign * counts_cw
+        self.move_to(servo_id, target, speed=speed, acc=acc)
+        return target

@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 
 from app import feetech_protocol as fp
-from app.feetech_driver import FeetekDriver, FeetekError
+from app.feetech_driver import DIRECTION_SIGN_CW, FeetekDriver, FeetekError
 
 
 def _driver_with_fake(responses):
@@ -95,6 +95,34 @@ def test_move_to_wysyla_poprawna_ramke_z_acc_pozycja_speed():
     goal_time = fp.decode_u16(data[3:5])
     assert goal_time == 0
     assert fp.decode_u16(data[5:7]) == 100  # speed
+
+
+def test_move_relative_cw_servo1_odejmuje_od_pozycji():
+    # serwo 1 (docisk): CW = malejąca pozycja rejestru (zmierzone 2026-09-10)
+    assert DIRECTION_SIGN_CW[1] == -1
+    d = _driver_with_fake([
+        _ok_response(1, fp.encode_signed16(500)),  # read_position (current)
+        _ok_response(1),                            # move_to ack
+    ])
+    target = d.move_relative_cw(1, counts_cw=100, speed=50, acc=10)
+    assert target == 400  # 500 - 100
+
+
+def test_move_relative_cw_servo2_dodaje_do_pozycji():
+    # serwo 2 (podajnik): CW = rosnąca pozycja rejestru (zmierzone 2026-09-10)
+    assert DIRECTION_SIGN_CW[2] == 1
+    d = _driver_with_fake([
+        _ok_response(2, fp.encode_signed16(200)),
+        _ok_response(2),
+    ])
+    target = d.move_relative_cw(2, counts_cw=100, speed=50, acc=10)
+    assert target == 300  # 200 + 100
+
+
+def test_move_relative_cw_nieznane_id_rzuca_keyerror():
+    d = _driver_with_fake([])
+    with pytest.raises(KeyError):
+        d.move_relative_cw(99, counts_cw=100)
 
 
 def test_context_manager_otwiera_i_zamyka(monkeypatch):
