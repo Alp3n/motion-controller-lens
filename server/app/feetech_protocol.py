@@ -28,6 +28,8 @@ tutorial, pyt. 11: „SCS series high byte first, SMS low byte first").
 
 from __future__ import annotations
 
+import struct
+
 BROADCAST_ID = 0xFE
 
 INST_PING = 0x01
@@ -43,8 +45,13 @@ ADDR_ID = 5
 ADDR_BAUD_RATE = 6
 ADDR_MODE = 33
 ADDR_TORQUE_ENABLE = 40
+ADDR_ACC = 41
 ADDR_GOAL_POSITION_L = 42
 ADDR_GOAL_POSITION_H = 43
+ADDR_GOAL_TIME_L = 44
+ADDR_GOAL_TIME_H = 45
+ADDR_GOAL_SPEED_L = 46
+ADDR_GOAL_SPEED_H = 47
 ADDR_LOCK = 55  # 0=EPROM odblokowane do zapisu (ID, baudrate, ...), 1=zablokowane
 ADDR_PRESENT_POSITION_L = 56
 ADDR_PRESENT_SPEED_L = 58
@@ -118,3 +125,12 @@ def decode_signed16(data: bytes, offset: int = 0) -> int:
     if raw & 0x8000:
         return -(raw & 0x7FFF)
     return raw
+
+
+def encode_signed16(value: int) -> bytes:
+    """Odwrotność `decode_signed16` — znak-magnituda, bit 15, low byte first.
+
+    Odpowiednik `scs_toscs(value, 15)` w SDK producenta."""
+    magnitude = abs(value) & 0x7FFF
+    raw = magnitude | 0x8000 if value < 0 else magnitude
+    return struct.pack("<H", raw)

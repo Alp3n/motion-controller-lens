@@ -1,10 +1,11 @@
-# Protokół natywny serw FEETECH — warstwa niska (temat L)
+# Protokół natywny serw FEETECH — warstwa niska + `FeetekDriver` (temat L)
 
-Pierwszy krok w stronę `FeetekDriver` dla planowanej osi 4 (SM45BL):
-sama warstwa protokołu (budowanie/parsowanie ramek), testowalna bez
-fizycznego sprzętu. Świadomie **nie** zintegrowane jeszcze z `Machine` —
-czeka na fizyczne potwierdzenie protokołu i decyzje z
-`docs/architektura-wielu-drajwerow-osi.md`.
+Sterownik magistrali serw FEETECH dla planowanej osi 4 (SM45BL — obecnie
+dwa fizyczne serwa, docisk i podajnik): warstwa protokołu
+(budowanie/parsowanie ramek) plus `FeetekDriver` (port szeregowy +
+operacje wysokopoziomowe: ping, odczyt statusu, ruch pozycyjny),
+testowalne bez fizycznego sprzętu. Świadomie **nie** zintegrowane jeszcze
+z `Machine` — czeka na decyzje z `docs/architektura-wielu-drajwerow-osi.md`.
 
 ## Pliki
 
@@ -18,7 +19,25 @@ czeka na fizyczne potwierdzenie protokołu i decyzje z
 - `tools/test_feetech_servo.py` — przepisany na import z
   `app.feetech_protocol` (bez duplikacji), dodana flaga `--read`: po
   udanym PING odczytuje pozycję/prędkość/obciążenie/napięcie/temperaturę
-  z pierwszej odpowiadającej kombinacji port/baud.
+  z pierwszej odpowiadającej kombinacji port/baud; `--set-id NOWE_ID`
+  zmienia ID serwa (odblokuj EPROM → zapisz → zablokuj → PING pod nowym).
+- `server/app/feetech_driver.py` — `FeetekDriver`: jedna magistrala, wiele
+  serw po ID, port przez `termios` (jak `tools/test_feetech_servo.py`,
+  wydzielone do użycia jako context manager). `ping()`, `read_raw()`/
+  `write_raw()`, `read_position()`, `read_status()`, `move_to()` (ruch
+  pozycyjny w jednostkach rejestru — kroki enkodera, nie mm; odpowiednik
+  `WritePosEx` z SDK producenta, zapis 7 bajtów od adresu ACC).
+- `server/app/feetech_protocol.py` — dopisane adresy `ADDR_ACC`,
+  `ADDR_GOAL_TIME_L/H`, `ADDR_GOAL_SPEED_L/H`, `ADDR_LOCK`, oraz
+  `encode_signed16()` (odwrotność `decode_signed16`, do zapisu celu ruchu).
+- `server/tests/test_feetech_driver.py` — 7 testów `FeetekDriver` na
+  podstawionym `_exchange` (jak `_command`/`_exchange` w
+  `test_sc4hub.py`), bez prawdziwego portu: ping, odczyt statusu, błąd
+  serwa, poprawność ramki `move_to`, context manager.
+- `tools/feetech_jog.py` — mały kontrolowany ruch (domyślnie 200 kroków
+  enkodera, wolno) do sprawdzenia kierunku obrotu na sprzęcie; czeka na
+  koniec ruchu odpytując rejestr MOVING, wypisuje pozycję przed/po.
+  **Realnie rusza serwem — do uruchamiania tylko przy maszynie.**
 
 ## Uwagi
 
