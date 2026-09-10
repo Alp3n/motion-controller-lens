@@ -104,12 +104,15 @@ fałszywie zielonych pól.
 
 ## Pytania do ustalenia, zanim zacznę kodować
 
-1. Czy oś 4 (Feetek) i przyszłe osie ClearCore biorą udział w programie
+1. ~~Czy oś 4 (Feetek) i przyszłe osie ClearCore biorą udział w programie
    technologa/cyklu (`RUCH`/`PROGRAM`) na równi z X/Y/Z, czy są **osiami
-   pomocniczymi** (podajnik, docisk) sterowanymi tylko z panelu/JOG i
-   konfiguracji cyklu? To determinuje, ile logiki wykonawczej
-   (`_run_program`, `_execute_cycle_step`) w ogóle musi wiedzieć o wielu
-   driverach naraz.
+   pomocniczymi**?~~ — **ROZSTRZYGNIĘTE 2026-09-10 (decyzja operatora):
+   wszystkie osie z serwami SM45BL mają być PEŁNOPRAWNE** — na równi z
+   X/Y/Z, nie tylko sterowane z panelu/JOG. Konsekwencja: `_run_program`,
+   `_execute_cycle_step`, walidacja `CycleStep.targets` i (jeśli dotyczy)
+   operacje `.prg` muszą wiedzieć o wielu driverach naraz, nie tylko o
+   Teknicu. To największa pojedyncza konsekwencja architektoniczna w tym
+   dokumencie — patrz „Krok integracji" niżej.
 2. Czy Feetek faktycznie nie daje żadnego feedbacku pozycji/momentu —
    proszę potwierdzić z dokumentacji konkretnego modelu/sterownika PWM,
    zanim to na stałe założę w kodzie (zasada weryfikacji faktów u źródła
@@ -302,11 +305,57 @@ dokumentacji, ale tanie do sprawdzenia, skoro narzędzie już istnieje).
 po analizie `scservo_sdk` z `zbyszek/FTServo_Python-main.zip` (adresy
 rejestrów już znane, patrz wyżej) i próbie PING na sprzęcie.
 
-## Co proponuję jako pierwszy krok
+## Plan integracji `FeetekDriver` z `Machine` (po decyzji: osie pełnoprawne)
 
-Nie kodować całości od razu. Zacząć od wydzielenia interfejsu `AxisDriver`
-i przepisania DZISIEJSZEGO `SC4HubMachine` tak, żeby sam siebie widział
-jako jeden driver obsługujący grupę X/Y/Z (zero zmiany zachowania, tylko
-przełożenie istniejącego kodu pod nowy kształt) — to weryfikuje, że
-abstrakcja się broni, zanim dojdzie drugi, zupełnie inny sprzęt. Dopiero
-potem dopisać `FeetekPwmDriver` dla osi 4.
+**Zmiana podejścia po decyzji 2026-09-10:** zamiast dużego refaktoru
+„`AxisDriver` jako wspólny interfejs, `Machine` składa drivery" (ryzykowne
+dla X/Y/Z, które działają na produkcji), **bezpieczniejsze jest dodanie
+Feetecha OBOK dzisiejszego kodu, bez dotykania ścieżki X/Y/Z**: `Machine`
+dostaje opcjonalny `self.feetek: FeetekDriver | None`, a miejsca, które
+muszą wiedzieć o wielu driverach (JOG, cykl, status), sprawdzają „czy ta
+nazwa osi jest skonfigurowana jako Feetech (nowe pole w `config/axes.json`)
+→ deleguj do `self.feetek`, inaczej → dzisiejsza ścieżka Teknika". Zero
+zmiany zachowania dla X/Y/Z w każdym etapie.
+
+**Etapy** (każdy osobno testowalny i wdrażalny, kolejność ma znaczenie —
+późniejsze zależą od wcześniejszych):
+
+- [x] **Etap 0 — protokół i driver.** `feetech_protocol.py` +
+  `feetech_driver.py`, zweryfikowane fizycznie (PING, odczyt statusu,
+  ruch, kierunek CW/CCW obu serw). Zrobione 2026-09-10.
+- [ ] **Etap 1 — status.** `Machine` otwiera `FeetekDriver` przy starcie
+  (jeśli skonfigurowane osie Feetech istnieją), `_poll_loop`/`poll_status`
+  dogrywa pozycję/moment tych osi do `MachineStatus` (dziś ma tylko
+  x/y/z/torque dict — trzeba rozszerzyć o dowolne nazwy osi, nie tylko
+  trzy stałe pola). Bez ruchu, tylko odczyt — najniższe ryzyko, daje
+  natychmiastową wartość (podgląd na panelu).
+- [ ] **Etap 2 — JOG.** `POST /api/machine/jog` dla osi Feetech woła
+  `FeetekDriver.move_relative_cw()` (z przeliczeniem mm→kroki przez
+  `mm_per_rev` i uwzględnieniem `DIRECTION_SIGN_CW`) zamiast ścieżki
+  Teknika. **Tu dopiero wyjdzie, czy CW = rosnące czy malejące mm dla
+  danej osi** — tego jeszcze nie wiemy (kierunek zmierzony dziś to obrót
+  WAŁU serwa, nie jeszcze zamontowanego do mechanizmu docisku/podajnika;
+  serwa leżą teraz odłączone obok maszyny). Wymaga osobnej kalibracji
+  znaku po fizycznym zamontowaniu.
+- [ ] **Etap 3 — bazowanie.** SM45BL nie ma czytelnego dla nas wejścia
+  krańcówki (do potwierdzenia) — najpewniej bazowanie **programowe**
+  (zapisanie bieżącej pozycji jako zero, jak `home_mode: "programowe"` już
+  istniejący w modelu `AxisConfig`), ewentualnie z użyciem rejestru OFS
+  (31-32, offset zera) zamiast liczenia w Pythonie. Do ustalenia.
+- [ ] **Etap 4 — cykl maszyny.** `CycleStep.targets` dziś przyjmuje
+  x/y/z — rozszerzyć o dowolne skonfigurowane nazwy osi (walidacja w
+  `cycle.py`), `_execute_cycle_step` deleguje ruch tej osi do
+  `FeetekDriver` tak jak w etapie 2.
+- [ ] **Etap 5 (jeśli potrzebne) — program technologa.** Czy operacje
+  `.prg` też mają móc ruszać tymi osiami, czy to wyłącznie poziom cyklu
+  maszyny (jak dziś `WYJSCIE`)? Nieustalone — pytanie do Ciebie, gdy
+  dojdziemy do tego etapu.
+
+**Multi-turn i granice zakresu:** dzisiejszy test pokazał, że komenda poza
+zakresem 0-4095 jest po prostu odrzucana bez ruchu (serwo 1, cel 4294) —
+tryb wielobrotowy (±7 obrotów, wspomniany w karcie katalogowej) nie jest
+jeszcze używany ani potwierdzony w naszym kodzie. Dla `docisk`
+(0,25mm/obrót, zakres roboczy 7mm w `config/axes.json`) cały zakres
+roboczy to około 28 obrotów — **prawdopodobnie WYMAGA trybu
+wielobrotowego**, żeby zmieścić się w jednym ciągłym ruchu bez ręcznego
+zawijania przez Pythona. Do zbadania przy etapie 2/3, nie zakładane teraz.

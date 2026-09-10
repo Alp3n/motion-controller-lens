@@ -272,11 +272,18 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       w ekranie `/sila` (kalibracja siłomierzem już dostępna)
 
 ### L. Architektura wielu sterowników (drajwerów) osi
-- [ ] **Propozycja spisana 2026-09-09** (nie zdecydowane, nie kodowane):
-      driver per oś zamiast jednej klasy `Machine` na cały sprzęt, pod
-      planowaną oś 4 (FEETECH SM45BL) i moduł ClearCore (kroki + I/O).
-      Cztery pytania do ustalenia przed kodowaniem, w tym czy oś 4 jest
-      pełnoprawna w cyklu/programie czy pomocnicza. Ustalone przy okazji:
+- [x] **Decyzja 2026-09-10: wszystkie osie z serwami SM45BL (docisk,
+      podajnik, kolejne) mają być PEŁNOPRAWNE** — na równi z X/Y/Z, nie
+      tylko sterowane z panelu. Podejście integracji zmienione na
+      bezpieczniejsze: Feetech OBOK dzisiejszego kodu Teknika (X/Y/Z bez
+      zmian w każdym etapie), nie jeden wspólny refaktor `Machine`. Pięć
+      etapów rozpisanych w `architektura-wielu-drajwerow-osi.md` (status:
+      status/odczyt → JOG → bazowanie → cykl maszyny → program technologa,
+      etap 0 gotowy).
+- [ ] **Propozycja spisana 2026-09-09** (część nadal otwarta): driver per
+      oś zamiast jednej klasy `Machine` na cały sprzęt, pod moduł
+      ClearCore (kroki + I/O). Cztery pytania do ustalenia przed
+      kodowaniem tej części. Ustalone przy okazji:
       ClearCore to firmware do napisania od zera (Microchip Studio/
       Windows), nie gotowe SDK — drugi projekt w stylu `bridge/`.
 - [x] **Materiały SM45BL dostarczone i przeanalizowane 2026-09-10** —
