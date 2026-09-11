@@ -42,15 +42,30 @@ zaufaniem podsumowaniu): odczyt 8 kanałów analogowych to funkcja 0x04
 per kanał pod 0x1000+kanał; adres urządzenia pod 0x4000; parametry UART
 pod 0x2000. Domyślnie: adres 1, 9600 N81, zakres 0-20mA.
 
-**NIEPOTWIERDZONE — świadomie puste w kodzie, nie zgadywane:**
-- **Mapa rejestrów modułu cyfrowego (SKU 26244)** — który adres to DI,
-  który DO, która funkcja. Dostępne z tej sesji instrukcje (mirror
-  `manuals.plus`) wprost odsyłają do wiki Waveshare po tę tabelę; sama
-  wiki jest zablokowana sieciowo z tej sesji (jak inne strony
-  producentów, patrz `plan-rozwoju.md` sekcja J). `ModbusDriver` celowo
-  **nie ma** wysokopoziomowych metod dla tego modułu (`read_digital_*`) —
-  tylko ogólne `read_coils`/`read_discrete_inputs`/`write_single_coil`, do
-  użycia z adresem ustalonym eksperymentalnie.
+**Częściowo potwierdzone empirycznie 2026-09-11**, moduł cyfrowy (SKU
+26244) fizycznie podłączony, `tools/test_waveshare_io.py --digital-probe`
+na adresie fabrycznym 1:
+- `read_holding_registers(0x4000, 1)` → **`[1]`** — zgadza się z
+  rzeczywistym adresem urządzenia. **Silny dowód**, że ten moduł dzieli
+  ten sam układ rejestrów konfiguracyjnych co moduł analogowy (0x2000
+  UART, 0x4000 adres, 0x8000 wersja) — nie tylko przypuszczenie.
+- `read_coils(addr=0, count=8)` → `[False]*8`, bez błędu — prawdopodobnie
+  8 wyjść cyfrowych (DO0-DO7), wszystkie wyłączone (zgodne z rzeczywistością
+  — nic nie było załączone).
+- `read_discrete_inputs(addr=0, count=8)` → `[False]*8`, bez błędu —
+  prawdopodobnie 8 wejść cyfrowych (DI0-DI7).
+- `read_holding_registers(0x1000, 1)` → `[0]` — rejestr istnieje i się
+  czyta, znaczenie dla TEGO modułu (w analogowym to typ/zakres kanału)
+  jeszcze niezinterpretowane.
+
+**Wciąż nie w 100% pewne:** odczyt bez błędu potwierdza, że coś sensownie
+odpowiedziało pod tymi adresami/funkcjami — nie potwierdza jeszcze
+JEDNOZNACZNIE, że to naprawdę DO/DI (a nie np. martwe/nieużywane
+rejestry, które akurat też zwracają zera bez wyjątku). Pełne
+potwierdzenie wymaga zapisu (`write_single_coil`) i obserwacji fizycznego
+efektu (dioda na module) — `ModbusDriver` celowo **nie ma** jeszcze
+wysokopoziomowych metod dla tego modułu (`read_digital_*`), tylko ogólne
+`read_coils`/`read_discrete_inputs`/`write_single_coil`.
 - **Dokładne bajty poleceń zmiany adresu/baudrate modułu analogowego** —
   instrukcja podała przykłady (`00 06 40 00 00 02 10 1A` itd.), ale
   **niezależne przeliczenie CRC16 dla tych konkretnych przykładów NIE
