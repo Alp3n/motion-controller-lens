@@ -231,10 +231,15 @@ class FeetekDriver:
         self.write_raw(servo_id, fp.ADDR_GOAL_SPEED_L, fp.encode_signed16(0))
         self.set_mode(servo_id, fp.MODE_POSITION)
 
+    def is_moving(self, servo_id: int) -> bool:
+        """Odczytuje rejestr MOVING — `True`, jeśli serwo wciąż wykonuje
+        ruch pozycyjny (mode 0)."""
+        return bool(self.read_raw(servo_id, fp.ADDR_MOVING, 1)[0])
+
     def wait_until_stopped(
         self, servo_id: int, timeout_s: float = 10.0, poll_interval_s: float = 0.1
     ) -> bool:
-        """Czeka na koniec ruchu odpytując rejestr MOVING — ten sam wzorzec,
+        """Czeka na koniec ruchu odpytując `is_moving()` — ten sam wzorzec,
         co `tools/feetech_jog.py` (zweryfikowany fizycznie 2026-09-10: nie
         zgaduje czasu z prędkości/przyspieszenia, tylko pyta serwo wprost).
 
@@ -243,11 +248,23 @@ class FeetekDriver:
         czy to błąd)."""
         deadline = time.monotonic() + timeout_s
         while time.monotonic() < deadline:
-            moving = self.read_raw(servo_id, fp.ADDR_MOVING, 1)[0]
-            if not moving:
+            if not self.is_moving(servo_id):
                 return True
             time.sleep(poll_interval_s)
         return False
+
+    def stop_position_move(self, servo_id: int, speed: int = 100, acc: int = 20) -> None:
+        """Przerywa trwający ruch pozycyjny — komenda „jedź tam, gdzie już
+        jesteś" (standardowy sposób anulowania `move_to()` w toku dla tej
+        rodziny serw; nie ma osobnej komendy STOP w trybie pozycyjnym).
+
+        Używane wyłącznie jako zabezpieczenie awaryjne przy wykrytym
+        przeciążeniu (`main._feetech_move_to_and_wait`, `feetech_load_
+        limit` z `AxisConfig`) — decyzja operatora 2026-09-12: krok RUCH ma
+        NORMALNIE dojeżdżać do zadanej pozycji, to nie jest zwykły sposób
+        zatrzymania."""
+        position = self.read_position(servo_id)
+        self.move_to(servo_id, position, speed=speed, acc=acc)
 
     def move_relative_cw(self, servo_id: int, counts_cw: int, speed: int = 100, acc: int = 20) -> int:
         """Jak `move_to`, ale kierunek zawsze "zgodnie z zegarem = dodatnie",

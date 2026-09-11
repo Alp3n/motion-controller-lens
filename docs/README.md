@@ -256,6 +256,10 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   naprawa "ruch skokami": JOG przełączony na tryb 1 serwa (koło, stała
   prędkość) — płynny ruch trzymanym przyciskiem, jawny stop na puszczeniu,
   strażnik (heartbeat + limit osi) po stronie serwera.
+- [zmiany/limit-obciazenia-feetech-ruch.md](zmiany/limit-obciazenia-feetech-ruch.md) —
+  limit obciążenia (`feetech_load_limit`, domyślnie wyłączony) jako
+  zabezpieczenie awaryjne kroku RUCH — RUCH normalnie dojeżdża do pozycji,
+  przekroczenie progu przerywa ruch i daje ALARM.
 - [zmiany/przeliczenie-mm-osie-feetech.md](zmiany/przeliczenie-mm-osie-feetech.md) —
   temat L, reszta etapu 2: pozycja osi FEETECH przeliczona na mm przez
   skok śruby (`position_to_mm()`), obok surowej wartości rejestru w

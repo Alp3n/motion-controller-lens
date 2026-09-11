@@ -232,6 +232,52 @@ def test_with_current_values_zachowuje_feetech_speed_i_acc():
     assert result.feetech_acc == 77
 
 
+# --- limit obciążenia FEETECH (RUCH cyklu, zabezpieczenie awaryjne) --------
+
+
+def test_feetech_load_limit_domyslnie_wylaczony():
+    cfg = _dodatkowa_os()
+    assert cfg.feetech_load_limit is None
+    cfg.validate("docisk")  # nie rzuca
+
+
+def test_feetech_load_limit_ujemny_lub_zero_jest_odrzucony():
+    for zla in (0, -5):
+        cfg = _dodatkowa_os(feetech_load_limit=zla)
+        with pytest.raises(axes.AxisConfigError, match="limit obciążenia"):
+            cfg.validate("docisk")
+
+
+def test_feetech_load_limit_dodatni_przechodzi_walidacje():
+    cfg = _dodatkowa_os(feetech_load_limit=1500)
+    cfg.validate("docisk")  # nie rzuca
+
+
+def test_feetech_load_limit_przechodzi_przez_to_dict_from_dict():
+    cfg = _dodatkowa_os(feetech_load_limit=1200)
+    restored = axes.AxisConfig.from_dict("docisk", cfg.to_dict())
+    assert restored.feetech_load_limit == 1200
+
+
+def test_plik_sprzed_pola_load_limit_dostaje_none():
+    data = _dodatkowa_os().to_dict()
+    del data["feetech_load_limit"]
+    cfg = axes.AxisConfig.from_dict("docisk", data)
+    assert cfg.feetech_load_limit is None
+
+
+def test_with_current_values_zachowuje_feetech_load_limit():
+    current = {"docisk": _dodatkowa_os(feetech_load_limit=1200)}
+    incoming = {"docisk": {**_dodatkowa_os().to_dict()}}
+    del incoming["docisk"]["feetech_load_limit"]
+    incoming["docisk"]["vel_jog"] = 1000.0
+
+    merged = axes.with_current_values(incoming, current)
+    result = axes.AxisConfig.from_dict("docisk", merged["docisk"])
+
+    assert result.feetech_load_limit == 1200
+
+
 def test_defaults_keep_work_area_from_env():
     area = {
         "x_min": -100, "x_max": 100,

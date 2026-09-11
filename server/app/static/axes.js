@@ -88,13 +88,21 @@ function readAxis(axis) {
     mm_per_rev: num($(`f-${axis}-mmrev`).value),
     vel_jog: num($(`f-${axis}-veljog`).value),
   };
-  // pola prędkości FEETECH istnieją tylko w wierszach osi ze sterownikiem
-  // feetech (patrz addAxisRow) — dla reszty osi nie są wysyłane w ogóle,
-  // więc with_current_values() po stronie serwera je zachowuje bez zmian
+  // pola prędkości/limitu obciążenia FEETECH istnieją tylko w wierszach osi
+  // ze sterownikiem feetech (patrz addAxisRow) — dla reszty osi nie są
+  // wysyłane w ogóle, więc with_current_values() po stronie serwera je
+  // zachowuje bez zmian
   const speedEl = $(`f-${axis}-fspeed`);
   const accEl = $(`f-${axis}-facc`);
+  const loadLimitEl = $(`f-${axis}-floadlimit`);
   if (speedEl) cfg.feetech_speed = num(speedEl.value);
   if (accEl) cfg.feetech_acc = num(accEl.value);
+  if (loadLimitEl) {
+    // puste pole = wyłączony (null), nie 0 — inaczej "puste = wyłącz"
+    // zamieniłoby się w "0 = zatrzymaj przy najmniejszym obciążeniu"
+    const raw = loadLimitEl.value.trim();
+    cfg.feetech_load_limit = raw === "" ? null : num(raw);
+  }
   return cfg;
 }
 
@@ -107,8 +115,10 @@ function writeAxis(axis, cfg) {
   $(`f-${axis}-veljog`).value = cfg.vel_jog ?? FALLBACK_VEL_JOG;
   const speedEl = $(`f-${axis}-fspeed`);
   const accEl = $(`f-${axis}-facc`);
+  const loadLimitEl = $(`f-${axis}-floadlimit`);
   if (speedEl) speedEl.value = cfg.feetech_speed ?? FALLBACK_FEETECH_SPEED;
   if (accEl) accEl.value = cfg.feetech_acc ?? FALLBACK_FEETECH_ACC;
+  if (loadLimitEl) loadLimitEl.value = cfg.feetech_load_limit ?? "";
 }
 
 // --- budowa tabeli --------------------------------------------------------
@@ -151,6 +161,13 @@ function addAxisRow(axis, extra, isFeetech = false) {
     ? `<input id="f-${axis}-facc" type="number" step="1" min="0" max="1000" ` +
       `title="Jednostki rejestru serwa: 0-1000, 1 jedn. = 100 kroków/s² (≈8,79°/s²). Domyślnie 20.">`
     : `<span class="muted">—</span>`;
+  // limit obciążenia — TYLKO RUCH cyklu (nie JOG), zabezpieczenie awaryjne,
+  // domyślnie puste = wyłączony (patrz readAxis/writeAxis)
+  const loadLimitCell = isFeetech
+    ? `<input id="f-${axis}-floadlimit" type="number" step="1" min="1" ` +
+      `placeholder="wyłączony" ` +
+      `title="Puste = wyłączony. Zabezpieczenie AWARYJNE dla kroku RUCH — przekroczenie |obciążenia| przerywa ruch i daje ALARM. RUCH normalnie dojeżdża do pozycji bez tego.">`
+    : `<span class="muted">—</span>`;
   tr.innerHTML =
     `<td style="font-size:20px; font-weight:700; white-space:nowrap">${nameCell}</td>` +
     `<td><input id="f-${axis}-length" type="number" step="0.1" min="0"></td>` +
@@ -162,6 +179,7 @@ function addAxisRow(axis, extra, isFeetech = false) {
     `<td><input id="f-${axis}-veljog" type="number" step="1" min="0"></td>` +
     `<td>${speedCell}</td>` +
     `<td>${accCell}</td>` +
+    `<td>${loadLimitCell}</td>` +
     `<td class="row-actions">${actions}</td>`;
   tbody.appendChild(tr);
   tr.querySelectorAll("input, select").forEach((el) => {
@@ -230,6 +248,15 @@ function validateAxis(axis, cfg) {
   }
   if (cfg.feetech_acc !== undefined && !(cfg.feetech_acc >= 0 && cfg.feetech_acc <= 1000)) {
     bad.push([`f-${axis}-facc`, `${label}: przyspieszenie FEETECH musi być w zakresie 0-1000`]);
+  }
+  // null = wyłączony (poprawnie); tylko liczba <= 0 albo NaN (błędny wpis,
+  // nie pusty) jest błędem
+  if (
+    cfg.feetech_load_limit !== undefined &&
+    cfg.feetech_load_limit !== null &&
+    !(cfg.feetech_load_limit > 0)
+  ) {
+    bad.push([`f-${axis}-floadlimit`, `${label}: limit obciążenia FEETECH musi być większy od zera (albo pusty)`]);
   }
   if (Number.isNaN(cfg.soft_min)) bad.push([`f-${axis}-min`, `${label}: podaj limit MIN`]);
   if (Number.isNaN(cfg.soft_max)) bad.push([`f-${axis}-max`, `${label}: podaj limit MAX`]);

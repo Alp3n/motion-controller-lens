@@ -355,6 +355,15 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       (najlepszy wysiłek, nie twardy limit — patrz uwagi w dokumencie).
       RUCH cyklu bez zmian (tryb pozycyjny). Szczegóły:
       `zmiany/jog-feetech-tryb-kolo.md`.
+- [x] **Limit obciążenia FEETECH w RUCH, 2026-09-12** (dopełnienie
+      zamówienia „...i kontroluje siłę" — operator doprecyzował: RUCH ma
+      NORMALNIE dojeżdżać do pozycji, próg obciążenia to wyłącznie
+      zabezpieczenie awaryjne). `AxisConfig.feetech_load_limit`, domyślnie
+      wyłączony (`None`), ustawiany z ekranu `/axes`; przekroczenie
+      przerywa ruch (`stop_position_move`) i daje ALARM. Skala rejestru
+      `PRESENT_LOAD` nieznana z dokumentacji — próg do wyznaczenia
+      empirycznie przy maszynie. Szczegóły:
+      `zmiany/limit-obciazenia-feetech-ruch.md`.
 - [x] **Naprawiony błąd 2026-09-11: zapis z ekranu `/axes` kasował
       `driver: feetech`.** Odkryte przez zauważenie zmiany na dysku, nie
       zgłoszenie — `docisk`/`podajnik` wróciły po zapisie `vel_jog` do

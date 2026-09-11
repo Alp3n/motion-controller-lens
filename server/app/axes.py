@@ -119,6 +119,14 @@ class AxisConfig:
     # wartości zaszyte na sztywno w feetech_driver.move_to()/move_relative_cw().
     feetech_speed: int = 100
     feetech_acc: int = 20
+    # Limit obciążenia (|PRESENT_LOAD|, jednostki rejestru) podczas ruchu
+    # pozycyjnego (krok RUCH cyklu) — decyzja operatora 2026-09-12: RUCH ma
+    # NORMALNIE dojeżdżać do zadanej pozycji, przekroczenie progu to
+    # WYŁĄCZNIE zabezpieczenie awaryjne (np. zablokowany mechanizm), nie
+    # sposób zatrzymania w typowej pracy. None (domyślnie) = wyłączone —
+    # bezpieczny start, dopóki operator nie skalibruje progu przy maszynie
+    # (obserwując realne odczyty `load` w /api/status podczas pracy).
+    feetech_load_limit: int | None = None
 
     # --- zakres fizyczny (wynika z długości i punktu bazowego) -------------
 
@@ -149,6 +157,7 @@ class AxisConfig:
             "feetech_id": self.feetech_id,
             "feetech_speed": int(self.feetech_speed),
             "feetech_acc": int(self.feetech_acc),
+            "feetech_load_limit": self.feetech_load_limit,
             # pola wyliczane — tylko do odczytu, dla panelu i dokumentacji
             "phys_min": round(lo, 4),
             "phys_max": round(hi, 4),
@@ -228,6 +237,11 @@ class AxisConfig:
                 if "feetech_acc" in data
                 else 20
             ),
+            feetech_load_limit=(
+                int(_num(data["feetech_load_limit"], f"{label}: limit obciążenia FEETECH"))
+                if data.get("feetech_load_limit") is not None
+                else None
+            ),
         )
         cfg.validate(axis)
         return cfg
@@ -304,6 +318,11 @@ class AxisConfig:
             raise AxisConfigError(
                 f"{label}: przyspieszenie FEETECH musi być w zakresie 0-1000 "
                 "(jednostki rejestru, 1 = 100 kroków/s²)"
+            )
+        if self.feetech_load_limit is not None and self.feetech_load_limit <= 0:
+            raise AxisConfigError(
+                f"{label}: limit obciążenia FEETECH musi być większy od zera "
+                "(puste pole = wyłączony)"
             )
 
 
@@ -434,11 +453,12 @@ HOMING_FIELDS = ("home_order", "home_mode", "home_torque", "home_offset", "vel_h
 # z powrotem na domyślne `teknic` — dokładnie ten sam błąd, który już raz
 # się zdarzył dla pól bazowania, patrz zmiany/predkosci-jog-bazowanie.md.
 #
-# `feetech_speed`/`feetech_acc` dopisane od razu przy wprowadzeniu (też
-# 2026-09-11) — PREWENCYJNIE, żeby nie doczekać się trzeciego wystąpienia
+# `feetech_speed`/`feetech_acc`/`feetech_load_limit` dopisane od razu przy
+# wprowadzeniu — PREWENCYJNIE, żeby nie doczekać się kolejnego wystąpienia
 # tego samego wzorca błędu, zanim ekran /axes w ogóle zacznie je edytować.
 OPTIONAL_FIELDS = (
-    "vel_jog", "driver", "feetech_id", "feetech_speed", "feetech_acc"
+    "vel_jog", "driver", "feetech_id",
+    "feetech_speed", "feetech_acc", "feetech_load_limit",
 ) + HOMING_FIELDS
 
 

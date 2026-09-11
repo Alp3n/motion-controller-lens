@@ -385,17 +385,42 @@ def _feetech_wheel_stop_reason(
     return None
 
 
-def _feetech_move_to_and_wait(servo_id: int, position: int, speed: int, acc: int) -> None:
+def _feetech_move_to_and_wait(
+    servo_id: int,
+    position: int,
+    speed: int,
+    acc: int,
+    load_limit: int | None,
+    timeout_s: float = 10.0,
+    poll_interval_s: float = 0.1,
+) -> None:
     """Blokujące (termios) — jak `_feetech_jog`, ale pozycja ABSOLUTNA i
     CZEKA na koniec ruchu (rejestr MOVING) — krok RUCH cyklu ma się
     zakończyć dopiero, gdy oś naprawdę dojechała, nie od razu po wysłaniu
-    komendy. Ten sam wzorzec co `tools/feetech_jog.py`."""
+    komendy. Ten sam wzorzec co `tools/feetech_jog.py`.
+
+    `load_limit` (z `AxisConfig.feetech_load_limit`, None = wyłączone) to
+    WYŁĄCZNIE zabezpieczenie awaryjne — decyzja operatora 2026-09-12: RUCH
+    ma normalnie dojeżdżać do zadanej pozycji, przekroczenie progu
+    |obciążenia| przerywa ruch (`stop_position_move`) i rzuca błąd,
+    zamiast być zwykłym sposobem zatrzymania. Sprawdzane w tej samej
+    pętli, co odpytywanie MOVING — jeden odczyt (`read_position_and_load`)
+    na iterację, bez dodatkowych rund po RS485."""
     with FeetekDriver(config.FEETECH_PORT, baud=config.FEETECH_BAUD) as driver:
         driver.move_to(servo_id, position, speed=speed, acc=acc)
-        if not driver.wait_until_stopped(servo_id):
-            raise FeetekError(
-                f"serwo {servo_id}: przekroczono czas oczekiwania na koniec ruchu"
-            )
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            _, load = driver.read_position_and_load(servo_id)
+            if load_limit is not None and abs(load) > load_limit:
+                driver.stop_position_move(servo_id, speed=speed, acc=acc)
+                raise FeetekError(
+                    f"serwo {servo_id}: przeciążenie (|obciążenie|={abs(load)} > "
+                    f"limit {load_limit}) — ruch przerwany"
+                )
+            if not driver.is_moving(servo_id):
+                return
+            time.sleep(poll_interval_s)
+        raise FeetekError(f"serwo {servo_id}: przekroczono czas oczekiwania na koniec ruchu")
 
 
 async def _feetech_cycle_move(axis: str, target_mm: float) -> None:
@@ -423,6 +448,7 @@ async def _feetech_cycle_move(axis: str, target_mm: float) -> None:
                 position,
                 axis_cfg.feetech_speed,
                 axis_cfg.feetech_acc,
+                axis_cfg.feetech_load_limit,
             )
     except FeetekError as exc:
         raise MachineError(f"oś {axis.upper()} (FEETECH): {exc}")

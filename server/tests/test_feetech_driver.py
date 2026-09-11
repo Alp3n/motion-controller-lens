@@ -206,6 +206,25 @@ def test_wait_until_stopped_zwraca_false_po_timeout():
     assert d.wait_until_stopped(1, timeout_s=0.05, poll_interval_s=0.02) is False
 
 
+def test_is_moving_prawda_falsz():
+    d = _driver_with_fake([_ok_response(1, bytes([1])), _ok_response(1, bytes([0]))])
+    assert d.is_moving(1) is True
+    assert d.is_moving(1) is False
+
+
+def test_stop_position_move_jedzie_do_biezacej_pozycji():
+    """Zabezpieczenie awaryjne przy przeciążeniu — 'jedź tam, gdzie już
+    jesteś' (nie ma osobnej komendy STOP w trybie pozycyjnym)."""
+    d = _driver_with_fake([
+        _ok_response(1, fp.encode_signed16(777)),  # read_position
+        _ok_response(1), _ok_response(1),           # move_to: set_mode + ACC/pozycja
+    ])
+    d.stop_position_move(1, speed=50, acc=10)
+    _, data = _write_frame(d.calls[2])
+    assert data[0] == 10  # acc
+    assert fp.decode_signed16(data[1:3]) == 777  # cel = bieżąca pozycja
+
+
 def test_move_relative_cw_nieznane_id_rzuca_keyerror():
     d = _driver_with_fake([])
     with pytest.raises(KeyError):

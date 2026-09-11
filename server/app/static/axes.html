@@ -43,6 +43,7 @@
               <th title="prędkość ruchu ręcznego z panelu operatora">JOG [mm/min]</th>
               <th title="Tylko osie ze sterownikiem FEETECH (np. docisk, podajnik). Jednostki rejestru serwa, nie mm/min: zakres 1-1000, 1 jedn. ≈ 0,732 obr/min. Używane zarówno przez JOG (tryb koła, płynny ruch trzymanym przyciskiem) jak i przez krok RUCH cyklu (tryb pozycyjny). Dawna stała wartość (przed tym polem) to 100.">Prędkość serwa FEETECH</th>
               <th title="Tylko osie ze sterownikiem FEETECH. Jednostki rejestru: zakres 0-1000, 1 jedn. = 100 kroków/s² (≈8,79°/s²). Dawna stała wartość to 20.">Przysp. FEETECH</th>
+              <th title="Tylko osie ze sterownikiem FEETECH i tylko krok RUCH cyklu (nie JOG). Puste = wyłączony (domyślnie). Zabezpieczenie AWARYJNE — jeśli |obciążenie| przekroczy tę wartość podczas dojazdu, ruch zostaje przerwany i cykl przechodzi w ALARM. To NIE jest normalny sposób zatrzymania — bez przekroczenia progu RUCH zawsze dojeżdża do zadanej pozycji. Skalibruj przy maszynie, obserwując odczyty 'load' w podglądzie osi dodatkowych.">Limit obciążenia FEETECH</th>
               <th></th>
             </tr>
           </thead>
@@ -104,9 +105,15 @@
         <li><b>Prędkość JOG</b> ogranicza ruch ręczny z panelu operatora dla danej
           osi — działa zarówno w symulatorze, jak i na sprzęcie.</li>
         <li><b>Prędkość/przyspieszenie serwa FEETECH</b> (widoczne tylko dla osi
-          docisk/podajnik) sterują ruchem JOG tych osi z panelu operatora —
-          jednostki rejestru serwa, nie mm/min (najedź kursorem na nagłówek
-          kolumny po podpowiedź zakresu i przelicznik).</li>
+          docisk/podajnik) sterują JOG (tryb koła) i krokiem RUCH cyklu (tryb
+          pozycyjny) tych osi — jednostki rejestru serwa, nie mm/min (najedź
+          kursorem na nagłówek kolumny po podpowiedź zakresu i przelicznik).</li>
+        <li><b>Limit obciążenia FEETECH</b> (tylko docisk/podajnik) to
+          zabezpieczenie AWARYJNE dla kroku RUCH — puste (domyślnie) =
+          wyłączony, RUCH zawsze dojeżdża do zadanej pozycji; ustawiony próg
+          przerywa ruch i daje ALARM tylko przy przeciążeniu (np.
+          zablokowany mechanizm), nie jest normalnym sposobem zatrzymania.
+          Nie dotyczy JOG.</li>
         <li><b>Bazowanie</b> — kolejność osi, sposób (HardStop / programowe),
           limit momentu, offset i prędkość dojazdu są na osobnym ekranie:
           <a href="/homing">Konfiguracja bazowania</a>.</li>
