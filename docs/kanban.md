@@ -359,6 +359,16 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       pokazuje oba. **Bez bazowania** — mm liczone od fabrycznego zera
       enkodera, nie od zera obszaru roboczego; znak nieujednolicony między
       osiami. Szczegóły: `zmiany/przeliczenie-mm-osie-feetech.md`.
+- [x] **Prędkość/przyspieszenie serwa konfigurowalne, 2026-09-11**
+      (zamówienie: „sprawdź czy możemy definiować prędkość serwa w
+      konfiguracji osi" + „daj podpowiedź ustawianych zakresów"):
+      `AxisConfig.feetech_speed`/`feetech_acc` (dawne stałe 100/20 z
+      `feetech_driver.py` — teraz per oś, edytowalne z ekranu `/axes`, tylko
+      dla osi ze sterownikiem feetech). Zakresy potwierdzone u źródła
+      (`zbyszek/Tabela pamięci... .xlsx`): przyspieszenie 0-1000 pewne
+      (100 kroków/s²/jedn.), górna granica prędkości NIE w pełni
+      potwierdzona (przyjęty konserwatywny sufit 1000, do weryfikacji).
+      Szczegóły: `zmiany/predkosc-serwa-feetech-w-konfiguracji.md`.
 - [ ] **Zostaje z etapów FEETECH:** bazowanie (etap 3), cykl maszyny
       (etap 4), ew. program technologa (etap 5) — patrz
       `architektura-wielu-drajwerow-osi.md`.

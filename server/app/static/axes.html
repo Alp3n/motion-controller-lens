@@ -41,6 +41,8 @@
               <th title="górny limit programowy">Limit MAX [mm]</th>
               <th title="ile milimetrów przejeżdża oś na jeden obrót silnika">mm / obrót</th>
               <th title="prędkość ruchu ręcznego z panelu operatora">JOG [mm/min]</th>
+              <th title="Tylko osie ze sterownikiem FEETECH (np. docisk, podajnik). Jednostki rejestru serwa, nie mm/min: zakres 1-1000, 1 jedn. ≈ 0,732 obr/min. Dawna stała wartość (przed tym polem) to 100.">Prędkość serwa FEETECH</th>
+              <th title="Tylko osie ze sterownikiem FEETECH. Jednostki rejestru: zakres 0-1000, 1 jedn. = 100 kroków/s² (≈8,79°/s²). Dawna stała wartość to 20.">Przysp. FEETECH</th>
               <th></th>
             </tr>
           </thead>
@@ -58,15 +60,20 @@
     </section>
 
     <section class="panel">
-      <h2>Dodatkowe osie <span class="axis-extra-badge">tylko konfiguracja</span></h2>
+      <h2>Dodatkowe osie</h2>
       <p class="muted" style="margin-top:-6px">
         Miejsce na przyszłe osie maszyny — podajnik, docisk i podobne
-        (temat C w planie rozwoju). <b>To dziś wyłącznie zapis w pliku
-        konfiguracji.</b> Mostek do sterownika zna komendy ruchu tylko dla
-        X/Y/Z — dodana tu oś zapisze parametry (długość, limity,
-        przełożenie), ale <b>nic fizycznie nie pojedzie</b>, dopóki protokół
-        mostka nie zostanie rozszerzony. Zobacz
-        <code>docs/zmiany/osie-dodatkowe-etap1.md</code>.
+        (temat C w planie rozwoju, temat L dla sterownika FEETECH). Nowo
+        dodana oś z tego ekranu jest domyślnie sterownikiem <b>teknic</b> —
+        mostek do sterownika Teknica zna komendy ruchu tylko dla X/Y/Z,
+        więc taka oś zapisze parametry (długość, limity, przełożenie), ale
+        <b>nic fizycznie nie pojedzie</b>. Osie ze sterownikiem
+        <b>FEETECH</b> (dzisiejsze docisk/podajnik) są wyjątkiem — ruszają
+        fizycznie przez osobną magistralę RS485; sterownik osi
+        (teknic/feetech) i ID serwa ustawia się dziś tylko edycją pliku
+        konfiguracji, nie z tego ekranu. Zobacz
+        <code>docs/zmiany/osie-dodatkowe-etap1.md</code> i
+        <code>docs/architektura-wielu-drajwerow-osi.md</code>.
       </p>
       <div class="btn-row" style="max-width:420px">
         <input id="new-axis-name" placeholder="nazwa osi, np. podajnik" style="flex:1">
@@ -96,6 +103,10 @@
           kontrolnym na wolnym posuwie.</li>
         <li><b>Prędkość JOG</b> ogranicza ruch ręczny z panelu operatora dla danej
           osi — działa zarówno w symulatorze, jak i na sprzęcie.</li>
+        <li><b>Prędkość/przyspieszenie serwa FEETECH</b> (widoczne tylko dla osi
+          docisk/podajnik) sterują ruchem JOG tych osi z panelu operatora —
+          jednostki rejestru serwa, nie mm/min (najedź kursorem na nagłówek
+          kolumny po podpowiedź zakresu i przelicznik).</li>
         <li><b>Bazowanie</b> — kolejność osi, sposób (HardStop / programowe),
           limit momentu, offset i prędkość dojazdu są na osobnym ekranie:
           <a href="/homing">Konfiguracja bazowania</a>.</li>

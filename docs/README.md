@@ -256,6 +256,10 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   temat L, reszta etapu 2: pozycja osi FEETECH przeliczona na mm przez
   skok śruby (`position_to_mm()`), obok surowej wartości rejestru w
   panelu operatora. Bez bazowania (etap 3, wciąż niezrobiony).
+- [zmiany/predkosc-serwa-feetech-w-konfiguracji.md](zmiany/predkosc-serwa-feetech-w-konfiguracji.md) —
+  `feetech_speed`/`feetech_acc` w konfiguracji osi (ekran `/axes`, tylko
+  dla osi ze sterownikiem feetech) zamiast stałych 100/20 zaszytych na
+  sztywno; zakresy potwierdzone u źródła (tabela pamięci SM45BL).
 - [zmiany/modbus-io-waveshare.md](zmiany/modbus-io-waveshare.md) —
   sterownik Modbus RTU dla modułów I/O Waveshare (SKU 26244 cyfrowy, SKU
   25821 analogowy) na tej samej magistrali co serwa. Oba moduły (cyfrowy

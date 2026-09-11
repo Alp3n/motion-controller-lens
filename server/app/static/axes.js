@@ -6,10 +6,15 @@ const $ = (id) => document.getElementById(id);
 
 /* X/Y/Z są wymagane zawsze — geometria cięcia .prg jest w nich zdefiniowana
    (patrz REQUIRED_AXES w app/axes.py). Osie dodatkowe (podajnik, docisk...)
-   admin może dopisać z tego ekranu, ale to dziś WYŁĄCZNIE zapis w pliku
-   konfiguracji — mostek do sterownika zna komendy ruchu tylko dla X/Y/Z,
-   więc dodatkowa oś nigdzie fizycznie nie pojedzie. Patrz docs/plan-rozwoju.md,
-   temat C, i docs/zmiany/osie-dodatkowe-etap1.md. */
+   admin może dopisać z tego ekranu — nowo dodana oś to zapis w pliku
+   konfiguracji BEZ sterownika (domyślnie "teknic"), a mostek do sterownika
+   Teknica zna komendy ruchu tylko dla X/Y/Z, więc taka oś nigdzie fizycznie
+   nie pojedzie. Osie ze sterownikiem FEETECH (docisk/podajnik, temat L) są
+   wyjątkiem — ruszają naprawdę przez osobną magistralę RS485; ten ekran
+   nie ma (jeszcze) przełącznika sterownika, tylko pola prędkości/
+   przyspieszenia FEETECH (patrz `readAxis`/`addAxisRow` niżej). Patrz
+   docs/plan-rozwoju.md temat C, docs/zmiany/osie-dodatkowe-etap1.md,
+   docs/architektura-wielu-drajwerow-osi.md. */
 const REQUIRED_AXES = ["x", "y", "z"];
 const AXIS_NAME_RE = /^[a-z][a-z0-9_]*$/;
 const HOME_LABELS = {
@@ -25,6 +30,11 @@ const HOME_LABELS = {
    (`with_current_values` w app/axes.py), więc zapis stąd nie kasuje ustawień
    bazowania. */
 const FALLBACK_VEL_JOG = 500;
+/* Dawne stałe zaszyte na sztywno w feetech_driver.py (move_to/move_relative_cw)
+   — te same liczby jako domyślne dla nowo dodanej osi FEETECH i jako
+   awaryjny fallback. */
+const FALLBACK_FEETECH_SPEED = 100;
+const FALLBACK_FEETECH_ACC = 20;
 
 let saved = null; // ostatnia konfiguracja potwierdzona przez serwer
 let machineBusy = false; // RUNNING/HOMING — zapis odrzucany przez serwer
@@ -70,7 +80,7 @@ function physRange(cfg) {
 }
 
 function readAxis(axis) {
-  return {
+  const cfg = {
     length: num($(`f-${axis}-length`).value),
     home: $(`f-${axis}-home`).value,
     soft_min: num($(`f-${axis}-min`).value),
@@ -78,6 +88,14 @@ function readAxis(axis) {
     mm_per_rev: num($(`f-${axis}-mmrev`).value),
     vel_jog: num($(`f-${axis}-veljog`).value),
   };
+  // pola prędkości FEETECH istnieją tylko w wierszach osi ze sterownikiem
+  // feetech (patrz addAxisRow) — dla reszty osi nie są wysyłane w ogóle,
+  // więc with_current_values() po stronie serwera je zachowuje bez zmian
+  const speedEl = $(`f-${axis}-fspeed`);
+  const accEl = $(`f-${axis}-facc`);
+  if (speedEl) cfg.feetech_speed = num(speedEl.value);
+  if (accEl) cfg.feetech_acc = num(accEl.value);
+  return cfg;
 }
 
 function writeAxis(axis, cfg) {
@@ -87,30 +105,52 @@ function writeAxis(axis, cfg) {
   $(`f-${axis}-max`).value = cfg.soft_max;
   $(`f-${axis}-mmrev`).value = cfg.mm_per_rev;
   $(`f-${axis}-veljog`).value = cfg.vel_jog ?? FALLBACK_VEL_JOG;
+  const speedEl = $(`f-${axis}-fspeed`);
+  const accEl = $(`f-${axis}-facc`);
+  if (speedEl) speedEl.value = cfg.feetech_speed ?? FALLBACK_FEETECH_SPEED;
+  if (accEl) accEl.value = cfg.feetech_acc ?? FALLBACK_FEETECH_ACC;
 }
 
 // --- budowa tabeli --------------------------------------------------------
 
 function buildRows(axisNames) {
   $("axis-rows").innerHTML = "";
-  for (const axis of axisNames) addAxisRow(axis, !REQUIRED_AXES.includes(axis));
+  for (const axis of axisNames) {
+    const isFeetech = saved && saved[axis] && saved[axis].driver === "feetech";
+    addAxisRow(axis, !REQUIRED_AXES.includes(axis), isFeetech);
+  }
 }
 
-function addAxisRow(axis, extra) {
+function addAxisRow(axis, extra, isFeetech = false) {
   const tbody = $("axis-rows");
   const tr = document.createElement("tr");
   tr.dataset.axis = axis;
   const options = homePoints
     .map((h) => `<option value="${h}">${HOME_LABELS[h] || h}</option>`)
     .join("");
-  const nameCell = extra
-    ? `${axis.toUpperCase()} <span class="axis-extra-badge" ` +
-      `title="Zapisuje się w konfiguracji, ale mostek do sterownika nie zna ` +
-      `jeszcze komend ruchu dla tej osi — dziś jeździ tylko X/Y/Z.">tylko konfiguracja</span>`
-    : axis.toUpperCase();
+  let nameCell = axis.toUpperCase();
+  if (isFeetech) {
+    nameCell += ` <span class="axis-extra-badge" title="Rusza fizycznie przez ` +
+      `osobną magistralę RS485 (sterownik feetech) — nie przez mostek Teknica.">FEETECH (RS485)</span>`;
+  } else if (extra) {
+    nameCell += ` <span class="axis-extra-badge" ` +
+      `title="Zapisuje się w konfiguracji, ale mostek do sterownika Teknica nie zna ` +
+      `komend ruchu dla tej osi — dziś jeździ tylko X/Y/Z i osie feetech.">tylko konfiguracja</span>`;
+  }
   const actions = extra
     ? `<button class="small icon" title="usuń oś" data-action="remove-axis">✕</button>`
     : "";
+  // pola prędkości/przyspieszenia FEETECH tylko dla osi z tym sterownikiem —
+  // dla reszty osi (X/Y/Z, teknic-extra) pusta kreska, bez inputu (readAxis
+  // nie wysyła wtedy w ogóle tych pól, patrz komentarz tam)
+  const speedCell = isFeetech
+    ? `<input id="f-${axis}-fspeed" type="number" step="1" min="1" max="1000" ` +
+      `title="Jednostki rejestru serwa: 1-1000, 1 jedn. ≈ 0,732 obr/min. Domyślnie 100.">`
+    : `<span class="muted">—</span>`;
+  const accCell = isFeetech
+    ? `<input id="f-${axis}-facc" type="number" step="1" min="0" max="1000" ` +
+      `title="Jednostki rejestru serwa: 0-1000, 1 jedn. = 100 kroków/s² (≈8,79°/s²). Domyślnie 20.">`
+    : `<span class="muted">—</span>`;
   tr.innerHTML =
     `<td style="font-size:20px; font-weight:700; white-space:nowrap">${nameCell}</td>` +
     `<td><input id="f-${axis}-length" type="number" step="0.1" min="0"></td>` +
@@ -120,6 +160,8 @@ function addAxisRow(axis, extra) {
     `<td><input id="f-${axis}-max" type="number" step="0.1"></td>` +
     `<td><input id="f-${axis}-mmrev" type="number" step="0.001" min="0"></td>` +
     `<td><input id="f-${axis}-veljog" type="number" step="1" min="0"></td>` +
+    `<td>${speedCell}</td>` +
+    `<td>${accCell}</td>` +
     `<td class="row-actions">${actions}</td>`;
   tbody.appendChild(tr);
   tr.querySelectorAll("input, select").forEach((el) => {
@@ -182,6 +224,12 @@ function validateAxis(axis, cfg) {
   }
   if (!(cfg.vel_jog > 0)) {
     bad.push([`f-${axis}-veljog`, `${label}: prędkość JOG musi być większa od zera`]);
+  }
+  if (cfg.feetech_speed !== undefined && !(cfg.feetech_speed >= 1 && cfg.feetech_speed <= 1000)) {
+    bad.push([`f-${axis}-fspeed`, `${label}: prędkość FEETECH musi być w zakresie 1-1000`]);
+  }
+  if (cfg.feetech_acc !== undefined && !(cfg.feetech_acc >= 0 && cfg.feetech_acc <= 1000)) {
+    bad.push([`f-${axis}-facc`, `${label}: przyspieszenie FEETECH musi być w zakresie 0-1000`]);
   }
   if (Number.isNaN(cfg.soft_min)) bad.push([`f-${axis}-min`, `${label}: podaj limit MIN`]);
   if (Number.isNaN(cfg.soft_max)) bad.push([`f-${axis}-max`, `${label}: podaj limit MAX`]);

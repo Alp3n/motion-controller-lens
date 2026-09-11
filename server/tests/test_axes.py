@@ -173,6 +173,65 @@ def test_with_current_values_zachowuje_driver_i_feetech_id():
     assert result.vel_jog == 1000.0
 
 
+# --- prędkość/przyspieszenie FEETECH -----------------------------------------
+
+
+def test_feetech_speed_i_acc_maja_domyslne_wartosci_zgodne_z_dawnymi_stalymi():
+    cfg = _dodatkowa_os()
+    assert cfg.feetech_speed == 100
+    assert cfg.feetech_acc == 20
+
+
+def test_feetech_speed_poza_zakresem_jest_odrzucony():
+    cfg = _dodatkowa_os(feetech_speed=0)
+    with pytest.raises(axes.AxisConfigError, match="prędkość FEETECH"):
+        cfg.validate("docisk")
+    cfg = _dodatkowa_os(feetech_speed=1001)
+    with pytest.raises(axes.AxisConfigError, match="prędkość FEETECH"):
+        cfg.validate("docisk")
+
+
+def test_feetech_acc_poza_zakresem_jest_odrzucony():
+    cfg = _dodatkowa_os(feetech_acc=-1)
+    with pytest.raises(axes.AxisConfigError, match="przyspieszenie FEETECH"):
+        cfg.validate("docisk")
+    cfg = _dodatkowa_os(feetech_acc=1001)
+    with pytest.raises(axes.AxisConfigError, match="przyspieszenie FEETECH"):
+        cfg.validate("docisk")
+
+
+def test_feetech_speed_i_acc_przechodza_przez_to_dict_from_dict():
+    cfg = _dodatkowa_os(feetech_speed=250, feetech_acc=40)
+    restored = axes.AxisConfig.from_dict("docisk", cfg.to_dict())
+    assert restored.feetech_speed == 250
+    assert restored.feetech_acc == 40
+
+
+def test_plik_sprzed_pol_predkosci_feetech_dostaje_dawne_stale():
+    data = _dodatkowa_os().to_dict()
+    del data["feetech_speed"]
+    del data["feetech_acc"]
+    cfg = axes.AxisConfig.from_dict("docisk", data)
+    assert cfg.feetech_speed == 100
+    assert cfg.feetech_acc == 20
+
+
+def test_with_current_values_zachowuje_feetech_speed_i_acc():
+    """Ten sam wzorzec regresji co dla driver/feetech_id — pola dopisane od
+    razu do OPTIONAL_FIELDS, zanim ekran /axes zacznie je edytować."""
+    current = {"docisk": _dodatkowa_os(feetech_speed=333, feetech_acc=77)}
+    incoming = {"docisk": {**_dodatkowa_os().to_dict()}}
+    del incoming["docisk"]["feetech_speed"]
+    del incoming["docisk"]["feetech_acc"]
+    incoming["docisk"]["vel_jog"] = 1000.0
+
+    merged = axes.with_current_values(incoming, current)
+    result = axes.AxisConfig.from_dict("docisk", merged["docisk"])
+
+    assert result.feetech_speed == 333
+    assert result.feetech_acc == 77
+
+
 def test_defaults_keep_work_area_from_env():
     area = {
         "x_min": -100, "x_max": 100,

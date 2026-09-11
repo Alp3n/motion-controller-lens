@@ -325,11 +325,14 @@ def _read_feetech_status(
     return result
 
 
-def _feetech_jog(servo_id: int, counts_cw: int) -> int:
+def _feetech_jog(servo_id: int, counts_cw: int, speed: int, acc: int) -> int:
     """Blokujące (termios) — wywoływać przez `asyncio.to_thread`, jak
-    `_read_feetech_status`. Zwraca docelową pozycję (jednostki rejestru)."""
+    `_read_feetech_status`. Zwraca docelową pozycję (jednostki rejestru).
+
+    `speed`/`acc` z `AxisConfig.feetech_speed`/`feetech_acc` (konfigurowalne
+    z ekranu /axes) zamiast dawnych stałych 100/20 zaszytych na sztywno."""
     with FeetekDriver(config.FEETECH_PORT, baud=config.FEETECH_BAUD) as driver:
-        return driver.move_relative_cw(servo_id, counts_cw)
+        return driver.move_relative_cw(servo_id, counts_cw, speed=speed, acc=acc)
 
 
 async def _feetech_poll_loop() -> None:
@@ -1386,7 +1389,8 @@ async def machine_jog_feetech(req: JogFeetechRequest, user=Depends(require_opera
     Kierunek zgodny/przeciwny do zegara (`DIRECTION_SIGN_CW`, zmierzone
     fizycznie 2026-09-10), NIE mm — ten endpoint istnieje właśnie po to,
     żeby dało się ruszać serwami PRZED zamontowaniem, kiedy przelicznik na
-    mm jeszcze nie ma sensu.
+    mm jeszcze nie ma sensu. Prędkość/przyspieszenie z konfiguracji osi
+    (`feetech_speed`/`feetech_acc`, ekran /axes).
     """
     axis = req.axis.lower()
     feetech_ids = axes.feetech_axes(machine.axes)
@@ -1395,10 +1399,13 @@ async def machine_jog_feetech(req: JogFeetechRequest, user=Depends(require_opera
     if not config.FEETECH_PORT:
         raise HTTPException(409, "FEETECH_PORT nieskonfigurowany — magistrala niedostępna")
     servo_id = feetech_ids[axis]
+    axis_cfg = machine.axes[axis]
     counts = config.FEETECH_JOG_STEP if req.kierunek == "cw" else -config.FEETECH_JOG_STEP
     try:
         async with _feetech_lock:
-            target = await asyncio.to_thread(_feetech_jog, servo_id, counts)
+            target = await asyncio.to_thread(
+                _feetech_jog, servo_id, counts, axis_cfg.feetech_speed, axis_cfg.feetech_acc
+            )
     except (FeetekError, KeyError) as exc:
         raise HTTPException(409, str(exc))
     return {"ok": True, "position": target}

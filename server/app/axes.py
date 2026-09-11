@@ -112,6 +112,13 @@ class AxisConfig:
     # --- sterownik (temat L) ---
     driver: str = DRIVER_TEKNIC         # teknic | feetech
     feetech_id: int | None = None       # ID serwa na magistrali — wymagane dla "feetech"
+    # prędkość/przyspieszenie ruchu serwa FEETECH — jednostki REJESTRU serwa,
+    # nie mm/min (patrz feetech_driver.py: 1 jedn. prędkości ≈ 0,732 obr/min,
+    # 1 jedn. przyspieszenia = 100 kroków/s² ≈ 8,79°/s²; zakresy potwierdzone
+    # źródłowo w zbyszek/Tabela pamięci... .xlsx). Domyślne = dotychczasowe
+    # wartości zaszyte na sztywno w feetech_driver.move_to()/move_relative_cw().
+    feetech_speed: int = 100
+    feetech_acc: int = 20
 
     # --- zakres fizyczny (wynika z długości i punktu bazowego) -------------
 
@@ -140,6 +147,8 @@ class AxisConfig:
             "home_offset": round(self.home_offset, 4),
             "driver": self.driver,
             "feetech_id": self.feetech_id,
+            "feetech_speed": int(self.feetech_speed),
+            "feetech_acc": int(self.feetech_acc),
             # pola wyliczane — tylko do odczytu, dla panelu i dokumentacji
             "phys_min": round(lo, 4),
             "phys_max": round(hi, 4),
@@ -209,6 +218,16 @@ class AxisConfig:
                 if data.get("feetech_id") is not None
                 else None
             ),
+            feetech_speed=(
+                int(_num(data["feetech_speed"], f"{label}: prędkość FEETECH"))
+                if "feetech_speed" in data
+                else 100
+            ),
+            feetech_acc=(
+                int(_num(data["feetech_acc"], f"{label}: przyspieszenie FEETECH"))
+                if "feetech_acc" in data
+                else 20
+            ),
         )
         cfg.validate(axis)
         return cfg
@@ -276,6 +295,16 @@ class AxisConfig:
                 raise AxisConfigError(
                     f"{label}: ID serwa FEETECH musi być w zakresie 0-253"
                 )
+        if not (1 <= self.feetech_speed <= 1000):
+            raise AxisConfigError(
+                f"{label}: prędkość FEETECH musi być w zakresie 1-1000 "
+                "(jednostki rejestru, 1 ≈ 0,732 obr/min)"
+            )
+        if not (0 <= self.feetech_acc <= 1000):
+            raise AxisConfigError(
+                f"{label}: przyspieszenie FEETECH musi być w zakresie 0-1000 "
+                "(jednostki rejestru, 1 = 100 kroków/s²)"
+            )
 
 
 def _mm(value: float) -> str:
@@ -404,7 +433,13 @@ HOMING_FIELDS = ("home_order", "home_mode", "home_torque", "home_offset", "vel_h
 # vel_jog dla `docisk`/`podajnik` i po cichu skasował im `driver: feetech`
 # z powrotem na domyślne `teknic` — dokładnie ten sam błąd, który już raz
 # się zdarzył dla pól bazowania, patrz zmiany/predkosci-jog-bazowanie.md.
-OPTIONAL_FIELDS = ("vel_jog", "driver", "feetech_id") + HOMING_FIELDS
+#
+# `feetech_speed`/`feetech_acc` dopisane od razu przy wprowadzeniu (też
+# 2026-09-11) — PREWENCYJNIE, żeby nie doczekać się trzeciego wystąpienia
+# tego samego wzorca błędu, zanim ekran /axes w ogóle zacznie je edytować.
+OPTIONAL_FIELDS = (
+    "vel_jog", "driver", "feetech_id", "feetech_speed", "feetech_acc"
+) + HOMING_FIELDS
 
 
 def with_current_values(data: dict, current: dict[str, AxisConfig]) -> dict:
