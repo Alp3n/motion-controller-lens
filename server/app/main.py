@@ -256,6 +256,19 @@ _zuzycie_was_running = False
 # docs/zmiany/modbus-io-waveshare.md, „kolizja z żywą usługą").
 _feetech_lock = asyncio.Lock()
 
+# JOG "koło" (tryb stałej prędkości, poprawka "ruch skokami" 2026-09-11,
+# patrz docs/zmiany/jog-feetech-tryb-kolo.md): nazwa osi -> moment
+# (`time.monotonic()`), do którego serwo ma jeszcze się kręcić. Każde
+# wywołanie `/api/machine/jog-feetech` (heartbeat z przytrzymanego
+# przycisku) przedłuża ten termin; `/api/machine/jog-feetech/stop`
+# (puszczenie przycisku) go usuwa i zatrzymuje serwo od razu.
+# `_feetech_poll_loop` jest strażnikiem NA WYPADEK utraty połączenia z
+# przeglądarką (zamknięta karta, padła sieć) — bez tego serwo kręciłoby
+# się bez końca, bo tryb koła nie ma wbudowanego "martwego człowieka".
+_feetech_wheel_deadline: dict[str, float] = {}
+_FEETECH_WHEEL_HEARTBEAT_TIMEOUT = 0.6  # s — > tick klienta (250ms), krótko na wypadek utraty połączenia
+_FEETECH_WHEEL_POLL_INTERVAL = 0.15     # s — tylko gdy trwa JOG koła; inaczej 1.0s jak dotąd
+
 
 async def _poll_loop() -> None:
     global _zuzycie_was_running, _zuzycie_alarm_status
@@ -325,14 +338,51 @@ def _read_feetech_status(
     return result
 
 
-def _feetech_jog(servo_id: int, counts_cw: int, speed: int, acc: int) -> int:
+def _feetech_jog(servo_id: int, speed_cw: int) -> None:
     """Blokujące (termios) — wywoływać przez `asyncio.to_thread`, jak
-    `_read_feetech_status`. Zwraca docelową pozycję (jednostki rejestru).
+    `_read_feetech_status`.
 
-    `speed`/`acc` z `AxisConfig.feetech_speed`/`feetech_acc` (konfigurowalne
-    z ekranu /axes) zamiast dawnych stałych 100/20 zaszytych na sztywno."""
+    Poprawka 2026-09-11 ("ruch skokami"): TRYB KOŁA (`wheel_speed_cw`),
+    nie pojedynczy mały przejazd pozycyjny jak dawniej (`move_relative_cw`)
+    — serwo kręci się PŁYNNIE aż do jawnego `/jog-feetech/stop` albo
+    strażnika w `_feetech_poll_loop`. `speed_cw` już ma znak (dodatnie/
+    ujemne z `feetech_speed` wg kierunku) — patrz endpoint.
+    Szczegóły: docs/zmiany/jog-feetech-tryb-kolo.md."""
     with FeetekDriver(config.FEETECH_PORT, baud=config.FEETECH_BAUD) as driver:
-        return driver.move_relative_cw(servo_id, counts_cw, speed=speed, acc=acc)
+        driver.wheel_speed_cw(servo_id, speed_cw)
+
+
+def _feetech_jog_stop(servo_id: int) -> None:
+    """Blokujące — zatrzymuje JOG koła (prędkość 0, tryb z powrotem
+    pozycyjny). Wywoływane zarówno z endpointu stop (puszczenie przycisku),
+    jak i ze strażnika w `_feetech_poll_loop` (utracone połączenie)."""
+    with FeetekDriver(config.FEETECH_PORT, baud=config.FEETECH_BAUD) as driver:
+        driver.wheel_stop(servo_id)
+
+
+def _feetech_wheel_stop_reason(
+    axis_cfg: axes.AxisConfig | None, position_mm: float | None, deadline: float, now: float
+) -> str | None:
+    """Czysta funkcja (testowalna bez czekania na pętlę/timery) — decyduje,
+    czy JOG koła danej osi ma się zatrzymać SAM, i dlaczego:
+
+    - "watchdog": minął termin ostatniego heartbeatu (`/jog-feetech`) —
+      przeglądarka przestała potwierdzać trzymanie przycisku (zamknięta
+      karta, padła sieć) — dead man's switch dla trybu bez wbudowanego.
+    - "limit": pozycja [mm] przekroczyła limit programowy osi. UWAGA: to
+      najlepszy wysiłek, nie twardy limit — odczyt pozycji po RS485 trwa
+      rzędu 0,1-0,3s (`_read_feetech_status`), więc przy większych
+      prędkościach możliwy jest zauważalny naddźwig za limit, zwłaszcza
+      na krótkich osiach (np. docisk, 7 mm zakresu). Docelowa twarda
+      ochrona to limity przejazdu w samym serwie (EPROM), nieskonfigurowane
+      jeszcze — patrz uwagi w docs/zmiany/jog-feetech-tryb-kolo.md.
+    """
+    if now > deadline:
+        return "watchdog"
+    if position_mm is not None and axis_cfg is not None:
+        if not (axis_cfg.soft_min - 0.05 <= position_mm <= axis_cfg.soft_max + 0.05):
+            return "limit"
+    return None
 
 
 def _feetech_move_to_and_wait(servo_id: int, position: int, speed: int, acc: int) -> None:
@@ -392,9 +442,15 @@ async def _feetech_poll_loop() -> None:
     do testów). Etap 1 tematu L — patrz
     docs/architektura-wielu-drajwerow-osi.md. Jednostki rejestru plus
     `position_mm` przeliczone przez skok śruby (etap 2, `feetech_driver.
-    position_to_mm()`) — bez bazowania (etap 3, wciąż niezrobiony)."""
+    position_to_mm()`) — bez bazowania (etap 3, wciąż niezrobiony).
+
+    Gdy trwa JOG koła (`_feetech_wheel_deadline` niepuste — poprawka
+    "ruch skokami" 2026-09-11) odpytuje częściej (`_FEETECH_WHEEL_POLL_
+    INTERVAL`) i pełni rolę strażnika: zatrzymuje oś, jeśli minął termin
+    heartbeatu albo pozycja przekroczyła limit programowy — patrz
+    `_feetech_wheel_stop_reason()`."""
     while True:
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(_FEETECH_WHEEL_POLL_INTERVAL if _feetech_wheel_deadline else 1.0)
         feetech_ids = axes.feetech_axes(machine.axes)
         if not feetech_ids or not config.FEETECH_PORT:
             continue
@@ -403,8 +459,22 @@ async def _feetech_poll_loop() -> None:
                 machine.status.feetech_raw = await asyncio.to_thread(
                     _read_feetech_status, feetech_ids, machine.axes
                 )
+                now = time.monotonic()
+                for axis, deadline in list(_feetech_wheel_deadline.items()):
+                    servo_id = feetech_ids.get(axis)
+                    if servo_id is None:
+                        _feetech_wheel_deadline.pop(axis, None)
+                        continue
+                    position_mm = machine.status.feetech_raw.get(axis, {}).get("position_mm")
+                    reason = _feetech_wheel_stop_reason(
+                        machine.axes.get(axis), position_mm, deadline, now
+                    )
+                    if reason:
+                        _feetech_wheel_deadline.pop(axis, None)
+                        with contextlib.suppress(FeetekError):
+                            await asyncio.to_thread(_feetech_jog_stop, servo_id)
         except Exception:
-            pass  # magistrala niedostępna teraz — spróbuj ponownie za 1s
+            pass  # magistrala niedostępna teraz — spróbuj ponownie za chwilę
 
 
 def _read_io_modbus(cfg: io_modbus.IoConfig) -> dict:
@@ -498,12 +568,20 @@ class JogRequest(BaseModel):
 
 
 class JogFeetechRequest(BaseModel):
-    """JOG dla osi FEETECH (temat L, etap 2) — kierunek zgodny/przeciwny do
-    zegara (`DIRECTION_SIGN_CW`), NIE mm/+-, bo kierunek mm jeszcze nie jest
-    potwierdzony fizycznie (serwa niezamontowane do mechanizmu)."""
+    """JOG dla osi FEETECH — tryb koła (stała prędkość, poprawka 2026-09-11),
+    kierunek zgodny/przeciwny do zegara (`DIRECTION_SIGN_CW`), NIE mm/+-,
+    bo znak mm nie jest jeszcze ujednolicony między osiami (etap 3,
+    bazowanie, wciąż niezrobione)."""
 
     axis: str
     kierunek: str = Field(..., pattern="^(cw|ccw)$")
+
+
+class JogFeetechStopRequest(BaseModel):
+    """Puszczenie przycisku JOG — zatrzymuje tryb koła od razu, nie czeka
+    na strażnika (`_feetech_wheel_deadline`)."""
+
+    axis: str
 
 
 class IoModbusConfigRequest(BaseModel):
@@ -1431,15 +1509,21 @@ async def machine_jog(req: JogRequest, user=Depends(require_operator)):
 
 @app.post("/api/machine/jog-feetech")
 async def machine_jog_feetech(req: JogFeetechRequest, user=Depends(require_operator)):
-    """JOG dla osi FEETECH (temat L, etap 2) — niezależne od `Machine.jog()`
-    (ścieżka X/Y/Z przez Teknika zostaje nietknięta, zgodnie z decyzją
-    „Feetech obok, nie w środku" z docs/architektura-wielu-drajwerow-osi.md).
+    """JOG dla osi FEETECH — TRYB KOŁA (stała prędkość, poprawka 2026-09-11:
+    dawny "ruch skokami" był powtarzaniem drobnych przejazdów pozycyjnych co
+    250ms, każdy z osobnym rozpędzaniem/hamowaniem). Niezależne od
+    `Machine.jog()` (ścieżka X/Y/Z przez Teknika nietknięta, zgodnie z
+    decyzją „Feetech obok, nie w środku").
 
-    Kierunek zgodny/przeciwny do zegara (`DIRECTION_SIGN_CW`, zmierzone
-    fizycznie 2026-09-10), NIE mm — ten endpoint istnieje właśnie po to,
-    żeby dało się ruszać serwami PRZED zamontowaniem, kiedy przelicznik na
-    mm jeszcze nie ma sensu. Prędkość/przyspieszenie z konfiguracji osi
-    (`feetech_speed`/`feetech_acc`, ekran /axes).
+    Wywołanie to HEARTBEAT: przeglądarka wysyła je co ~250ms, dopóki
+    przycisk jest trzymany — każde przedłuża `_feetech_wheel_deadline`.
+    Puszczenie przycisku wywołuje `/jog-feetech/stop`; jeśli z jakiegoś
+    powodu nie dotrze (zamknięta karta, padła sieć), `_feetech_poll_loop`
+    zatrzyma serwo samo po przekroczeniu terminu. Kierunek zgodny/przeciwny
+    do zegara (`DIRECTION_SIGN_CW`), NIE mm — znak mm nie jest jeszcze
+    ujednolicony między osiami (bazowanie, etap 3). Prędkość z konfiguracji
+    osi (`feetech_speed`, ekran /axes) — to samo pole co maksymalna
+    prędkość ruchu pozycyjnego w RUCH cyklu.
     """
     axis = req.axis.lower()
     feetech_ids = axes.feetech_axes(machine.axes)
@@ -1449,15 +1533,34 @@ async def machine_jog_feetech(req: JogFeetechRequest, user=Depends(require_opera
         raise HTTPException(409, "FEETECH_PORT nieskonfigurowany — magistrala niedostępna")
     servo_id = feetech_ids[axis]
     axis_cfg = machine.axes[axis]
-    counts = config.FEETECH_JOG_STEP if req.kierunek == "cw" else -config.FEETECH_JOG_STEP
+    speed_cw = axis_cfg.feetech_speed if req.kierunek == "cw" else -axis_cfg.feetech_speed
     try:
         async with _feetech_lock:
-            target = await asyncio.to_thread(
-                _feetech_jog, servo_id, counts, axis_cfg.feetech_speed, axis_cfg.feetech_acc
-            )
+            await asyncio.to_thread(_feetech_jog, servo_id, speed_cw)
     except (FeetekError, KeyError) as exc:
         raise HTTPException(409, str(exc))
-    return {"ok": True, "position": target}
+    _feetech_wheel_deadline[axis] = time.monotonic() + _FEETECH_WHEEL_HEARTBEAT_TIMEOUT
+    return {"ok": True}
+
+
+@app.post("/api/machine/jog-feetech/stop")
+async def machine_jog_feetech_stop(req: JogFeetechStopRequest, user=Depends(require_operator)):
+    """Puszczenie przycisku JOG — zatrzymuje tryb koła NATYCHMIAST, nie
+    czeka na strażnika w `_feetech_poll_loop`."""
+    axis = req.axis.lower()
+    feetech_ids = axes.feetech_axes(machine.axes)
+    if axis not in feetech_ids:
+        raise HTTPException(404, f"oś '{axis}' nie jest skonfigurowana jako FEETECH")
+    _feetech_wheel_deadline.pop(axis, None)
+    if not config.FEETECH_PORT:
+        return {"ok": True}  # nie ma czego zatrzymywać — magistrala i tak niedostępna
+    servo_id = feetech_ids[axis]
+    try:
+        async with _feetech_lock:
+            await asyncio.to_thread(_feetech_jog_stop, servo_id)
+    except FeetekError as exc:
+        raise HTTPException(409, str(exc))
+    return {"ok": True}
 
 
 # --- I/O modułów Waveshare Modbus RTU (temat L) ---------------------------

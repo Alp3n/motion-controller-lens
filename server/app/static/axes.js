@@ -145,7 +145,7 @@ function addAxisRow(axis, extra, isFeetech = false) {
   // nie wysyła wtedy w ogóle tych pól, patrz komentarz tam)
   const speedCell = isFeetech
     ? `<input id="f-${axis}-fspeed" type="number" step="1" min="1" max="1000" ` +
-      `title="Jednostki rejestru serwa: 1-1000, 1 jedn. ≈ 0,732 obr/min. Domyślnie 100.">`
+      `title="Jednostki rejestru serwa: 1-1000, 1 jedn. ≈ 0,732 obr/min. Używane przez JOG (tryb koła) i RUCH cyklu (tryb pozycyjny). Domyślnie 100.">`
     : `<span class="muted">—</span>`;
   const accCell = isFeetech
     ? `<input id="f-${axis}-facc" type="number" step="1" min="0" max="1000" ` +

@@ -185,7 +185,14 @@ class FeetekDriver:
         Odpowiednik `WritePosEx` z SDK producenta: jeden zapis 7 bajtów od
         adresu ACC (41) — ACC, GOAL_POSITION_L/H (znak-magnituda, bit 15),
         GOAL_TIME_L/H (zawsze 0, nieużywane tutaj), GOAL_SPEED_L/H.
+
+        Przywraca tryb pozycyjny (`set_mode(MODE_POSITION)`) PRZED zapisem —
+        obronnie, na wypadek gdyby serwo zostało w trybie "koło" (`wheel_
+        speed_cw`, JOG) po niedokończonym zatrzymaniu. Bez tego ten zapis w
+        trybie koła byłby po prostu zignorowany (GOAL_POSITION/GOAL_TIME nic
+        nie znaczą poza trybem pozycyjnym).
         """
+        self.set_mode(servo_id, fp.MODE_POSITION)
         payload = (
             bytes([acc & 0xFF])
             + fp.encode_signed16(position)
@@ -193,6 +200,36 @@ class FeetekDriver:
             + struct.pack("<H", speed)
         )
         self.write_raw(servo_id, fp.ADDR_ACC, payload)
+
+    def set_mode(self, servo_id: int, mode: int) -> None:
+        """Tryb pracy serwa (`fp.MODE_POSITION`/`fp.MODE_WHEEL`, adres
+        SRAM — nie wymaga odblokowania EPROM jak zmiana ID/baudrate)."""
+        self.write_raw(servo_id, fp.ADDR_MODE, bytes([mode & 0xFF]))
+
+    def wheel_speed_cw(self, servo_id: int, speed_cw: int) -> None:
+        """Tryb 1 (stała prędkość, "koło") — ciągły obrót aż do
+        `wheel_stop()` albo zmiany trybu; DO PŁYNNEGO JOG, w odróżnieniu od
+        `move_relative_cw` (mały przejazd pozycyjny, kończy się sam).
+
+        Znak względem CW jak `move_relative_cw` (`DIRECTION_SIGN_CW`):
+        dodatnie = zgodnie z zegarem, niezależnie od tego, czy dla tego ID
+        rejestr rośnie czy maleje przy CW. Ustawia tryb PRZY KAŻDYM
+        wywołaniu — prościej i odporniej na resync (np. po restarcie
+        procesu w trakcie JOG) niż śledzenie stanu serwa po stronie klienta.
+
+        Rzuca `KeyError`, jak `move_relative_cw`, jeśli `servo_id` nie ma
+        jeszcze zmierzonego kierunku w `DIRECTION_SIGN_CW`.
+        """
+        sign = DIRECTION_SIGN_CW[servo_id]
+        self.set_mode(servo_id, fp.MODE_WHEEL)
+        self.write_raw(servo_id, fp.ADDR_GOAL_SPEED_L, fp.encode_signed16(sign * speed_cw))
+
+    def wheel_stop(self, servo_id: int) -> None:
+        """Zatrzymuje ciągły obrót (prędkość 0) i OD RAZU przywraca tryb
+        pozycyjny — każdy kolejny ruch (RUCH cyklu, kolejny JOG) zakłada
+        tryb 0, patrz `move_to()`."""
+        self.write_raw(servo_id, fp.ADDR_GOAL_SPEED_L, fp.encode_signed16(0))
+        self.set_mode(servo_id, fp.MODE_POSITION)
 
     def wait_until_stopped(
         self, servo_id: int, timeout_s: float = 10.0, poll_interval_s: float = 0.1

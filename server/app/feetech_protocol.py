@@ -61,6 +61,18 @@ ADDR_PRESENT_TEMPERATURE = 63
 ADDR_MOVING = 66
 ADDR_PRESENT_CURRENT_L = 69
 
+# Tryb pracy (ADDR_MODE, 0x21) — z tabeli pamięci producenta
+# (zbyszek/Tabela pamięci protokół serw SM45BL_001.xlsx):
+#   0 = pozycyjny — ACC/GOAL_POSITION/GOAL_SPEED, jeden przejazd do celu
+#       (dzisiejsze move_to/RUCH cyklu)
+#   1 = stała prędkość ("koło") — ciągły obrót sterowany SAMYM GOAL_SPEED
+#       (znak-magnituda, bit15=kierunek), aż do zapisania 0 albo zmiany
+#       trybu. Do płynnego JOG (temat L, poprawka "ruch skokami" 2026-09-11).
+#   2 = PWM otwarta pętla (GOAL_TIME jako wypełnienie) — nieużywane tutaj
+#   3 = krokowy — nieużywane tutaj
+MODE_POSITION = 0
+MODE_WHEEL = 1
+
 
 class ProtocolError(Exception):
     """Ramka odpowiedzi jest za krótka, ma zły nagłówek albo złą sumę kontrolną."""

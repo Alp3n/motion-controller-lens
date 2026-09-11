@@ -70,14 +70,19 @@ function renderFeetech(feetechRaw) {
   renderFeetechJog(feetechRaw);
 }
 
-/* JOG dla osi FEETECH (temat L, etap 2) — ten sam wzorzec "martwego
-   człowieka" co X/Y/Z (app.js: startJog/jogLoop), ale osobny stan
-   (feetechJogHold) i wolniejszy takt: magistrala RS485 do serw jest
-   wyraźnie wolniejsza niż mostek Teknica (odczyt pozycji + zapis celu to
-   dwie rundy po termios, rzędu dziesiątek-set ms, nie ~1ms jak TCP do
-   mostka) — 50ms jak przy X/Y/Z zawaliłoby kolejkę żądań. Przyciski
-   budowane RAZ per zestaw osi (nie przy każdej aktualizacji statusu z
-   WebSocketu), żeby przytrzymanie nie gubiło się przy przerysowaniu. */
+/* JOG dla osi FEETECH — TRYB KOŁA (poprawka "ruch skokami" 2026-09-11,
+   docs/zmiany/jog-feetech-tryb-kolo.md): serwo kręci się PŁYNNIE, dopóki
+   trzymasz przycisk — każde wywołanie niżej to tylko HEARTBEAT
+   przedłużający termin strażnika po stronie serwera
+   (`_feetech_wheel_deadline`), nie osobny mały przejazd jak dawniej.
+   Wolniejszy takt niż X/Y/Z (app.js: startJog/jogLoop, 50ms): magistrala
+   RS485 do serw jest wyraźnie wolniejsza niż mostek Teknica (zapis po
+   termios rzędu dziesiątek-set ms, nie ~1ms jak TCP do mostka) — 50ms
+   zawaliłoby kolejkę żądań. Puszczenie przycisku wysyła jawny STOP
+   (`/jog-feetech/stop`) — serwo ma się zatrzymać OD RAZU, nie dopiero gdy
+   serwer zauważy brak heartbeatu. Przyciski budowane RAZ per zestaw osi
+   (nie przy każdej aktualizacji statusu z WebSocketu), żeby przytrzymanie
+   nie gubiło się przy przerysowaniu. */
 const FEETECH_JOG_TICK_MS = 250;
 let feetechJogHold = null; // { axis, kierunek } | null
 let feetechJogBuiltFor = null; // ostatni zestaw nazw osi, dla których zbudowano przyciski
@@ -104,7 +109,14 @@ function startFeetechJog(axis, kierunek) {
 }
 
 function stopFeetechJog() {
+  if (!feetechJogHold) return;
+  const { axis } = feetechJogHold;
   feetechJogHold = null;
+  // jawny STOP — serwo (tryb koła) ma stanąć od razu, nie dopiero gdy
+  // serwer zauważy brak kolejnego heartbeatu (_feetech_wheel_deadline)
+  api("POST", "/api/machine/jog-feetech/stop", { axis }).catch((e) =>
+    showMsg($("ctrl-msg"), e.message)
+  );
 }
 
 function renderFeetechJog(feetechRaw) {

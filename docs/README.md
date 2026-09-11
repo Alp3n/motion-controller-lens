@@ -252,6 +252,10 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/jog-feetech.md](zmiany/jog-feetech.md) — JOG dla osi FEETECH
   (temat L, etap 2 częściowy): ruch zgodny/przeciwny do zegara. Naprawiony
   błąd współbieżności na współdzielonej magistrali RS485.
+- [zmiany/jog-feetech-tryb-kolo.md](zmiany/jog-feetech-tryb-kolo.md) —
+  naprawa "ruch skokami": JOG przełączony na tryb 1 serwa (koło, stała
+  prędkość) — płynny ruch trzymanym przyciskiem, jawny stop na puszczeniu,
+  strażnik (heartbeat + limit osi) po stronie serwera.
 - [zmiany/przeliczenie-mm-osie-feetech.md](zmiany/przeliczenie-mm-osie-feetech.md) —
   temat L, reszta etapu 2: pozycja osi FEETECH przeliczona na mm przez
   skok śruby (`position_to_mm()`), obok surowej wartości rejestru w

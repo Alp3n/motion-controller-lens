@@ -93,22 +93,30 @@ def test_write_raw_z_bledem_serwa_rzuca():
         d.write_raw(1, fp.ADDR_TORQUE_ENABLE, bytes([1]))
 
 
-def test_move_to_wysyla_poprawna_ramke_z_acc_pozycja_speed():
-    d = _driver_with_fake([_ok_response(1)])
-    d.move_to(1, position=-200, speed=100, acc=20)
-
-    packet = d.calls[0]
-    servo_id, length, instruction = packet[2], packet[3], packet[4]
-    assert servo_id == 1
+def _write_frame(packet):
+    """Rozbiera ramkę WRITE na (adres, dane) — pomija nagłówek/id/sumę."""
+    length, instruction = packet[3], packet[4]
     assert instruction == fp.INST_WRITE
     body_params = packet[5:5 + length - 2]
-    address = body_params[0]
-    data = body_params[1:]
-    assert address == fp.ADDR_ACC
+    return body_params[0], body_params[1:]
+
+
+def test_move_to_ustawia_tryb_pozycyjny_przed_ruchem():
+    """move_to() obronnie przywraca MODE_POSITION PRZED zapisem celu — na
+    wypadek, gdyby serwo zostało w trybie koła po JOG (patrz docstring)."""
+    d = _driver_with_fake([_ok_response(1), _ok_response(1)])
+    d.move_to(1, position=-200, speed=100, acc=20)
+
+    assert len(d.calls) == 2
+    mode_addr, mode_data = _write_frame(d.calls[0])
+    assert mode_addr == fp.ADDR_MODE
+    assert mode_data == bytes([fp.MODE_POSITION])
+
+    addr, data = _write_frame(d.calls[1])
+    assert addr == fp.ADDR_ACC
     assert data[0] == 20  # acc
     assert fp.decode_signed16(data[1:3]) == -200  # goal position
-    goal_time = fp.decode_u16(data[3:5])
-    assert goal_time == 0
+    assert fp.decode_u16(data[3:5]) == 0  # goal time, nieużywane
     assert fp.decode_u16(data[5:7]) == 100  # speed
 
 
@@ -117,7 +125,8 @@ def test_move_relative_cw_servo1_odejmuje_od_pozycji():
     assert DIRECTION_SIGN_CW[1] == -1
     d = _driver_with_fake([
         _ok_response(1, fp.encode_signed16(500)),  # read_position (current)
-        _ok_response(1),                            # move_to ack
+        _ok_response(1),                            # move_to: set_mode ack
+        _ok_response(1),                            # move_to: ACC/pozycja ack
     ])
     target = d.move_relative_cw(1, counts_cw=100, speed=50, acc=10)
     assert target == 400  # 500 - 100
@@ -129,9 +138,58 @@ def test_move_relative_cw_servo2_dodaje_do_pozycji():
     d = _driver_with_fake([
         _ok_response(2, fp.encode_signed16(200)),
         _ok_response(2),
+        _ok_response(2),
     ])
     target = d.move_relative_cw(2, counts_cw=100, speed=50, acc=10)
     assert target == 300  # 200 + 100
+
+
+# --- tryb "koło" (stała prędkość) — płynny JOG -----------------------------
+
+
+def test_set_mode_zapisuje_adres_mode():
+    d = _driver_with_fake([_ok_response(1)])
+    d.set_mode(1, fp.MODE_WHEEL)
+    addr, data = _write_frame(d.calls[0])
+    assert addr == fp.ADDR_MODE
+    assert data == bytes([fp.MODE_WHEEL])
+
+
+def test_wheel_speed_cw_ustawia_tryb_i_predkosc_ze_znakiem():
+    # serwo 1: CW = malejąca pozycja -> dodatnie speed_cw pisze UJEMNĄ
+    # wartość do rejestru (ten sam sens co move_relative_cw)
+    d = _driver_with_fake([_ok_response(1), _ok_response(1)])
+    d.wheel_speed_cw(1, 300)
+    mode_addr, mode_data = _write_frame(d.calls[0])
+    assert mode_addr == fp.ADDR_MODE
+    assert mode_data == bytes([fp.MODE_WHEEL])
+    speed_addr, speed_data = _write_frame(d.calls[1])
+    assert speed_addr == fp.ADDR_GOAL_SPEED_L
+    assert fp.decode_signed16(speed_data) == -300
+
+
+def test_wheel_speed_cw_servo2_dodatnie_speed_daje_dodatni_rejestr():
+    d = _driver_with_fake([_ok_response(2), _ok_response(2)])
+    d.wheel_speed_cw(2, 300)
+    _, speed_data = _write_frame(d.calls[1])
+    assert fp.decode_signed16(speed_data) == 300
+
+
+def test_wheel_speed_cw_nieznane_id_rzuca_keyerror():
+    d = _driver_with_fake([])
+    with pytest.raises(KeyError):
+        d.wheel_speed_cw(99, 100)
+
+
+def test_wheel_stop_zeruje_predkosc_i_przywraca_tryb_pozycyjny():
+    d = _driver_with_fake([_ok_response(1), _ok_response(1)])
+    d.wheel_stop(1)
+    speed_addr, speed_data = _write_frame(d.calls[0])
+    assert speed_addr == fp.ADDR_GOAL_SPEED_L
+    assert fp.decode_signed16(speed_data) == 0
+    mode_addr, mode_data = _write_frame(d.calls[1])
+    assert mode_addr == fp.ADDR_MODE
+    assert mode_data == bytes([fp.MODE_POSITION])
 
 
 def test_wait_until_stopped_konczy_gdy_moving_spada_do_zera():

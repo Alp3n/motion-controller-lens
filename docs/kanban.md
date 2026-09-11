@@ -346,6 +346,15 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       naprawiony błąd współbieżności (magistrala RS485 współdzielona
       z pętlą statusu, teraz `_feetech_lock`iem). Zweryfikowane fizycznie,
       oba serwa, oba kierunki. Szczegóły: `zmiany/jog-feetech.md`.
+- [x] **Naprawiony błąd 2026-09-11: JOG "pracował skokami".** Zgłoszenie
+      operatora — mikro-przejazdy pozycyjne co 250ms kończyły się w
+      ułamku tego czasu, `feetech_speed` nic nie zmieniał. Przełączone na
+      tryb 1 serwa ("koło", stała prędkość) — płynny ruch, trzymaj = jedź,
+      puść = stój (jawny `POST /jog-feetech/stop`), strażnik po stronie
+      serwera zatrzymuje sam przy braku heartbeatu albo poza limitem osi
+      (najlepszy wysiłek, nie twardy limit — patrz uwagi w dokumencie).
+      RUCH cyklu bez zmian (tryb pozycyjny). Szczegóły:
+      `zmiany/jog-feetech-tryb-kolo.md`.
 - [x] **Naprawiony błąd 2026-09-11: zapis z ekranu `/axes` kasował
       `driver: feetech`.** Odkryte przez zauważenie zmiany na dysku, nie
       zgłoszenie — `docisk`/`podajnik` wróciły po zapisie `vel_jog` do
