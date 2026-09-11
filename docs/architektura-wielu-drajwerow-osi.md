@@ -404,10 +404,26 @@ osobne zakresy (np. moduły I/O od adresu 10 wzwyż).
 
 - `tools/test_modbus_servo.py` (prawdziwy Modbus RTU: funkcja 0x03 +
   CRC16, napisany 2026-09-09 zanim ustalono, że serwa go NIE używają) —
-  gotowy punkt startowy do testu łączności z tymi modułami. Dokładna mapa
-  rejestrów (który bit/rejestr to które wejście/wyjście, offset/skala
-  odczytu analogowego) do sprawdzenia w pełnej instrukcji Waveshare przed
-  pisaniem właściwego drivera — na razie potwierdzone tylko ogólne
-  parametry transmisji i adresacji, nie mapa rejestrów.
-- **Nie zaimplementowane** — to była odpowiedź na pytanie, nie zlecenie
-  budowy drivera.
+  gotowy punkt startowy do testu łączności z tymi modułami.
+
+## Sterownik Modbus RTU zbudowany 2026-09-11 (zamówienie: „to nasze I/O")
+
+Po fizycznym podłączeniu obu modułów przez użytkownika: `modbus_protocol.py`
++ `modbus_driver.py` (`ModbusDriver`) — pełna warstwa protokołu i
+sterownik magistrali, wzorem `feetech_protocol.py`/`feetech_driver.py`.
+Odczyt modułu **analogowego** (SKU 25821) potwierdzony u źródła (instrukcja
+producenta) i zweryfikowany niezależnie przeliczeniem CRC16. Mapa
+rejestrów modułu **cyfrowego** (SKU 26244) — **niepotwierdzona**, wiki
+Waveshare z tej sesji niedostępna; `ModbusDriver` ma dla niego tylko
+metody ogólne (`read_coils`/`read_discrete_inputs`), nie
+wysokopoziomowe — adresy do ustalenia eksperymentalnie przez
+`tools/test_waveshare_io.py --digital-probe` na sprzęcie. Przy okazji:
+dwa przykładowe polecenia zmiany adresu/baudrate z instrukcji NIE
+zgodziły się z niezależnie przeliczonym CRC16 — podejrzenie błędu w
+źródle, opisane w `zmiany/modbus-io-waveshare.md`, nie używać bez
+ponownej weryfikacji.
+
+**Nie zintegrowane jeszcze z `Machine`/cyklem/programem** — to warstwa
+protokołu, czeka na fizyczne potwierdzenie na sprzęcie i ustalenie,
+do czego konkretnie mają służyć te I/O. Szczegóły:
+`zmiany/modbus-io-waveshare.md`.

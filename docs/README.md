@@ -249,5 +249,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   (temat L, etap 2 częściowy): ruch zgodny/przeciwny do zegara, bez
   przeliczenia na mm (serwa niezamontowane). Naprawiony błąd
   współbieżności na współdzielonej magistrali RS485.
+- [zmiany/modbus-io-waveshare.md](zmiany/modbus-io-waveshare.md) —
+  sterownik Modbus RTU dla modułów I/O Waveshare (SKU 26244 cyfrowy, SKU
+  25821 analogowy) na tej samej magistrali co serwa. Odczyt analogowy
+  potwierdzony u źródła; mapa rejestrów cyfrowego modułu niepotwierdzona.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

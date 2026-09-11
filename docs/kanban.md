@@ -346,10 +346,22 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       naprawiony błąd współbieżności (magistrala RS485 współdzielona
       z pętlą statusu, teraz `_feetech_lock`iem). Zweryfikowane fizycznie,
       oba serwa, oba kierunki. Szczegóły: `zmiany/jog-feetech.md`.
-- [ ] **Zostaje:** etapy 2-5 z `architektura-wielu-drajwerow-osi.md` (JOG,
-      bazowanie, cykl maszyny, ew. program technologa) — JOG (etap 2)
-      wymaga kalibracji, czy CW = rosnące czy malejące mm per oś, dopiero
-      po fizycznym zamontowaniu serw (dziś leżą odłączone).
+- [ ] **Zostaje z etapów FEETECH:** kalibracja mm (część etapu 2, po
+      zamontowaniu serw), bazowanie (etap 3), cykl maszyny (etap 4), ew.
+      program technologa (etap 5) — patrz `architektura-wielu-drajwerow-osi.md`.
+- [x] **Moduły I/O Modbus RTU Waveshare — sterownik zbudowany 2026-09-11**
+      (zamówienie: „to nasze I/O, zbuduj standardowy moduł"): SKU 26244
+      (cyfrowy 8DI/8DO) i SKU 25821 (analogowy) na TEJ SAMEJ magistrali co
+      serwa, ale **prawdziwy Modbus RTU** (nie protokół FEETECH), osobne
+      połączenie (9600 baud, nie 115200). `modbus_protocol.py` +
+      `modbus_driver.py`, 22 testy, w tym CRC16 zweryfikowane niezależnie
+      względem przykładu z instrukcji producenta. Odczyt modułu
+      analogowego potwierdzony u źródła; **mapa rejestrów modułu
+      cyfrowego NIEPOTWIERDZONA** (wiki Waveshare niedostępna z sesji) —
+      `tools/test_waveshare_io.py --digital-probe` do ustalenia
+      eksperymentalnie. Nie zintegrowane jeszcze z `Machine`/cyklem/
+      programem, nie zweryfikowane fizycznie (moduły dopiero podłączane).
+      Szczegóły: `zmiany/modbus-io-waveshare.md`.
 
 ### M. Analiza zużycia osi/narzędzia i powiadomienia o incydentach
 - [x] **Krok 1-2 zaimplementowane 2026-09-10:** zbieranie zużycia osi
