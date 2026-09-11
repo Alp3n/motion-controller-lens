@@ -369,9 +369,19 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       (100 kroków/s²/jedn.), górna granica prędkości NIE w pełni
       potwierdzona (przyjęty konserwatywny sufit 1000, do weryfikacji).
       Szczegóły: `zmiany/predkosc-serwa-feetech-w-konfiguracji.md`.
-- [ ] **Zostaje z etapów FEETECH:** bazowanie (etap 3), cykl maszyny
-      (etap 4), ew. program technologa (etap 5) — patrz
-      `architektura-wielu-drajwerow-osi.md`.
+- [x] **Etap 4 zaimplementowany 2026-09-11: osie FEETECH pełnoprawne w
+      cyklu maszyny** (zamówienie: „dodaj serwa Feetech do cykli Maszyny
+      jako pełnoprawne serwo"). Krok `RUCH` z celem na `docisk`/`podajnik`
+      rusza fizycznie oś i CZEKA na koniec ruchu (rejestr `MOVING`), zamiast
+      kończyć się błędem „dziś tylko X/Y/Z". `Machine.feetech_move` —
+      wstrzyknięty callback z `main.py`, `Machine` nadal nie zna
+      `FeetekDriver`/RS485 wprost (zasada „Feetech obok, nie w środku"
+      zachowana). **Bez bazowania (etap 3, wciąż niezrobiony)** — pozycja w
+      mm liczy się od fabrycznego zera enkodera, nie zera obszaru
+      roboczego; nie testowane jeszcze fizycznie w pełnym cyklu na
+      maszynie. Szczegóły: `zmiany/feetech-w-cyklu-maszyny.md`.
+- [ ] **Zostaje z etapów FEETECH:** bazowanie (etap 3), ew. program
+      technologa (etap 5) — patrz `architektura-wielu-drajwerow-osi.md`.
 - [x] **Moduły I/O Modbus RTU Waveshare — oba moduły zweryfikowane
       fizycznie, 2026-09-11** (zamówienie: „to nasze I/O, zbuduj
       standardowy moduł"): SKU 26244 (cyfrowy 8DI/8DO, adres 1) i SKU

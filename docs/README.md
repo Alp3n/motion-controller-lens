@@ -260,6 +260,10 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   `feetech_speed`/`feetech_acc` w konfiguracji osi (ekran `/axes`, tylko
   dla osi ze sterownikiem feetech) zamiast stałych 100/20 zaszytych na
   sztywno; zakresy potwierdzone u źródła (tabela pamięci SM45BL).
+- [zmiany/feetech-w-cyklu-maszyny.md](zmiany/feetech-w-cyklu-maszyny.md) —
+  temat L, etap 4: krok RUCH cyklu rusza (i czeka na koniec) osie ze
+  sterownikiem feetech przez wstrzyknięty `Machine.feetech_move`, zamiast
+  odrzucać cel spoza X/Y/Z. Bez bazowania — mm od zera enkodera serwa.
 - [zmiany/modbus-io-waveshare.md](zmiany/modbus-io-waveshare.md) —
   sterownik Modbus RTU dla modułów I/O Waveshare (SKU 26244 cyfrowy, SKU
   25821 analogowy) na tej samej magistrali co serwa. Oba moduły (cyfrowy

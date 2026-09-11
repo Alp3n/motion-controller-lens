@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import audit, axes, config, cycle, io_modbus, kalibracja, outputs, profiles, punkty, smart, spindle, users, zuzycie, zuzycie_alarmy
-from .feetech_driver import FeetekDriver, FeetekError, position_to_mm
+from .feetech_driver import COUNTS_PER_REV, FeetekDriver, FeetekError, position_to_mm
 from .modbus_driver import ModbusDriver
 from .modbus_protocol import ModbusError
 from .machine import (
@@ -333,6 +333,55 @@ def _feetech_jog(servo_id: int, counts_cw: int, speed: int, acc: int) -> int:
     z ekranu /axes) zamiast dawnych stałych 100/20 zaszytych na sztywno."""
     with FeetekDriver(config.FEETECH_PORT, baud=config.FEETECH_BAUD) as driver:
         return driver.move_relative_cw(servo_id, counts_cw, speed=speed, acc=acc)
+
+
+def _feetech_move_to_and_wait(servo_id: int, position: int, speed: int, acc: int) -> None:
+    """Blokujące (termios) — jak `_feetech_jog`, ale pozycja ABSOLUTNA i
+    CZEKA na koniec ruchu (rejestr MOVING) — krok RUCH cyklu ma się
+    zakończyć dopiero, gdy oś naprawdę dojechała, nie od razu po wysłaniu
+    komendy. Ten sam wzorzec co `tools/feetech_jog.py`."""
+    with FeetekDriver(config.FEETECH_PORT, baud=config.FEETECH_BAUD) as driver:
+        driver.move_to(servo_id, position, speed=speed, acc=acc)
+        if not driver.wait_until_stopped(servo_id):
+            raise FeetekError(
+                f"serwo {servo_id}: przekroczono czas oczekiwania na koniec ruchu"
+            )
+
+
+async def _feetech_cycle_move(axis: str, target_mm: float) -> None:
+    """Wstrzyknięte do `Machine.feetech_move` (temat L, etap 4 — osie
+    FEETECH pełnoprawne w cyklu maszyny, zamówienie 2026-09-11). Patrz
+    komentarz przy `self.feetech_move` w `machine.py` — to jedyny szew
+    między `Machine` a `FeetekDriver`/RS485.
+
+    Przelicza mm na jednostki rejestru ODWROTNOŚCIĄ `position_to_mm()` —
+    te same zastrzeżenia: bez bazowania (etap 3) zero mm to fabryczne zero
+    enkodera serwa, NIE zero obszaru roboczego maszyny."""
+    feetech_ids = axes.feetech_axes(machine.axes)
+    if axis not in feetech_ids:
+        raise MachineError(f"oś {axis.upper()} nie jest skonfigurowana jako FEETECH")
+    if not config.FEETECH_PORT:
+        raise MachineError("FEETECH_PORT nieskonfigurowany — magistrala RS485 niedostępna")
+    axis_cfg = machine.axes[axis]
+    servo_id = feetech_ids[axis]
+    position = round(target_mm / axis_cfg.mm_per_rev * COUNTS_PER_REV)
+    try:
+        async with _feetech_lock:
+            await asyncio.to_thread(
+                _feetech_move_to_and_wait,
+                servo_id,
+                position,
+                axis_cfg.feetech_speed,
+                axis_cfg.feetech_acc,
+            )
+    except FeetekError as exc:
+        raise MachineError(f"oś {axis.upper()} (FEETECH): {exc}")
+
+
+# Wstrzyknięcie (temat L, etap 4) — patrz komentarz przy `Machine.feetech_move`
+# w machine.py. Ustawione bezwarunkowo, niezależnie od MACHINE_MODE: RS485 to
+# osobny fizyczny kanał od X/Y/Z (tak samo jak `_feetech_poll_loop`).
+machine.feetech_move = _feetech_cycle_move
 
 
 async def _feetech_poll_loop() -> None:

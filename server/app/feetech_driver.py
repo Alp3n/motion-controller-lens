@@ -194,6 +194,24 @@ class FeetekDriver:
         )
         self.write_raw(servo_id, fp.ADDR_ACC, payload)
 
+    def wait_until_stopped(
+        self, servo_id: int, timeout_s: float = 10.0, poll_interval_s: float = 0.1
+    ) -> bool:
+        """Czeka na koniec ruchu odpytując rejestr MOVING — ten sam wzorzec,
+        co `tools/feetech_jog.py` (zweryfikowany fizycznie 2026-09-10: nie
+        zgaduje czasu z prędkości/przyspieszenia, tylko pyta serwo wprost).
+
+        Zwraca `True`, jeśli serwo zatrzymało się przed `timeout_s`, `False`
+        po przekroczeniu limitu (serwo mogło utknąć — wywołujący decyduje,
+        czy to błąd)."""
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            moving = self.read_raw(servo_id, fp.ADDR_MOVING, 1)[0]
+            if not moving:
+                return True
+            time.sleep(poll_interval_s)
+        return False
+
     def move_relative_cw(self, servo_id: int, counts_cw: int, speed: int = 100, acc: int = 20) -> int:
         """Jak `move_to`, ale kierunek zawsze "zgodnie z zegarem = dodatnie",
         niezależnie od tego, czy dla tego konkretnego ID rejestr rośnie czy

@@ -275,6 +275,65 @@ def test_move_step_respects_soft_limits():
     assert "limitem programowym" in m.status.alarm_message
 
 
+# --- osie FEETECH w cyklu (temat L, etap 4) --------------------------------
+
+
+def _axes_with_docisk():
+    from app import axes as axes_mod
+
+    cfg = {
+        a: {"length": 100, "home": "srodek", "soft_min": -50, "soft_max": 50, "mm_per_rev": 5}
+        for a in ("x", "y", "z")
+    }
+    cfg["docisk"] = {
+        "length": 10, "home": "plus", "soft_min": -9, "soft_max": -2, "mm_per_rev": 1.0,
+        "driver": "feetech", "feetech_id": 1,
+    }
+    return axes_mod.parse_axes(cfg)
+
+
+def test_move_step_rusza_os_feetech_przez_wstrzykniety_callback():
+    calls = []
+
+    async def fake_feetech_move(axis, value):
+        calls.append((axis, value))
+
+    m = _machine_with_cycle([_move(1, x=5, docisk=-3)])
+    m.apply_axis_config(_axes_with_docisk())
+    m.feetech_move = fake_feetech_move
+    asyncio.run(_drive(m))
+    assert m.status.state == MachineState.READY
+    assert calls == [("docisk", -3.0)]
+    assert round(m.status.x, 3) == 5.0
+
+
+def test_move_step_feetech_bez_wstrzykniecia_daje_alarm():
+    """Domyślnie `feetech_move` jest `None` (patrz Machine.__init__) — krok
+    z celem na osi feetech ma jasno się nie udać, nie cicho pominąć oś."""
+    m = _machine_with_cycle([_move(1, docisk=-3)])
+    m.apply_axis_config(_axes_with_docisk())
+    asyncio.run(_drive(m))
+    assert m.status.state == MachineState.ALARM
+    assert "RS485" in m.status.alarm_message
+
+
+def test_move_step_feetech_respektuje_limit_programowy():
+    """Limit programowy osi feetech (soft_min/soft_max) sprawdzany PRZED
+    wywołaniem feetech_move — błędny cel nie rusza fizycznie serwem."""
+    calls = []
+
+    async def fake_feetech_move(axis, value):
+        calls.append((axis, value))
+
+    m = _machine_with_cycle([_move(1, docisk=999)])
+    m.apply_axis_config(_axes_with_docisk())
+    m.feetech_move = fake_feetech_move
+    asyncio.run(_drive(m))
+    assert m.status.state == MachineState.ALARM
+    assert "limitem programowym" in m.status.alarm_message
+    assert calls == []
+
+
 # --- tryb automatyczny (temat F) -------------------------------------------
 
 

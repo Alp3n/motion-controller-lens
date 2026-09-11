@@ -134,6 +134,20 @@ def test_move_relative_cw_servo2_dodaje_do_pozycji():
     assert target == 300  # 200 + 100
 
 
+def test_wait_until_stopped_konczy_gdy_moving_spada_do_zera():
+    d = _driver_with_fake([
+        _ok_response(1, bytes([1])),  # jeszcze w ruchu
+        _ok_response(1, bytes([1])),  # jeszcze w ruchu
+        _ok_response(1, bytes([0])),  # zatrzymane
+    ])
+    assert d.wait_until_stopped(1, timeout_s=5.0, poll_interval_s=0) is True
+
+
+def test_wait_until_stopped_zwraca_false_po_timeout():
+    d = _driver_with_fake([_ok_response(1, bytes([1]))] * 50)
+    assert d.wait_until_stopped(1, timeout_s=0.05, poll_interval_s=0.02) is False
+
+
 def test_move_relative_cw_nieznane_id_rzuca_keyerror():
     d = _driver_with_fake([])
     with pytest.raises(KeyError):

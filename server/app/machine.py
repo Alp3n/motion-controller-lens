@@ -12,8 +12,9 @@ import math
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Awaitable, Callable
 
-from .axes import REQUIRED_AXES, AxisConfig
+from .axes import DRIVER_FEETECH, REQUIRED_AXES, AxisConfig
 from .axes import home_groups as axis_home_groups
 from .cycle import (
     OUTPUT_NAMES,
@@ -246,6 +247,15 @@ class Machine:
         self._recording_was_running = False
         # prowadzenie za rękę (ekran /nauczanie) — None = nieaktywne
         self._hand_guide: dict | None = None
+        # Callback wstrzykiwany przez main.py (temat L, etap 4): rusza
+        # fizycznie osią ze sterownikiem "feetech" i CZEKA na koniec ruchu
+        # (odpytanie rejestru MOVING, jak tools/feetech_jog.py). Machine
+        # celowo NIE zna FeetekDriver/RS485 wprost — decyzja "Feetech obok,
+        # nie w środku" z docs/architektura-wielu-drajwerow-osi.md, to
+        # jedyny szew. None = magistrala niedostępna (np. w testach) — krok
+        # RUCH z celem na osi feetech wtedy rzuca czytelny błąd zamiast
+        # cichego pominięcia.
+        self.feetech_move: Callable[[str, float], Awaitable[None]] | None = None
 
     # --- konfiguracja wyjść (wspólna) -------------------------------------
 
@@ -537,6 +547,43 @@ class Machine:
                 f"oś {axis.upper()}: pozycja {target:.3f} mm poza limitem programowym "
                 f"({cfg.soft_min:.3f}..{cfg.soft_max:.3f} mm)"
             )
+
+    async def _resolve_move_targets(self, step: CycleStep) -> dict[str, float]:
+        """Rozdziela cele kroku RUCH (temat L, etap 4 — osie FEETECH
+        pełnoprawne w cyklu). Osie ze sterownikiem `feetech` ruszają (i
+        CZEKAJĄ na koniec ruchu) od razu tutaj, przez `self.feetech_move` —
+        Machine nie zna FeetekDriver/RS485 wprost, patrz komentarz przy
+        `self.feetech_move` w `__init__`. Reszta celów (dziś zawsze X/Y/Z)
+        wraca jako słownik do dotychczasowej ścieżki ruchu wywołującej metody.
+
+        UWAGA: bez bazowania (etap 3, wciąż niezrobiony) pozycja docelowa
+        [mm] dla osi feetech liczy się od fabrycznego zera enkodera serwa,
+        NIE od zera obszaru roboczego maszyny — patrz
+        docs/zmiany/przeliczenie-mm-osie-feetech.md. Kolejność wykonania
+        (feetech przed X/Y/Z) jest dziś nieistotna — to dwie niezależne
+        magistrale, nie da się ich uruchomić „jednocześnie” bez dodatkowej
+        pracy, więc nie udajemy, że tak jest.
+        """
+        target = {"x": self.status.x, "y": self.status.y, "z": self.status.z}
+        for axis, value in step.targets.items():
+            cfg = self.axes.get(axis)
+            if cfg is not None and cfg.driver == DRIVER_FEETECH:
+                self._check_soft_limit(axis, value)
+                if self.feetech_move is None:
+                    raise MachineError(
+                        f"krok {step.lp}: oś {axis.upper()} (FEETECH) — magistrala "
+                        "RS485 niedostępna (FEETECH_PORT nieskonfigurowany)"
+                    )
+                await self.feetech_move(axis, value)
+                continue
+            if axis not in target:
+                raise MachineError(
+                    f"krok {step.lp}: oś {axis.upper()} nie jest obsługiwana — "
+                    "nieznana oś albo sterownik bez integracji z cyklem"
+                )
+            self._check_soft_limit(axis, value)
+            target[axis] = value
+        return target
 
     # --- ładowanie programu (wspólne) -------------------------------------
 
@@ -1032,16 +1079,9 @@ class SimulatedMachine(Machine):
             self.status.current_op = None
             return
 
-        # STEP_MOVE — przejazd wskazanych osi; osie pominięte zostają na miejscu
-        target = {"x": self.status.x, "y": self.status.y, "z": self.status.z}
-        for axis, value in step.targets.items():
-            if axis not in target:
-                raise MachineError(
-                    f"krok {step.lp}: oś {axis.upper()} nie jest obsługiwana "
-                    "przez ruch symulatora (dziś tylko X/Y/Z)"
-                )
-            self._check_soft_limit(axis, value)
-            target[axis] = value
+        # STEP_MOVE — przejazd wskazanych osi (X/Y/Z + FEETECH, patrz
+        # _resolve_move_targets); osie pominięte zostają na miejscu
+        target = await self._resolve_move_targets(step)
         feed = step.feed or 1000.0
         await self._move_to(target["x"], target["y"], target["z"], feed)
 
@@ -1821,16 +1861,9 @@ class SC4HubMachine(Machine):
             self.status.current_op = None
             return
 
-        # STEP_MOVE — przejazd wskazanych osi; osie pominięte zostają na miejscu
-        target = {"x": self.status.x, "y": self.status.y, "z": self.status.z}
-        for axis, value in step.targets.items():
-            if axis not in target:
-                raise MachineError(
-                    f"krok {step.lp}: oś {axis.upper()} nie jest obsługiwana "
-                    "przez mostek (dziś tylko X/Y/Z)"
-                )
-            self._check_soft_limit(axis, value)
-            target[axis] = value
+        # STEP_MOVE — przejazd wskazanych osi (X/Y/Z + FEETECH, patrz
+        # _resolve_move_targets); osie pominięte zostają na miejscu
+        target = await self._resolve_move_targets(step)
         feed = step.feed or 1000.0
         await self._command(f"MOVEZ {target['z']:.3f} {feed:.0f}")
         await self._command(f"MOVEXY {target['x']:.3f} {target['y']:.3f} {feed:.0f}")

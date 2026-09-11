@@ -145,11 +145,14 @@ def test_cycle_move_step_only_moves_named_axes_and_uses_default_feed():
     assert m.calls == ["MOVEZ -2.000 1000", "MOVEXY 0.000 0.000 1000", "SPINDLE 0"]
 
 
-def test_cycle_move_step_rejects_axis_outside_xyz():
+def test_cycle_move_step_rejects_unknown_axis():
+    """Bez konfiguracji osi 'podajnik' w ogóle (ani X/Y/Z, ani feetech) —
+    komunikat po zmianie z temat L etap 4, patrz
+    Machine._resolve_move_targets() w machine.py."""
     m = _cycle_machine([{"lp": 1, "kind": "RUCH", "targets": {"podajnik": 5}}])
     asyncio.run(_drive(m))
     assert m.status.state == MachineState.ALARM
-    assert "nie jest obsługiwana przez mostek" in m.status.alarm_message
+    assert "nie jest obsługiwana" in m.status.alarm_message
 
 
 def test_cycle_move_step_respects_soft_limits():
