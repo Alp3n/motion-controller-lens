@@ -32,6 +32,5 @@ nie wyżej.
   wyłącznie płaszczyzny XY.
 - Nie ma testu przeglądarkowego pokrywającego tę warstwę (patrz też
   [[poprawka-podgladu-pozycji]], ta sama luka) — poprawka zweryfikowana
-  wyłącznie code review, nie wizualnie w przeglądarce (brak dostępu do
-  Chrome w tej sesji). Do potwierdzenia przez operatora przy najbliższej
-  okazji.
+  code review (brak dostępu do Chrome w tej sesji) i **potwierdzona
+  fizycznie przez operatora 2026-09-11**: „tak teraz jest dobrze".
