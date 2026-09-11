@@ -64,15 +64,34 @@ class ModbusDriver:
             os.close(self._fd)
             self._fd = None
 
-    def _exchange(self, packet: bytes, settle: float = 0.05) -> bytes:
+    def _exchange(self, packet: bytes, settle: float = 0.05, max_wait: float = 0.5) -> bytes:
+        """Wysyła i czyta odpowiedź, DOSKŁADAJĄC bajty aż nastanie cisza
+        (`settle` sekund bez nowych danych) albo minie `max_wait`.
+
+        **Uzasadnienie (znalezione fizycznie 2026-09-11):** pojedynczy
+        `os.read()` zaraz po stałym `sleep(settle)` obcinał dłuższe
+        odpowiedzi (moduł analogowy: 21 bajtów) — `os.read()` z
+        VMIN=0/VTIME>0 zwraca to, co akurat jest w buforze w danej
+        chwili, nie czeka na koniec transmisji. Krótsze odpowiedzi (serwa,
+        moduł cyfrowy: ~8 bajtów) mieściły się w oknie i błąd nie było
+        widać. Doskładanie w pętli aż do ciszy działa niezależnie od
+        długości odpowiedzi, bez zgadywania stałej na sztywno."""
         if self._fd is None:
             raise mp.ModbusError("port niezotwarty — wywołaj open() albo użyj 'with'")
         os.write(self._fd, packet)
-        time.sleep(settle)
-        try:
-            response = os.read(self._fd, 256)
-        except OSError:
-            response = b""
+        response = b""
+        deadline = time.monotonic() + max_wait
+        while time.monotonic() < deadline:
+            time.sleep(settle)
+            try:
+                chunk = os.read(self._fd, 256)
+            except OSError:
+                chunk = b""
+            if chunk:
+                response += chunk
+                continue
+            if response:
+                break  # była cisza PO tym, jak coś już przyszło — koniec ramki
         if not response:
             raise mp.ModbusError("brak odpowiedzi (timeout)")
         return response

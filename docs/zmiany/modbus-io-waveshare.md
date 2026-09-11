@@ -87,6 +87,25 @@ potwierdzenia przed wysłaniem do prawdziwego urządzenia.
   może operacje `.prg`) to następny krok, po ustaleniu, do czego
   konkretnie mają służyć te I/O (który wyjście/wejście do czego).
 - **Moduł cyfrowy zweryfikowany fizycznie 2026-09-11** (sondowanie +
-  zapis coil 0 + obserwacja diody DO0). **Moduł analogowy — jeszcze nie**
-  (drugi moduł, użytkownik podłączy go osobno, zgodnie z ostrzeżeniem o
-  kolizji adresów wyżej).
+  zapis coil 0 + obserwacja diody DO0). **Moduł analogowy zweryfikowany
+  fizycznie tego samego dnia** — 8 kanałów odczytanych poprawnie (wszystkie
+  0, zgodnie z rzeczywistością — nic nie podłączone do wejść).
+
+## Naprawiony błąd: `_exchange()` obcinał dłuższe odpowiedzi
+
+Pierwszy test modułu analogowego (osobno, po module cyfrowym) dał złą
+sumę CRC (`00 00` zamiast oczekiwanej). Przyczyna: `_exchange()` robił
+`sleep(settle)` (domyślnie 0,05s) i **jeden** `os.read()` — dla krótkich
+odpowiedzi (serwa, moduł cyfrowy: ~8 bajtów) to się mieściło i błąd był
+niewidoczny, ale odpowiedź modułu analogowego ma **21 bajtów** (8
+kanałów × 2 bajty + nagłówek + CRC) i nie zdążała w całości dotrzeć — `
+os.read()` z `VMIN=0`/`VTIME>0` zwraca to, co akurat jest w buforze w
+danej chwili, nie czeka na koniec transmisji. Ręczny test z
+`settle=0.3` potwierdził: ta sama komenda, pełna poprawna 21-bajtowa
+odpowiedź, CRC zgodne.
+
+**Naprawa:** `_exchange()` teraz DOSKŁADA bajty w pętli aż do ciszy
+(brak nowych danych przez `settle`) albo `max_wait` (0,5s) — działa
+niezależnie od długości odpowiedzi, bez zgadywania stałej na sztywno per
+moduł. Zweryfikowane ponownie na sprzęcie po naprawie: pełny, poprawny
+odczyt 8 kanałów.
