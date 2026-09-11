@@ -251,7 +251,15 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   współbieżności na współdzielonej magistrali RS485.
 - [zmiany/modbus-io-waveshare.md](zmiany/modbus-io-waveshare.md) —
   sterownik Modbus RTU dla modułów I/O Waveshare (SKU 26244 cyfrowy, SKU
-  25821 analogowy) na tej samej magistrali co serwa. Odczyt analogowy
-  potwierdzony u źródła; mapa rejestrów cyfrowego modułu niepotwierdzona.
+  25821 analogowy) na tej samej magistrali co serwa. Oba moduły (cyfrowy
+  i analogowy) potwierdzone fizycznie.
+- [zmiany/driver-feetech-znikal-po-zapisie-osi.md](zmiany/driver-feetech-znikal-po-zapisie-osi.md) —
+  naprawa: zapis z ekranu `/axes` kasował `driver: feetech`/`feetech_id`
+  osi `docisk`/`podajnik` z powrotem na domyślne (ten sam błąd, co już raz
+  dla pól bazowania).
+- [zmiany/io-modbus-nazwane-kanaly.md](zmiany/io-modbus-nazwane-kanaly.md) —
+  standardowy moduł do korzystania z I/O Waveshare w aplikacji: nazwane
+  kanały DO/DI/AI, pętla w tle, API odczytu/zapisu po nazwie, watchdog
+  diagnostyczny (nie bezpieczeństwa) dla wejścia pulsującego.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

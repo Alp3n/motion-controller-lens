@@ -81,14 +81,19 @@ def main() -> int:
     parser.add_argument("--digital-probe", action="store_true", help="sonduj moduł cyfrowy (SKU 26244)")
     parser.add_argument("--write-coil", type=int, metavar="ADRES",
                          help="zapisz coil pod danym adresem (do testu mapowania DO — patrz --state)")
+    parser.add_argument("--set-address", type=int, metavar="NOWY_ADRES",
+                         help="zmień adres urządzenia (rejestr 0x4000) — TYLKO gdy na magistrali "
+                              "jest fizycznie podłączony JEDEN moduł (oba domyślnie mają adres 1)")
     parser.add_argument("--state", choices=["on", "off"], default="on",
                          help="stan dla --write-coil (domyślnie on)")
     args = parser.parse_args()
 
-    if not args.analog and not args.digital_probe and args.write_coil is None:
-        parser.error("podaj --analog i/lub --digital-probe i/lub --write-coil")
+    if not args.analog and not args.digital_probe and args.write_coil is None and args.set_address is None:
+        parser.error("podaj --analog i/lub --digital-probe i/lub --write-coil i/lub --set-address")
     if args.write_coil is not None and not args.port:
         parser.error("--write-coil wymaga podania konkretnego portu (nie skanowania)")
+    if args.set_address is not None and not args.port:
+        parser.error("--set-address wymaga podania konkretnego portu (nie skanowania)")
 
     ports = [args.port] if args.port else discover_ports()
     if not ports:
@@ -109,6 +114,16 @@ def main() -> int:
                 driver.write_single_coil(args.id, args.write_coil, on)
                 readback = driver.read_coils(args.id, args.write_coil, 1)
             print(f"  zapisano, odczyt potwierdzający: coil {args.write_coil} = {readback[0]}")
+        except mp.ModbusError as exc:
+            print(f"  błąd: {exc}")
+
+    if args.set_address is not None:
+        print(f"\n--- Zmiana adresu {args.id} -> {args.set_address} na {ports[0]} @ {args.baud} ---")
+        try:
+            with ModbusDriver(ports[0], baud=args.baud) as driver:
+                driver.write_single_register(args.id, mp.ADDR_DEVICE_ADDRESS, args.set_address)
+                readback = driver.read_holding_registers(args.set_address, mp.ADDR_DEVICE_ADDRESS, 1)
+            print(f"  zapisano, odczyt pod NOWYM adresem {args.set_address}: {readback[0]}")
         except mp.ModbusError as exc:
             print(f"  błąd: {exc}")
 

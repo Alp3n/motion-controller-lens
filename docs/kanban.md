@@ -346,25 +346,41 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       naprawiony błąd współbieżności (magistrala RS485 współdzielona
       z pętlą statusu, teraz `_feetech_lock`iem). Zweryfikowane fizycznie,
       oba serwa, oba kierunki. Szczegóły: `zmiany/jog-feetech.md`.
+- [x] **Naprawiony błąd 2026-09-11: zapis z ekranu `/axes` kasował
+      `driver: feetech`.** Odkryte przez zauważenie zmiany na dysku, nie
+      zgłoszenie — `docisk`/`podajnik` wróciły po zapisie `vel_jog` do
+      `driver: teknic`. Przyczyna i naprawa (drugi raz ten sam wzorzec
+      błędu, co dla pól bazowania): `zmiany/driver-feetech-znikal-po-zapisie-osi.md`.
 - [ ] **Zostaje z etapów FEETECH:** kalibracja mm (część etapu 2, po
       zamontowaniu serw), bazowanie (etap 3), cykl maszyny (etap 4), ew.
       program technologa (etap 5) — patrz `architektura-wielu-drajwerow-osi.md`.
-- [x] **Moduły I/O Modbus RTU Waveshare — sterownik zbudowany i moduł
-      cyfrowy zweryfikowany fizycznie, 2026-09-11** (zamówienie: „to nasze
-      I/O, zbuduj standardowy moduł"): SKU 26244 (cyfrowy 8DI/8DO) i SKU
-      25821 (analogowy) na TEJ SAMEJ magistrali co serwa, ale
+- [x] **Moduły I/O Modbus RTU Waveshare — oba moduły zweryfikowane
+      fizycznie, 2026-09-11** (zamówienie: „to nasze I/O, zbuduj
+      standardowy moduł"): SKU 26244 (cyfrowy 8DI/8DO, adres 1) i SKU
+      25821 (analogowy, adres 2 — zmieniony z fabrycznego 1, żeby uniknąć
+      kolizji z modułem cyfrowym) na TEJ SAMEJ magistrali co serwa, ale
       **prawdziwy Modbus RTU** (nie protokół FEETECH), osobne połączenie
       (9600 baud, nie 115200). `modbus_protocol.py` + `modbus_driver.py`,
       26 testów, w tym CRC16 zweryfikowane niezależnie względem przykładu
-      z instrukcji producenta. Odczyt modułu analogowego potwierdzony u
-      źródła (instrukcja). **Mapa rejestrów modułu cyfrowego POTWIERDZONA
-      FIZYCZNIE** — zapis coil 0 → ON + obserwacja diody DO0 na module:
-      coils=DO, discrete inputs=DI, adresy 0-7. `ModbusDriver` ma teraz
-      `read_digital_inputs/outputs()`, `write_digital_output()`. Moduł
-      analogowy jeszcze nie podłączony fizycznie (kolejny krok — osobno,
-      żeby uniknąć kolizji adresów jak przy serwach). Nie zintegrowane
-      jeszcze z `Machine`/cyklem/programem. Szczegóły:
+      z instrukcji producenta. **Mapa rejestrów obu modułów POTWIERDZONA
+      FIZYCZNIE**: cyfrowy — zapis coil 0 → ON + obserwacja diody DO0;
+      analogowy — 8 kanałów odczytanych poprawnie (naprawiony przy okazji
+      błąd `_exchange()` obcinający dłuższe odpowiedzi). Szczegóły:
       `zmiany/modbus-io-waveshare.md`.
+- [x] **Nazwane kanały I/O + watchdog, zaimplementowane 2026-09-11**
+      (zamówienie: lista sygnałów LG/LR/LY/osłona_1/drzwi_podajnika/
+      Start/Stop/wrzeciono_OUT/wrzeciono_start/wrzeciono-stop/
+      temperatura_wrzeciona/prąd_wrzeciona/drzwi_impulsy, odczyt co ~1s,
+      watchdog na `drzwi_impulsy` współpracujący z `osłona_1`,
+      włącz/wyłącz w konfiguracji): `app/io_modbus.py`
+      (`IoConfig`/`ChannelConfig`/`WatchdogConfig`, `default_io()`, 11
+      testów), pętla w tle w `main.py`, `GET/PUT /api/io-modbus`,
+      `POST /api/machine/io-modbus/write`. **Przypisanie sygnałów do
+      konkretnych kanałów DO/DI/AI to na razie założenie kolejności, nie
+      potwierdzone okablowanie** — do weryfikacji przy podłączeniu.
+      Watchdog domyślnie wyłączony, nie testowany jeszcze na prawdziwym
+      sygnale. Brak jeszcze ekranu (tylko API). Szczegóły:
+      `zmiany/io-modbus-nazwane-kanaly.md`.
 
 ### M. Analiza zużycia osi/narzędzia i powiadomienia o incydentach
 - [x] **Krok 1-2 zaimplementowane 2026-09-10:** zbieranie zużycia osi

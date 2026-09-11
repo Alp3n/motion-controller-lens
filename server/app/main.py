@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import secrets
+import time
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -17,8 +18,10 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import audit, axes, config, cycle, kalibracja, outputs, profiles, punkty, smart, spindle, users, zuzycie, zuzycie_alarmy
+from . import audit, axes, config, cycle, io_modbus, kalibracja, outputs, profiles, punkty, smart, spindle, users, zuzycie, zuzycie_alarmy
 from .feetech_driver import FeetekDriver, FeetekError
+from .modbus_driver import ModbusDriver
+from .modbus_protocol import ModbusError
 from .machine import (
     MachineError,
     MachineState,
@@ -47,6 +50,7 @@ async def lifespan(_app: FastAPI):
     # Sam sobie nic nie robi, jeśli brak skonfigurowanych osi "feetech"
     # albo FEETECH_PORT (patrz _feetech_poll_loop).
     feetech_task = asyncio.create_task(_feetech_poll_loop())
+    io_modbus_task = asyncio.create_task(_io_modbus_poll_loop())
     yield
     if task:
         task.cancel()
@@ -55,6 +59,9 @@ async def lifespan(_app: FastAPI):
     feetech_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await feetech_task
+    io_modbus_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await io_modbus_task
 
 
 app = FastAPI(
@@ -90,6 +97,16 @@ machine.apply_smart(smart_cfg)
 # (powód w app/zuzycie_alarmy.py; alarmy same w sobie nie sterują maszyną).
 zuzycie_alarmy_cfg = zuzycie_alarmy.load(config.ZUZYCIE_ALARMY_FILE)
 _zuzycie_alarm_status: list[zuzycie_alarmy.AlarmStatus] = []
+
+# Nazwane kanały I/O modułów Waveshare Modbus RTU (temat L) — lampy,
+# drzwi/osłona, Start/Stop, wrzeciono, watchdog. Dane pomocnicze, nie
+# parametr bezpieczeństwa: błędny/brakujący plik nie przerywa startu
+# (powód w app/io_modbus.py). Przypisanie kanałów w default_io() to
+# ZAŁOŻENIE, nie potwierdzone okablowanie — patrz docstring modułu.
+io_modbus_cfg = io_modbus.load(config.IO_MODBUS_FILE)
+_io_modbus_status: dict = {"do": {}, "di": {}, "ai": {}, "watchdog": {"enabled": False}}
+_watchdog_last_pulse: bool | None = None
+_watchdog_last_change: float | None = None
 
 # Kalibracja moment -> siła (etap 2 tematu K) — pary (moment %, siła N)
 # wpisane po pomiarze siłomierzem. Dane pomocnicze do dobierania progów,
@@ -226,12 +243,17 @@ def _page(request: Request, filename: str, required: str) -> Response:
 
 _zuzycie_was_running = False
 
-# Magistrala RS485 do serw FEETECH jest fizycznie WSPÓLNA i półdupleksowa —
-# _feetech_poll_loop (odczyt co ~1s) i /api/machine/jog-feetech (na żądanie)
-# muszą się wykluczać, inaczej dwie jednoczesne transakcje kolidują na
-# przewodzie (zaobserwowane fizycznie 2026-09-11: JOG na jednej osi +
-# odczyt statusu w tym samym momencie dał "brak odpowiedzi" na DRUGIEJ,
-# mimo że elektrycznie wszystko było w porządku).
+# Magistrala RS485 jest fizycznie WSPÓLNA i półdupleksowa — serwa FEETECH
+# I moduły I/O Waveshare (temat L) wiszą na tym samym przewodzie/porcie.
+# Wszystkie dostępy z WEWNĄTRZ tego procesu (_feetech_poll_loop,
+# /api/machine/jog-feetech, _io_modbus_poll_loop) muszą się wykluczać,
+# inaczej dwie jednoczesne transakcje kolidują na przewodzie (zaobserwowane
+# fizycznie 2026-09-11: JOG na jednej osi + odczyt statusu w tym samym
+# momencie dał "brak odpowiedzi" na DRUGIEJ, mimo że elektrycznie
+# wszystko było w porządku). Nazwa historyczna ("feetech") — dziś chroni
+# całą magistralę, nie tylko serwa. UWAGA: nie chroni przed zewnętrznymi
+# skryptami ad-hoc spoza tego procesu (patrz
+# docs/zmiany/modbus-io-waveshare.md, „kolizja z żywą usługą").
 _feetech_lock = asyncio.Lock()
 
 
@@ -320,6 +342,79 @@ async def _feetech_poll_loop() -> None:
             pass  # magistrala niedostępna teraz — spróbuj ponownie za 1s
 
 
+def _read_io_modbus(cfg: io_modbus.IoConfig) -> dict:
+    """Blokujące (termios) — wywoływać przez `asyncio.to_thread` pod
+    `_feetech_lock`. Jedno połączenie na port (9600 baud), oba moduły
+    Waveshare na różnych adresach Modbus (`DIGITAL_MODULE_ADDRESS`,
+    `ANALOG_MODULE_ADDRESS`) — nie trzeba osobnych połączeń per moduł."""
+    result: dict = {"do": {}, "di": {}, "ai": {}}
+    with ModbusDriver(config.MODBUS_IO_PORT, baud=config.MODBUS_IO_BAUD) as driver:
+        try:
+            do_values = driver.read_digital_outputs(io_modbus.DIGITAL_MODULE_ADDRESS)
+            for name, ch in cfg.do.items():
+                result["do"][name] = {"label": ch.label, "value": do_values[int(name[2:])]}
+        except ModbusError as exc:
+            result["do_error"] = str(exc)
+        try:
+            di_values = driver.read_digital_inputs(io_modbus.DIGITAL_MODULE_ADDRESS)
+            for name, ch in cfg.di.items():
+                result["di"][name] = {"label": ch.label, "value": di_values[int(name[2:])]}
+        except ModbusError as exc:
+            result["di_error"] = str(exc)
+        try:
+            ai_values = driver.read_analog_channels(io_modbus.ANALOG_MODULE_ADDRESS)
+            for name, ch in cfg.ai.items():
+                result["ai"][name] = {"label": ch.label, "value": ai_values[int(name[2:])]}
+        except ModbusError as exc:
+            result["ai_error"] = str(exc)
+    return result
+
+
+async def _io_modbus_poll_loop() -> None:
+    """Odpytuje moduły I/O Waveshare co ~1s (albo `watchdog.interval_s`,
+    jeśli watchdog jest włączony) — osobno od pętli serw, ale pod tym
+    samym `_feetech_lock` (współdzielona magistrala fizyczna). Temat L,
+    zamówienie użytkownika 2026-09-11 — patrz
+    docs/zmiany/modbus-io-waveshare.md.
+
+    Watchdog impulsów drzwi: NIE jest certyfikowaną funkcją bezpieczeństwa
+    (jak żaden odczyt sygnału drzwi programowo w tym projekcie) — to
+    diagnostyka, wykrywa czy sygnał impulsowy w ogóle się zmienia
+    (heartbeat), nie zastępuje sprzętowego Global Stop.
+    """
+    global _io_modbus_status, _watchdog_last_pulse, _watchdog_last_change
+    while True:
+        interval = io_modbus_cfg.watchdog.interval_s if io_modbus_cfg.watchdog.enabled else 1.0
+        await asyncio.sleep(max(0.2, interval))
+        if not config.MODBUS_IO_PORT:
+            continue
+        try:
+            async with _feetech_lock:
+                result = await asyncio.to_thread(_read_io_modbus, io_modbus_cfg)
+        except Exception:
+            continue
+
+        wd = io_modbus_cfg.watchdog
+        if wd.enabled and wd.pulse_channel in result.get("di", {}):
+            pulse_value = result["di"][wd.pulse_channel]["value"]
+            now = time.monotonic()
+            if _watchdog_last_pulse is None or pulse_value != _watchdog_last_pulse:
+                _watchdog_last_pulse = pulse_value
+                _watchdog_last_change = now
+            age = (now - _watchdog_last_change) if _watchdog_last_change is not None else None
+            result["watchdog"] = {
+                "enabled": True,
+                "pulse_channel": wd.pulse_channel,
+                "guard_channel": wd.guard_channel,
+                "guard_value": result.get("di", {}).get(wd.guard_channel, {}).get("value"),
+                "age_s": round(age, 1) if age is not None else None,
+                "ok": age is not None and age < wd.stale_after_s,
+            }
+        else:
+            result["watchdog"] = {"enabled": False}
+        _io_modbus_status = result
+
+
 # --- modele żądań ---------------------------------------------------------
 
 
@@ -344,6 +439,23 @@ class JogFeetechRequest(BaseModel):
 
     axis: str
     kierunek: str = Field(..., pattern="^(cw|ccw)$")
+
+
+class IoModbusConfigRequest(BaseModel):
+    """Konfiguracja nazwanych kanałów I/O Modbus z ekranu (temat L)."""
+
+    do: dict[str, dict] = Field(default_factory=dict)
+    di: dict[str, dict] = Field(default_factory=dict)
+    ai: dict[str, dict] = Field(default_factory=dict)
+    watchdog: dict = Field(default_factory=dict)
+
+
+class IoModbusWriteRequest(BaseModel):
+    """Zapis jednego wyjścia cyfrowego modułu I/O — po nazwie kanału
+    (`do0`..`do7`) albo po etykiecie z konfiguracji (np. `LG`)."""
+
+    channel: str
+    on: bool
 
 
 class ReleaseRequest(BaseModel):
@@ -1277,6 +1389,59 @@ async def machine_jog_feetech(req: JogFeetechRequest, user=Depends(require_opera
     except (FeetekError, KeyError) as exc:
         raise HTTPException(409, str(exc))
     return {"ok": True, "position": target}
+
+
+# --- I/O modułów Waveshare Modbus RTU (temat L) ---------------------------
+
+
+def _io_modbus_write(channel_name: str, on: bool) -> None:
+    """Blokujące — wywoływać przez `asyncio.to_thread` pod `_feetech_lock`."""
+    with ModbusDriver(config.MODBUS_IO_PORT, baud=config.MODBUS_IO_BAUD) as driver:
+        driver.write_digital_output(io_modbus.DIGITAL_MODULE_ADDRESS, int(channel_name[2:]), on)
+
+
+@app.get("/api/io-modbus")
+async def get_io_modbus(user=Depends(require_technolog)):
+    """Bieżące wartości (z ostatniego odpytania pętli, nie na żywo przy
+    każdym zapytaniu — jak `feetech_raw`) + konfiguracja nazw kanałów."""
+    return {"status": _io_modbus_status, "config": io_modbus_cfg.to_dict()}
+
+
+@app.put("/api/io-modbus")
+async def put_io_modbus(req: IoModbusConfigRequest, user=Depends(require_admin)):
+    global io_modbus_cfg
+    try:
+        new_cfg = io_modbus.IoConfig.from_dict(req.model_dump())
+    except io_modbus.IoConfigError as exc:
+        raise HTTPException(422, str(exc))
+    try:
+        io_modbus.save(config.IO_MODBUS_FILE, new_cfg)
+    except OSError as exc:
+        raise HTTPException(500, f"nie udało się zapisać {config.IO_MODBUS_FILE}: {exc}")
+    io_modbus_cfg = new_cfg
+    _log(user, "zapis konfiguracji I/O Modbus", "")
+    return {"ok": True, "config": new_cfg.to_dict()}
+
+
+@app.post("/api/machine/io-modbus/write")
+async def machine_io_modbus_write(req: IoModbusWriteRequest, user=Depends(require_operator)):
+    """Zapis jednego wyjścia — po nazwie kanału (`do0`) albo etykiecie
+    (`LG`). Tylko moduł cyfrowy ma wyjścia — moduł analogowy to same
+    wejścia pomiarowe."""
+    channel = req.channel
+    if channel not in io_modbus_cfg.do:
+        found = io_modbus_cfg.channel_by_label(io_modbus_cfg.do, channel)
+        if found is None:
+            raise HTTPException(404, f"nieznany kanał wyjścia '{channel}'")
+        channel = found
+    if not config.MODBUS_IO_PORT:
+        raise HTTPException(409, "MODBUS_IO_PORT nieskonfigurowany — magistrala niedostępna")
+    try:
+        async with _feetech_lock:
+            await asyncio.to_thread(_io_modbus_write, channel, req.on)
+    except ModbusError as exc:
+        raise HTTPException(409, str(exc))
+    return {"ok": True, "channel": channel, "on": req.on}
 
 
 @app.post("/api/machine/release")

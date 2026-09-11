@@ -109,3 +109,30 @@ odpowiedź, CRC zgodne.
 niezależnie od długości odpowiedzi, bez zgadywania stałej na sztywno per
 moduł. Zweryfikowane ponownie na sprzęcie po naprawie: pełny, poprawny
 odczyt 8 kanałów.
+
+## Ważne znalezisko operacyjne: kolizja z żywą usługą produkcyjną
+
+Przy próbie zmiany adresu modułu analogowego (`--set-address 2`) pierwsza
+próba nie dała odpowiedzi, a kolejny odczyt zwrócił **45-bajtową** ramkę
+zamiast 21 — po rozbiorze okazało się, że zawierała nie tylko poprawną
+odpowiedź modułu, ale też **resztki ramek protokołu FEETECH** (nagłówek
+`FF FF`, nie Modbus). Przyczyna: `motion-controller-lens.service` cały
+czas odpytuje serwa na TYM SAMYM porcie `/dev/ttyUSB0` w tle
+(`_feetech_poll_loop`, co ~1s) — mój skrypt testowy (osobny proces)
+konkurował o ten sam port z żywą usługą, bez żadnej koordynacji między
+nimi (`_feetech_lock` z tematu L serializuje dostęp tylko WEWNĄTRZ
+procesu serwera, nie chroni przed zewnętrznymi skryptami).
+
+**Naprawa doraźna:** `sudo systemctl stop motion-controller-lens.service`
+przed testami ad-hoc na porcie, `start` po skończeniu — zrobione, zmiana
+adresu powtórzona czysto, zadziałała za pierwszym razem. Po tym
+`docisk`/`podajnik` w `/api/status` nadal działały poprawnie (restart
+usługi nie zaszkodził).
+
+**Zostaje jako uwaga na przyszłość:** każdy ad-hoc skrypt testowy na
+`/dev/ttyUSB0` (Feetech LUB Modbus) powinien zakładać, że usługa
+produkcyjna może w tym momencie odpytywać port — albo zatrzymać usługę
+na czas testu (jak tutaj), albo docelowo przenieść WSZYSTKIE dostępy do
+tego portu (Feetech i Modbus I/O) pod jeden proces/blokadę. Dziś to nie
+jest zrobione — `tools/test_*.py` i `_feetech_poll_loop` to wciąż
+niezależne, nieskoordynowane ścieżki dostępu do tej samej magistrali.

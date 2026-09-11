@@ -119,6 +119,14 @@ FEETECH_BAUD = int(os.environ.get("FEETECH_BAUD", "115200"))
 # niepotwierdzony fizycznie, patrz docs/architektura-wielu-drajwerow-osi.md)
 FEETECH_JOG_STEP = int(os.environ.get("FEETECH_JOG_STEP", "30"))
 
+# Moduły I/O Waveshare Modbus RTU (temat L) — NA TEJ SAMEJ magistrali
+# fizycznej co serwa (FEETECH_PORT), ale osobny protokół/baudrate.
+MODBUS_IO_PORT = os.environ.get("MODBUS_IO_PORT") or FEETECH_PORT
+MODBUS_IO_BAUD = int(os.environ.get("MODBUS_IO_BAUD", "9600"))
+IO_MODBUS_FILE = Path(
+    os.environ.get("IO_MODBUS_CONFIG", "config/io_modbus.json")
+).resolve()
+
 # Token dla integracji MES (POST /api/mes/select-order) — inny kanał niż
 # role/logowanie operatora, bo wywołuje to system, nie człowiek. Bez ustawienia
 # endpoint zostaje otwarty jak dotychczas (temat E, "otwarte po tej zmianie"
