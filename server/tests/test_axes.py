@@ -151,6 +151,28 @@ def test_feetech_axes_zwraca_tylko_skonfigurowane():
     assert axes.feetech_axes(cfg) == {"docisk": 1, "podajnik": 2}
 
 
+def test_with_current_values_zachowuje_driver_i_feetech_id():
+    """Regresja incydentu 2026-09-11: ekran /axes (nie zna Feetech) zapisał
+    zwykłą zmianę vel_jog i po cichu skasował driver:feetech z powrotem na
+    teknic — bo driver/feetech_id nie były w OPTIONAL_FIELDS. Ten sam błąd,
+    co już raz się zdarzył dla pól bazowania."""
+    current = {
+        "docisk": _dodatkowa_os(driver=axes.DRIVER_FEETECH, feetech_id=1),
+    }
+    # ekran /axes wysyła TYLKO to, co edytuje — bez driver/feetech_id
+    incoming = {"docisk": {**_dodatkowa_os().to_dict()}}
+    del incoming["docisk"]["driver"]
+    del incoming["docisk"]["feetech_id"]
+    incoming["docisk"]["vel_jog"] = 1000.0
+
+    merged = axes.with_current_values(incoming, current)
+    result = axes.AxisConfig.from_dict("docisk", merged["docisk"])
+
+    assert result.driver == axes.DRIVER_FEETECH
+    assert result.feetech_id == 1
+    assert result.vel_jog == 1000.0
+
+
 def test_defaults_keep_work_area_from_env():
     area = {
         "x_min": -100, "x_max": 100,

@@ -398,7 +398,13 @@ HOMING_FIELDS = ("home_order", "home_mode", "home_torque", "home_offset", "vel_h
 # Pola opcjonalne w pliku konfiguracji: brak któregoś oznacza wartość domyślną.
 # Dla zapisu z ekranu to za mało — ekran, który danego pola nie edytuje, wcale
 # go nie przysyła, a wtedy „domyślna" skasowałaby ustawienie z innego ekranu.
-OPTIONAL_FIELDS = ("vel_jog",) + HOMING_FIELDS
+#
+# `driver`/`feetech_id` dopisane 2026-09-11 po realnym incydencie: ekran
+# /axes (który o sterowniku Feetech nic nie wie) zapisał zwykłą zmianę
+# vel_jog dla `docisk`/`podajnik` i po cichu skasował im `driver: feetech`
+# z powrotem na domyślne `teknic` — dokładnie ten sam błąd, który już raz
+# się zdarzył dla pól bazowania, patrz zmiany/predkosci-jog-bazowanie.md.
+OPTIONAL_FIELDS = ("vel_jog", "driver", "feetech_id") + HOMING_FIELDS
 
 
 def with_current_values(data: dict, current: dict[str, AxisConfig]) -> dict:
