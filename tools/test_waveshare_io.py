@@ -79,10 +79,16 @@ def main() -> int:
     parser.add_argument("--id", type=int, default=mp.DEFAULT_ADDRESS, help=f"domyślnie {mp.DEFAULT_ADDRESS}")
     parser.add_argument("--analog", action="store_true", help="odczytaj moduł analogowy (SKU 25821)")
     parser.add_argument("--digital-probe", action="store_true", help="sonduj moduł cyfrowy (SKU 26244)")
+    parser.add_argument("--write-coil", type=int, metavar="ADRES",
+                         help="zapisz coil pod danym adresem (do testu mapowania DO — patrz --state)")
+    parser.add_argument("--state", choices=["on", "off"], default="on",
+                         help="stan dla --write-coil (domyślnie on)")
     args = parser.parse_args()
 
-    if not args.analog and not args.digital_probe:
-        parser.error("podaj --analog i/lub --digital-probe")
+    if not args.analog and not args.digital_probe and args.write_coil is None:
+        parser.error("podaj --analog i/lub --digital-probe i/lub --write-coil")
+    if args.write_coil is not None and not args.port:
+        parser.error("--write-coil wymaga podania konkretnego portu (nie skanowania)")
 
     ports = [args.port] if args.port else discover_ports()
     if not ports:
@@ -94,6 +100,17 @@ def main() -> int:
             run_analog(port, args.baud, args.id)
         if args.digital_probe:
             run_digital_probe(port, args.baud, args.id)
+
+    if args.write_coil is not None:
+        on = args.state == "on"
+        print(f"\n--- Zapis coil {args.write_coil} = {args.state} na {ports[0]} @ {args.baud}, adres {args.id} ---")
+        try:
+            with ModbusDriver(ports[0], baud=args.baud) as driver:
+                driver.write_single_coil(args.id, args.write_coil, on)
+                readback = driver.read_coils(args.id, args.write_coil, 1)
+            print(f"  zapisano, odczyt potwierdzający: coil {args.write_coil} = {readback[0]}")
+        except mp.ModbusError as exc:
+            print(f"  błąd: {exc}")
 
     print(
         "\nBrak odpowiedzi? Sprawdź: zasilanie modułu OSOBNE od RS485 (7-36V DC), "

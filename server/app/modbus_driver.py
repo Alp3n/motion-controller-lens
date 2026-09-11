@@ -113,10 +113,24 @@ class ModbusDriver:
         konfigurowalny)."""
         return self.read_input_registers(slave_id, mp.ADDR_ANALOG_CHANNELS, mp.ANALOG_CHANNEL_COUNT)
 
-    # --- moduł cyfrowy SKU 26244 — BEZ potwierdzonej mapy rejestrów -------
+    # --- moduł cyfrowy SKU 26244 — POTWIERDZONE fizycznie 2026-09-11 ------
     #
-    # Celowo brak tu wysokopoziomowych metod (`read_digital_inputs` itp.) —
-    # mapa rejestrów DI/DO nie jest potwierdzona u źródła (patrz docstring
-    # modbus_protocol.py). Używaj `read_coils`/`read_discrete_inputs`/
-    # `write_single_coil` wprost, z adresami ustalonymi eksperymentalnie
-    # przez `tools/test_waveshare_io.py`.
+    # coils 0-7 = DO0-DO7, discrete inputs 0-7 = DI0-DI7 — potwierdzone
+    # zapisem coil 0 -> ON i obserwacją diody DO0 na module (nie tylko
+    # brakiem błędu Modbus, jak przy pierwszym sondowaniu). Adresy z tego
+    # samego wzorca co moduł analogowy (0x4000=adres urządzenia,
+    # zweryfikowane odczytem zgodnym z rzeczywistością).
+
+    def read_digital_inputs(self, slave_id: int) -> list[bool]:
+        """DI0-DI7, w kolejności."""
+        return self.read_discrete_inputs(slave_id, mp.ADDR_DIGITAL_CHANNELS, mp.DIGITAL_CHANNEL_COUNT)
+
+    def read_digital_outputs(self, slave_id: int) -> list[bool]:
+        """DO0-DO7, w kolejności (stan aktualny, z odczytu coils)."""
+        return self.read_coils(slave_id, mp.ADDR_DIGITAL_CHANNELS, mp.DIGITAL_CHANNEL_COUNT)
+
+    def write_digital_output(self, slave_id: int, channel: int, on: bool) -> None:
+        """Ustawia jedno wyjście, `channel` 0-7 (DO0-DO7)."""
+        if not (0 <= channel < mp.DIGITAL_CHANNEL_COUNT):
+            raise ValueError(f"channel musi być 0-{mp.DIGITAL_CHANNEL_COUNT - 1}, jest {channel}")
+        self.write_single_coil(slave_id, mp.ADDR_DIGITAL_CHANNELS + channel, on)

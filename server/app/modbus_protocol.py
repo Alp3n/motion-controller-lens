@@ -19,13 +19,16 @@ standardowy Modbus RTU.
 modułu analogowego (SKU 25821) z instrukcji producenta — patrz
 `ADDR_ANALOG_*` niżej — a konkretnie polecenie odczytu `01 04 00 00 00 08
 F1 CC` potwierdzone przeliczeniem CRC16 niezależnie (zgadza się co do
-bajtu). **Mapa rejestrów modułu cyfrowego (SKU 26244) NIE jest
-potwierdzona** — instrukcje dostępne z tej sesji odsyłają do wiki
-Waveshare, które jest zablokowane sieciowo (jak inne strony producentów w
-tej sesji, patrz `plan-rozwoju.md` sekcja J). Adresy dla DI/DO w tym
-pliku są NIEOBECNE celowo — `tools/test_waveshare_io.py` służy do ich
-empirycznego ustalenia na sprzęcie, tak jak zrobiliśmy to dla protokołu
-serw FEETECH.
+bajtu).
+
+**Mapa rejestrów modułu cyfrowego (SKU 26244) POTWIERDZONA FIZYCZNIE
+2026-09-11** — nie tylko brakiem błędu Modbus przy sondowaniu, ale
+zapisem coil 0 → ON i obserwacją diody DO0 na module. Coils 0-7 = DO0-DO7
+(zapis+odczyt), discrete inputs 0-7 = DI0-DI7 (tylko odczyt, z definicji
+Modbus). Moduł dzieli układ rejestrów konfiguracyjnych z modułem
+analogowym — `read_holding_registers(0x4000, 1)` zwrócił wartość zgodną
+z rzeczywistym adresem urządzenia, niezależne potwierdzenie tego samego
+wzorca.
 """
 
 from __future__ import annotations
@@ -53,8 +56,15 @@ ANALOG_RANGE_1_5V = 0x0001
 ANALOG_RANGE_0_20MA = 0x0002
 ANALOG_RANGE_4_20MA = 0x0003
 ANALOG_RANGE_RAW = 0x0004  # 0-4096, wymaga przeliczenia liniowego samemu
-# Konfiguracja wspólna dla obu modułów (potwierdzone dla analogowego,
-# NIEPOTWIERDZONE dla cyfrowego — do sprawdzenia przez próbę na sprzęcie):
+
+# --- moduł cyfrowy SKU 26244 — POTWIERDZONE fizycznie 2026-09-11 ---
+# DO0-DO7: coils (funkcja 0x01 odczyt, 0x05 zapis), adresy 0x0000-0x0007.
+# DI0-DI7: discrete inputs (funkcja 0x02, tylko odczyt), te same adresy.
+ADDR_DIGITAL_CHANNELS = 0x0000
+DIGITAL_CHANNEL_COUNT = 8
+
+# Konfiguracja wspólna dla obu modułów (potwierdzone dla obu — adres
+# urządzenia zweryfikowany fizycznie też na module cyfrowym):
 ADDR_UART_PARAMS = 0x2000
 ADDR_DEVICE_ADDRESS = 0x4000
 ADDR_SOFTWARE_VERSION = 0x8000

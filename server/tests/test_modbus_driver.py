@@ -71,6 +71,33 @@ def test_write_single_register():
     assert d.calls[0][2:6] == bytes.fromhex("40 00 00 02")
 
 
+def test_read_digital_outputs():
+    payload = bytes([1, 0b00000001])
+    d = _driver_with_fake([_framed(1, mp.FUNC_READ_COILS, payload)])
+    assert d.read_digital_outputs(1)[0] is True
+    assert d.calls[0][2:6] == bytes.fromhex("00 00 00 08")  # adres 0, liczba 8
+
+
+def test_read_digital_inputs():
+    payload = bytes([1, 0b00000000])
+    d = _driver_with_fake([_framed(1, mp.FUNC_READ_DISCRETE_INPUTS, payload)])
+    assert d.read_digital_inputs(1) == [False] * 8
+
+
+def test_write_digital_output_konkretny_kanal():
+    d = _driver_with_fake([_framed(1, mp.FUNC_WRITE_SINGLE_COIL, bytes.fromhex("00 03 FF 00"))])
+    d.write_digital_output(1, channel=3, on=True)
+    assert d.calls[0][2:6] == bytes.fromhex("00 03 FF 00")
+
+
+def test_write_digital_output_zly_kanal_rzuca():
+    d = _driver_with_fake([])
+    with pytest.raises(ValueError):
+        d.write_digital_output(1, channel=8, on=True)
+    with pytest.raises(ValueError):
+        d.write_digital_output(1, channel=-1, on=True)
+
+
 def test_brak_odpowiedzi_rzuca_modbuserror():
     d = _driver_with_fake([mp.ModbusError("brak odpowiedzi (timeout)")])
     with pytest.raises(mp.ModbusError):
