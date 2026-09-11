@@ -351,9 +351,17 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       zgłoszenie — `docisk`/`podajnik` wróciły po zapisie `vel_jog` do
       `driver: teknic`. Przyczyna i naprawa (drugi raz ten sam wzorzec
       błędu, co dla pól bazowania): `zmiany/driver-feetech-znikal-po-zapisie-osi.md`.
-- [ ] **Zostaje z etapów FEETECH:** kalibracja mm (część etapu 2, po
-      zamontowaniu serw), bazowanie (etap 3), cykl maszyny (etap 4), ew.
-      program technologa (etap 5) — patrz `architektura-wielu-drajwerow-osi.md`.
+- [x] **Etap 2 dokończony 2026-09-11: przeliczenie mm.** Serwa fizycznie
+      zamontowane (`mm_per_rev` w `config/axes.json` zmierzone: docisk
+      1.0, podajnik 8.0 mm/obr) — `position_to_mm()` (`feetech_driver.py`,
+      `COUNTS_PER_REV=4096` wg karty katalogowej), `_read_feetech_status()`
+      dolicza `position_mm` obok surowego rejestru, panel operatora
+      pokazuje oba. **Bez bazowania** — mm liczone od fabrycznego zera
+      enkodera, nie od zera obszaru roboczego; znak nieujednolicony między
+      osiami. Szczegóły: `zmiany/przeliczenie-mm-osie-feetech.md`.
+- [ ] **Zostaje z etapów FEETECH:** bazowanie (etap 3), cykl maszyny
+      (etap 4), ew. program technologa (etap 5) — patrz
+      `architektura-wielu-drajwerow-osi.md`.
 - [x] **Moduły I/O Modbus RTU Waveshare — oba moduły zweryfikowane
       fizycznie, 2026-09-11** (zamówienie: „to nasze I/O, zbuduj
       standardowy moduł"): SKU 26244 (cyfrowy 8DI/8DO, adres 1) i SKU

@@ -9,7 +9,13 @@ from __future__ import annotations
 import pytest
 
 from app import feetech_protocol as fp
-from app.feetech_driver import DIRECTION_SIGN_CW, FeetekDriver, FeetekError
+from app.feetech_driver import (
+    COUNTS_PER_REV,
+    DIRECTION_SIGN_CW,
+    FeetekDriver,
+    FeetekError,
+    position_to_mm,
+)
 
 
 def _driver_with_fake(responses):
@@ -143,3 +149,28 @@ def test_context_manager_otwiera_i_zamyka(monkeypatch):
         assert isinstance(d, FeetekDriver)
     assert opened == [True]
     assert closed == [True]
+
+
+# --- position_to_mm (temat L, etap 2 kalibracji) ---------------------------
+
+
+def test_position_to_mm_jeden_pelny_obrot():
+    # docisk: skok śruby 1.0 mm/obr (config/axes.json) — pełny obrót
+    # (COUNTS_PER_REV jednostek rejestru) to dokładnie jeden skok
+    assert position_to_mm(COUNTS_PER_REV, mm_per_rev=1.0) == pytest.approx(1.0)
+
+
+def test_position_to_mm_skaluje_przez_mm_per_rev():
+    # podajnik: skok śruby 8.0 mm/obr — pół obrotu to połowa skoku
+    assert position_to_mm(COUNTS_PER_REV // 2, mm_per_rev=8.0) == pytest.approx(4.0)
+
+
+def test_position_to_mm_zero_to_zero():
+    assert position_to_mm(0, mm_per_rev=8.0) == 0.0
+
+
+def test_position_to_mm_zachowuje_znak_rejestru():
+    # celowo bez odwracania znaku względem DIRECTION_SIGN_CW — patrz
+    # docstring position_to_mm(): bazowanie/kierunek to osobny, niezrobiony
+    # jeszcze krok (etap 3)
+    assert position_to_mm(-COUNTS_PER_REV, mm_per_rev=1.0) == pytest.approx(-1.0)

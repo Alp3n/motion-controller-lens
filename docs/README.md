@@ -250,9 +250,12 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   trendu per oś, definicje alarmów zużycia + ich ocena (bez wysyłki
   powiadomień — to robi wMES). Dziś tylko X/Y/Z.
 - [zmiany/jog-feetech.md](zmiany/jog-feetech.md) — JOG dla osi FEETECH
-  (temat L, etap 2 częściowy): ruch zgodny/przeciwny do zegara, bez
-  przeliczenia na mm (serwa niezamontowane). Naprawiony błąd
-  współbieżności na współdzielonej magistrali RS485.
+  (temat L, etap 2 częściowy): ruch zgodny/przeciwny do zegara. Naprawiony
+  błąd współbieżności na współdzielonej magistrali RS485.
+- [zmiany/przeliczenie-mm-osie-feetech.md](zmiany/przeliczenie-mm-osie-feetech.md) —
+  temat L, reszta etapu 2: pozycja osi FEETECH przeliczona na mm przez
+  skok śruby (`position_to_mm()`), obok surowej wartości rejestru w
+  panelu operatora. Bez bazowania (etap 3, wciąż niezrobiony).
 - [zmiany/modbus-io-waveshare.md](zmiany/modbus-io-waveshare.md) —
   sterownik Modbus RTU dla modułów I/O Waveshare (SKU 26244 cyfrowy, SKU
   25821 analogowy) na tej samej magistrali co serwa. Oba moduły (cyfrowy

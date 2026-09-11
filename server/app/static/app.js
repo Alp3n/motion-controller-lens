@@ -29,11 +29,13 @@ async function api(method, url, body) {
 
 // --- status na żywo -------------------------------------------------------
 
-/* Osie dodatkowe ze sterownikiem FEETECH (temat L, etap 1) — lista osi
+/* Osie dodatkowe ze sterownikiem FEETECH (temat L, etap 1-2) — lista osi
    pochodzi z konfiguracji (config/axes.json), nie jest tu na sztywno,
    żeby dodanie kolejnej osi (feetech_id) nie wymagało zmian w panelu.
-   Wartości to surowe jednostki rejestru (0-4095/obrót), NIE mm — patrz
-   opis pod panelem w index.html. */
+   Pokazujemy oba: surową pozycję rejestru (0-4095/obrót — jak dotąd) i
+   `position_mm` przeliczone przez skok śruby (`main._read_feetech_status`,
+   `feetech_driver.position_to_mm()`) — patrz opis pod panelem w index.html,
+   że mm NIE jest jeszcze bazowane względem zera obszaru roboczego. */
 function feetechNiceName(name, id) {
   // "X{id}_Nazwa" (np. X1_Docisk) — prefiks z ID serwa, nazwa z pierwszą
   // wielką literą; bez twardego kodowania konkretnych osi, żeby kolejne
@@ -57,9 +59,10 @@ function renderFeetech(feetechRaw) {
     const label = document.createElement("span");
     label.textContent = feetechNiceName(name, data.id);
     const value = document.createElement("span");
+    const mm = data.position_mm != null ? `${data.position_mm.toFixed(3)} mm  ` : "";
     value.textContent = data.error
       ? "błąd: " + data.error
-      : `poz. ${data.position}  obc. ${data.load}`;
+      : `${mm}(rej. ${data.position})  obc. ${data.load}`;
     div.appendChild(label);
     div.appendChild(value);
     container.appendChild(div);

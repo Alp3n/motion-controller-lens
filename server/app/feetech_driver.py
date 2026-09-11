@@ -62,6 +62,28 @@ class FeetekError(Exception):
 #   serwo 2 (podajnik): rosnąca pozycja rejestru  = zgodnie z zegarem (CW)
 DIRECTION_SIGN_CW = {1: -1, 2: 1}
 
+# Rozdzielczość rejestru pozycji — karta katalogowa SM45BL deklaruje
+# „Clockwise(0→4096)" (patrz docs/zmiany/protokol-feetech.md); 4096 jednostek
+# rejestru na jeden pełny obrót wału serwa.
+COUNTS_PER_REV = 4096
+
+
+def position_to_mm(position: int, mm_per_rev: float) -> float:
+    """Przelicza surową pozycję rejestru na mm przez skok śruby (`mm_per_rev`
+    z `AxisConfig`, zmierzony fizycznie na osi po zamontowaniu — temat L,
+    etap 2 kalibracji).
+
+    To WYŁĄCZNIE przeliczenie skali (obrót -> mm), nie pozycja bazowana:
+    rejestr serwa ma własne zero (fabryczne, absolutne z magnesu enkodera),
+    niepowiązane z zerem obszaru roboczego maszyny (`soft_min`/`soft_max`).
+    Bazowanie osi FEETECH to osobny, jeszcze niezrobiony krok (etap 3,
+    `docs/architektura-wielu-drajwerow-osi.md`). Znak też nie jest tu
+    ujednolicony względem `DIRECTION_SIGN_CW` — wynik rośnie/maleje tak, jak
+    rośnie/maleje sam rejestr, celowo bez dodatkowego odwracania, żeby nie
+    zgadywać, który kierunek jest „dodatni" dla tej osi przed bazowaniem.
+    """
+    return position / COUNTS_PER_REV * mm_per_rev
+
 
 class FeetekDriver:
     """Jedna magistrala RS485, wiele serw po ID. `open()`/`close()` albo

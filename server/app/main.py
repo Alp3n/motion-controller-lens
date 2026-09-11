@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import audit, axes, config, cycle, io_modbus, kalibracja, outputs, profiles, punkty, smart, spindle, users, zuzycie, zuzycie_alarmy
-from .feetech_driver import FeetekDriver, FeetekError
+from .feetech_driver import FeetekDriver, FeetekError, position_to_mm
 from .modbus_driver import ModbusDriver
 from .modbus_protocol import ModbusError
 from .machine import (
@@ -296,18 +296,30 @@ async def _poll_loop() -> None:
         await asyncio.sleep(0.2)
 
 
-def _read_feetech_status(feetech_ids: dict[str, int]) -> dict[str, dict]:
+def _read_feetech_status(
+    feetech_ids: dict[str, int], axes_cfg: dict[str, axes.AxisConfig]
+) -> dict[str, dict]:
     """Blokujące (termios) — wywoływać przez `asyncio.to_thread`, nigdy
     bezpośrednio w pętli async, żeby nie zamrozić reszty serwera na czas
     odpytywania portu szeregowego. Błąd pojedynczej osi nie blokuje reszty —
     magistrala RS485 jest współdzielona, ale jedno milczące serwo nie
-    powinno ukryć odczytu z pozostałych."""
+    powinno ukryć odczytu z pozostałych.
+
+    `position_mm` (temat L, etap 2 kalibracji) obok surowego `position` —
+    patrz zastrzeżenia w `feetech_driver.position_to_mm()`: to przeliczenie
+    skali przez skok śruby (`mm_per_rev`), NIE pozycja bazowana względem
+    zera obszaru roboczego (bazowanie osi FEETECH to jeszcze niezrobiony
+    etap 3)."""
     result: dict[str, dict] = {}
     with FeetekDriver(config.FEETECH_PORT, baud=config.FEETECH_BAUD) as driver:
         for axis_name, servo_id in feetech_ids.items():
             try:
                 position, load = driver.read_position_and_load(servo_id)
-                result[axis_name] = {"position": position, "load": load, "id": servo_id}
+                entry = {"position": position, "load": load, "id": servo_id}
+                axis_cfg = axes_cfg.get(axis_name)
+                if axis_cfg is not None:
+                    entry["position_mm"] = round(position_to_mm(position, axis_cfg.mm_per_rev), 3)
+                result[axis_name] = entry
             except FeetekError as exc:
                 result[axis_name] = {"error": str(exc), "id": servo_id}
     return result
@@ -326,8 +338,9 @@ async def _feetech_poll_loop() -> None:
     budżecie 200ms tamtej pętli) i niezależnie od trybu MACHINE_MODE (RS485
     to osobny fizyczny kanał, może być podłączony razem z symulatorem X/Y/Z
     do testów). Etap 1 tematu L — patrz
-    docs/architektura-wielu-drajwerow-osi.md. Surowe jednostki rejestru,
-    NIE mm (kalibracja kierunku/przelicznika to etap 2)."""
+    docs/architektura-wielu-drajwerow-osi.md. Jednostki rejestru plus
+    `position_mm` przeliczone przez skok śruby (etap 2, `feetech_driver.
+    position_to_mm()`) — bez bazowania (etap 3, wciąż niezrobiony)."""
     while True:
         await asyncio.sleep(1.0)
         feetech_ids = axes.feetech_axes(machine.axes)
@@ -336,7 +349,7 @@ async def _feetech_poll_loop() -> None:
         try:
             async with _feetech_lock:
                 machine.status.feetech_raw = await asyncio.to_thread(
-                    _read_feetech_status, feetech_ids
+                    _read_feetech_status, feetech_ids, machine.axes
                 )
         except Exception:
             pass  # magistrala niedostępna teraz — spróbuj ponownie za 1s

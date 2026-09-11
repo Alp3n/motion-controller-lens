@@ -78,10 +78,14 @@
           <h2 style="margin-top:16px">Osie dodatkowe (FEETECH)</h2>
           <div class="axes" id="feetech-axes"></div>
           <p class="muted" style="margin-top:8px">
-            Jednostki rejestru serwa (0-4095 na obrót), NIE mm — przeliczenie
-            na mm czeka na kalibrację po zamontowaniu do mechanizmu (temat L).
-            Przyciski niżej ruszają serwem w mierzonym kierunku obrotu wału
-            (zgodnie/przeciwnie do zegara) — bezpieczne przed montażem.
+            Wartość w mm przeliczona przez skok śruby (rejestr serwa obok w
+            nawiasie) — <b>to NIE jest jeszcze pozycja bazowana</b> względem
+            zera obszaru roboczego (bazowanie tych osi to osobny,
+            niezrobiony jeszcze krok, temat L etap 3): zero mm to fabryczne
+            zero enkodera serwa, nie zero maszyny, a kierunek (rosnąca/malejąca
+            wartość) nie jest jeszcze ujednolicony między osiami. Przyciski
+            niżej ruszają serwem w mierzonym kierunku obrotu wału
+            (zgodnie/przeciwnie do zegara).
           </p>
           <div id="feetech-jog"></div>
         </div>
