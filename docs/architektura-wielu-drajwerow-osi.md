@@ -367,28 +367,47 @@ zawijania przez Pythona. Do zbadania przy etapie 2/3, nie zakładane teraz.
 
 ## Dodatkowy wątek: moduły I/O Waveshare Modbus RTU na tej samej magistrali
 
-Zgłoszenie użytkownika (2026-09-10): ma dwa moduły I/O tej samej firmy co
-konwerter (Waveshare) — cyfrowy 8IN/8OUT i analogowy — pytanie, czy można
-je podłączyć do tej samej magistrali RS485 co serwa FEETECH. **Model
-dokładny jeszcze nieznany** (użytkownik sprawdzi później) — poniższe
-oparte na typowych produktach Waveshare z tej kategorii, do potwierdzenia
-po podaniu SKU.
+Zgłoszenie użytkownika (2026-09-10, model potwierdzony 2026-09-11): dwa
+moduły I/O Waveshare — pytanie, czy można je podłączyć do tej samej
+magistrali RS485 co serwa FEETECH. **Modele potwierdzone:**
 
-- Sprawdzone (wyszukiwanie, strony produktowe Waveshare): to **prawdziwy
-  Modbus RTU** (w przeciwieństwie do serw!) — np.
-  [Modbus RTU IO 8CH](https://www.waveshare.com/modbus-rtu-io-8ch.htm)
-  (8DI/8DO) i [Modbus RTU Analog Input 8CH (B)](https://www.waveshare.com/wiki/Modbus_RTU_Analog_Input_8CH),
-  adresy 1-255, kaskadowanie wielu modułów na jednej magistrali.
-- **Domyślny baudrate modułów: 9600** (N,8,1) — inny niż serwa (115200).
-  Fizycznie mogą wisieć na tej samej magistrali RS485 (wielopunktowa), ale
-  **jeden port ma jedną prędkość transmisji na raz** — trzeba przełączać
-  baudrate między odczytem serwa a modułu I/O (driver już to umie, otwiera
-  port z zadanym baudrate za każdym razem), albo przestawić moduły na
-  115200 rejestrem konfiguracyjnym, jeśli to wspierane — do sprawdzenia
-  po ustaleniu dokładnego modelu.
+- **SKU 26244 — [Modbus RTU IO 8CH](https://www.waveshare.com/wiki/Modbus_RTU_IO_8CH)**
+  (cyfrowy): 8 wejść/8 wyjść izolowanych, wejście pasywne/aktywne,
+  zasilanie 7-36V DC osobne od magistrali, adres 1-255.
+- **SKU 25821 — [Modbus RTU Analog Input 8CH](https://www.waveshare.com/wiki/Modbus_RTU_Analog_Input_8CH)**
+  (analogowy): 8 kanałów, 12-bit, napięcie LUB prąd (przełączane
+  zworką: 0-5V/1-5V albo domyślnie 0-20mA/4-20mA), wejście
+  różnicowe albo pojedyncze, zasilanie 7-36V DC osobne, adres 1-255.
+
+**Odpowiedź: tak, można.** Oba to **prawdziwy Modbus RTU** (w
+przeciwieństwie do serw — inna, kompatybilna z protokołem serw ramka:
+Modbus zaczyna się bajtem adresu, FEETECH od `FF FF`, więc urządzenia
+jednego protokołu naturalnie ignorują ramki drugiego, bez fałszywych
+odpowiedzi). Fizycznie RS485 to magistrala wielopunktowa — oba moduły i
+oba serwa mogą wisieć na tych samych A/B.
+
+**Jedyna praktyczna przeszkoda: baudrate.** Oba moduły domyślnie **9600**
+(N,8,1) — inny niż serwa (115200). Jeden port ma jedną prędkość
+transmisji na raz, więc trzeba przełączać baudrate między odczytem serwa
+a modułu I/O (nasz kod już to umie — `FeetekDriver.open()` i
+`tools/test_modbus_servo.py` otwierają port z zadanym baudrate za każdym
+razem, więc dodanie drugiego klienta o innym baudrate nie wymaga zmiany
+architektury), albo przestawić moduły na 115200 rejestrem
+konfiguracyjnym, jeśli to wspierane (do sprawdzenia w pełnej instrukcji
+na wiki).
+
+**Adresacja:** oba moduły i oba serwa mają NIEZALEŻNE przestrzenie
+adresów (różne protokoły) — kolizja numeru (np. moduł na adresie 1 i
+serwo o ID 1) nie powoduje realnej kolizji na łączu z powodu wyżej
+(różna ramka), ale dla czytelności/debugowania warto mimo to trzymać
+osobne zakresy (np. moduły I/O od adresu 10 wzwyż).
+
 - `tools/test_modbus_servo.py` (prawdziwy Modbus RTU: funkcja 0x03 +
   CRC16, napisany 2026-09-09 zanim ustalono, że serwa go NIE używają) —
-  gotowy punkt startowy do testu łączności z tymi modułami, mapa rejestrów
-  do potwierdzenia z konkretnej strony wiki Waveshare po podaniu SKU.
-- **Nie zaimplementowane, nie zdecydowane co dalej** — czeka na model
-  modułów.
+  gotowy punkt startowy do testu łączności z tymi modułami. Dokładna mapa
+  rejestrów (który bit/rejestr to które wejście/wyjście, offset/skala
+  odczytu analogowego) do sprawdzenia w pełnej instrukcji Waveshare przed
+  pisaniem właściwego drivera — na razie potwierdzone tylko ogólne
+  parametry transmisji i adresacji, nie mapa rejestrów.
+- **Nie zaimplementowane** — to była odpowiedź na pytanie, nie zlecenie
+  budowy drivera.
