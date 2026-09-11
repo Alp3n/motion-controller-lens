@@ -37,16 +37,16 @@
       </div>
 
       <div class="table-scroll">
-        <table>
+        <table id="step-table">
           <thead>
-            <tr>
+            <tr id="step-header-row">
               <th>LP</th>
               <th title="rodzaj kroku">Krok</th>
               <th title="profil parametrów ruchu na czas tego kroku">Profil</th>
               <th title="pozycja docelowa osi X [mm]">X</th>
               <th title="pozycja docelowa osi Y [mm]">Y</th>
               <th title="pozycja docelowa osi Z [mm]">Z</th>
-              <th title="posuw przejazdu [mm/min]">Posuw</th>
+              <th id="th-feed" title="posuw przejazdu [mm/min] — tylko X/Y/Z; osie dodatkowe (FEETECH) jadą własną skonfigurowaną prędkością, patrz ekran /axes">Posuw</th>
               <th title="wyjście cyfrowe maszyny">Wyjście</th>
               <th title="stan wyjścia">Stan</th>
               <th title="definicja SMART — tylko krok SMART; parametry (próg siły, prędkości) są w definicji, ekran „Funkcje SMART”">SMART</th>
@@ -156,9 +156,13 @@
     <section class="panel">
       <h2>Rodzaje kroków</h2>
       <ul class="muted" style="margin:0; padding-left:18px; line-height:1.7">
-        <li><b>RUCH</b> — przejazd wskazanych osi do zadanych pozycji. Osie
-          zostawione puste nie ruszają się. Pozycja poza limitem programowym
-          zatrzymuje cykl alarmem.</li>
+        <li><b>RUCH</b> — przejazd wskazanych osi do zadanych pozycji,
+          w tym osi dodatkowych ze sterownikiem FEETECH (docisk, podajnik —
+          kolumny po prawej od Z, jeśli są skonfigurowane), nie tylko X/Y/Z.
+          Osie zostawione puste nie ruszają się. Pozycja poza limitem
+          programowym zatrzymuje cykl alarmem. Oś FEETECH w tym samym kroku
+          CZEKA na koniec swojego ruchu, zanim krok przejdzie dalej —
+          szczegóły: <code>docs/zmiany/feetech-w-cyklu-maszyny.md</code>.</li>
         <li><b>PROGRAM</b> — wywołanie programu detalu wybranego w MES
           (skok do podprogramu technologa). Po jego zakończeniu cykl idzie
           dalej.</li>
@@ -175,7 +179,7 @@
       </ul>
       <p class="muted" style="margin-top:12px">
         <b>Czego jeszcze nie ma:</b> kroku „czekaj na wejście" (maszyna nie ma
-        dziś czytelnych wejść poza Global Stop) oraz ruchu osi innych niż X/Y/Z.
+        dziś czytelnych wejść poza Global Stop).
         <b>Uwaga:</b> uruchomienie cyklu na sprzęcie jest napisane (kroki
         RUCH/PROGRAM/WYJSCIE/PAUZA jadą istniejącymi komendami mostka), ale
         <b>nie zostało jeszcze sprawdzone na fizycznej maszynie</b> — patrz

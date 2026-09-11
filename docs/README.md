@@ -272,6 +272,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   temat L, etap 4: krok RUCH cyklu rusza (i czeka na koniec) osie ze
   sterownikiem feetech przez wstrzyknięty `Machine.feetech_move`, zamiast
   odrzucać cel spoza X/Y/Z. Bez bazowania — mm od zera enkodera serwa.
+- [zmiany/ekran-cyklu-osie-dodatkowe.md](zmiany/ekran-cyklu-osie-dodatkowe.md) —
+  ekran `/cycle` dostał kolumny dla osi dodatkowych (docisk, podajnik) w
+  kroku RUCH — backend to już umiał, brakowało pól do wypełnienia.
 - [zmiany/modbus-io-waveshare.md](zmiany/modbus-io-waveshare.md) —
   sterownik Modbus RTU dla modułów I/O Waveshare (SKU 26244 cyfrowy, SKU
   25821 analogowy) na tej samej magistrali co serwa. Oba moduły (cyfrowy

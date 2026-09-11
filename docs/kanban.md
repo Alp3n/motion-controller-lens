@@ -398,6 +398,15 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       mm liczy się od fabrycznego zera enkodera, nie zera obszaru
       roboczego; nie testowane jeszcze fizycznie w pełnym cyklu na
       maszynie. Szczegóły: `zmiany/feetech-w-cyklu-maszyny.md`.
+- [x] **Naprawiony błąd 2026-09-12: ekran `/cycle` nie miał pól dla osi
+      dodatkowych.** Zgłoszenie: „ruch cyklu nie można zdefiniować
+      dodatkowych osi". Backend (etap 4 wyżej) już to obsługiwał — brakowało
+      kolumn X-podobnych dla `docisk`/`podajnik` w tabeli kroków. Rozważona
+      i odrzucona alternatywa: osobny ekran + krok „skocz do podprogramu
+      osi dodatkowych i wróć" — niepotrzebne, bo jeden krok RUCH już rusza
+      X/Y/Z i FEETECH razem. `cycle.js`: `AXES`/kolumny tabeli budowane
+      dynamicznie z `/api/axes`. Szczegóły:
+      `zmiany/ekran-cyklu-osie-dodatkowe.md`.
 - [ ] **Zostaje z etapów FEETECH:** bazowanie (etap 3), ew. program
       technologa (etap 5) — patrz `architektura-wielu-drajwerow-osi.md`.
 - [x] **Moduły I/O Modbus RTU Waveshare — oba moduły zweryfikowane

@@ -16,6 +16,7 @@
       "feetech_id": null,
       "feetech_speed": 100,
       "feetech_acc": 20,
+      "feetech_load_limit": null,
       "phys_min": -100.0,
       "phys_max": 100.0
     },
@@ -35,6 +36,7 @@
       "feetech_id": null,
       "feetech_speed": 100,
       "feetech_acc": 20,
+      "feetech_load_limit": null,
       "phys_min": -100.0,
       "phys_max": 100.0
     },
@@ -54,6 +56,7 @@
       "feetech_id": null,
       "feetech_speed": 100,
       "feetech_acc": 20,
+      "feetech_load_limit": null,
       "phys_min": -50.0,
       "phys_max": 50.0
     },
@@ -71,8 +74,9 @@
       "home_offset": 0.0,
       "driver": "feetech",
       "feetech_id": 1,
-      "feetech_speed": 200,
+      "feetech_speed": 400,
       "feetech_acc": 500,
+      "feetech_load_limit": null,
       "phys_min": -10.0,
       "phys_max": 0.0
     },
@@ -90,8 +94,9 @@
       "home_offset": 0.0,
       "driver": "feetech",
       "feetech_id": 2,
-      "feetech_speed": 500,
+      "feetech_speed": 600,
       "feetech_acc": 400,
+      "feetech_load_limit": null,
       "phys_min": -200.0,
       "phys_max": 0.0
     }

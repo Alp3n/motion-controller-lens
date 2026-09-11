@@ -19,8 +19,37 @@ const STEP_SCHEMA = {
   PAUZA: { uses: [] },
 };
 const STEP_KINDS = Object.keys(STEP_SCHEMA);
-const AXES = ["x", "y", "z"];
-const NUM_FIELDS = [...AXES, "feed"];
+/* X/Y/Z zawsze jako fallback (zanim /api/axes odpowie) — AXES/NUM_FIELDS
+   przeliczane na nowo w updateAxesFromConfig() po wczytaniu axesCfg, żeby
+   kolumny RUCH objęły też osie dodatkowe (docisk, podajnik, sterownik
+   FEETECH — temat L etap 4). Nazwa osi w danych to dokładnie to, co
+   Machine._resolve_move_targets() rozumie w step.targets — dowolna
+   skonfigurowana oś, nie tylko X/Y/Z. */
+let AXES = ["x", "y", "z"];
+let NUM_FIELDS = [...AXES, "feed"];
+
+function updateAxesFromConfig() {
+  if (!axesCfg) return;
+  const extra = Object.keys(axesCfg)
+    .filter((a) => !["x", "y", "z"].includes(a))
+    .sort();
+  AXES = ["x", "y", "z", ...extra];
+  NUM_FIELDS = [...AXES, "feed"];
+  STEP_SCHEMA.RUCH.uses = ["profile", ...AXES, "feed"];
+
+  const headerRow = $("step-header-row");
+  const feedTh = $("th-feed");
+  for (const axis of extra) {
+    if (headerRow.querySelector(`[data-axis-th="${axis}"]`)) continue; // już wstawione
+    const th = document.createElement("th");
+    th.dataset.axisTh = axis;
+    const cfg = axesCfg[axis];
+    const driverNote = cfg && cfg.driver === "feetech" ? " (FEETECH, RS485 — czeka na koniec ruchu)" : "";
+    th.title = `pozycja docelowa osi ${axis.toUpperCase()} [mm]${driverNote}`;
+    th.textContent = axis.toUpperCase();
+    headerRow.insertBefore(th, feedTh);
+  }
+}
 
 let profileNames = [];
 let outputNames = [];
@@ -559,6 +588,7 @@ Promise.all([
     outputNames = cyc.outputs || [];
     smartNames = cyc.smart || [];
     axesCfg = ax.axes || null;
+    updateAxesFromConfig();
     applyCycle(cyc);
   })
   .catch((e) =>
