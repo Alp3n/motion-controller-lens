@@ -25,3 +25,7 @@ venv/
 **/config/smart.json
 **/config/wyjscia.json
 **/config/spindle.json
+# zużycie osi (temat M) — dane operacyjne, nie konfiguracja: plik dnia jest
+# celowo efemeryczny (kasowany po rollupie), trend rośnie bez końca jak
+# dziennik-zmian.jsonl
+**/config/zuzycie/

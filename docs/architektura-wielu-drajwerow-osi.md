@@ -330,14 +330,18 @@ późniejsze zależą od wcześniejszych):
   end-to-end na sprzęcie (`GET /api/status` z oboma serwami podłączonymi).
   Szczegóły: `zmiany/status-osi-feetech.md`. **Panel jeszcze nie pokazuje
   tego wizualnie** — dane są w API, ekranu brak.
-- [ ] **Etap 2 — JOG.** `POST /api/machine/jog` dla osi Feetech woła
-  `FeetekDriver.move_relative_cw()` (z przeliczeniem mm→kroki przez
-  `mm_per_rev` i uwzględnieniem `DIRECTION_SIGN_CW`) zamiast ścieżki
-  Teknika. **Tu dopiero wyjdzie, czy CW = rosnące czy malejące mm dla
-  danej osi** — tego jeszcze nie wiemy (kierunek zmierzony dziś to obrót
-  WAŁU serwa, nie jeszcze zamontowanego do mechanizmu docisku/podajnika;
-  serwa leżą teraz odłączone obok maszyny). Wymaga osobnej kalibracji
-  znaku po fizycznym zamontowaniu.
+- [x] **Etap 2 — JOG, część „bez mm" zrobiona 2026-09-11.** Nowy,
+  osobny endpoint `POST /api/machine/jog-feetech` (NIE `Machine.jog()` —
+  świadomie osobna ścieżka, X/Y/Z bez zmian) rusza osią w kierunku
+  zgodnym/przeciwnym do zegara (`DIRECTION_SIGN_CW`), przyciski na panelu
+  głównym. Zweryfikowane fizycznie na obu serwach, oba kierunki, zgodnie
+  z oczekiwaniem. Przy okazji naprawiony błąd współbieżności — magistrala
+  RS485 jest współdzielona między tym a `_feetech_poll_loop`, teraz
+  serializowane `_feetech_lock`iem. Szczegóły: `zmiany/jog-feetech.md`.
+  **Zostaje:** przeliczenie mm→kroki i to, czy CW = rosnące czy malejące
+  mm dla danej osi — **wciąż niewiadome**, bo serwa dalej leżą odłączone
+  od mechanizmu (użytkownik: „robimy serwa bez montowania na maszynie").
+  Kalibracja mm to osobny krok po fizycznym zamontowaniu.
 - [ ] **Etap 3 — bazowanie.** SM45BL nie ma czytelnego dla nas wejścia
   krańcówki (do potwierdzenia) — najpewniej bazowanie **programowe**
   (zapisanie bieżącej pozycji jako zero, jak `home_mode: "programowe"` już

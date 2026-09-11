@@ -114,6 +114,11 @@ ZUZYCIE_ALARMY_FILE = Path(
 FEETECH_PORT = os.environ.get("FEETECH_PORT")
 FEETECH_BAUD = int(os.environ.get("FEETECH_BAUD", "115200"))
 
+# JOG dla osi FEETECH (temat L, etap 2) — kroki enkodera na jedno
+# wywołanie /api/machine/jog-feetech, NIE mm (kierunek mm jeszcze
+# niepotwierdzony fizycznie, patrz docs/architektura-wielu-drajwerow-osi.md)
+FEETECH_JOG_STEP = int(os.environ.get("FEETECH_JOG_STEP", "30"))
+
 # Token dla integracji MES (POST /api/mes/select-order) — inny kanał niż
 # role/logowanie operatora, bo wywołuje to system, nie człowiek. Bez ustawienia
 # endpoint zostaje otwarty jak dotychczas (temat E, "otwarte po tej zmianie"

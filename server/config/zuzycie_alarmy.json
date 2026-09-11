@@ -1,3 +1,12 @@
 {
-  "alarmy": {}
+  "alarmy": {
+    "X_max_dzienny": {
+      "os": "x",
+      "metryka": "dystans_mm_suma",
+      "okres": "dzien",
+      "prog": 3000.0,
+      "aktywny": true,
+      "note": "X max dzienny"
+    }
+  }
 }

@@ -34,6 +34,14 @@ async function api(method, url, body) {
    żeby dodanie kolejnej osi (feetech_id) nie wymagało zmian w panelu.
    Wartości to surowe jednostki rejestru (0-4095/obrót), NIE mm — patrz
    opis pod panelem w index.html. */
+function feetechNiceName(name, id) {
+  // "X{id}_Nazwa" (np. X1_Docisk) — prefiks z ID serwa, nazwa z pierwszą
+  // wielką literą; bez twardego kodowania konkretnych osi, żeby kolejne
+  // serwo (X3_...) działało bez zmian w panelu.
+  const nice = name.charAt(0).toUpperCase() + name.slice(1);
+  return id != null ? `X${id}_${nice}` : nice;
+}
+
 function renderFeetech(feetechRaw) {
   const panel = $("feetech-panel");
   const names = Object.keys(feetechRaw);
@@ -47,11 +55,7 @@ function renderFeetech(feetechRaw) {
     const div = document.createElement("div");
     div.className = "axis";
     const label = document.createElement("span");
-    // "X{id}_Nazwa" (np. X1_Docisk) — prefiks z ID serwa, nazwa z pierwszą
-    // wielką literą; bez twardego kodowania konkretnych osi, żeby kolejne
-    // serwo (X3_...) działało bez zmian w panelu.
-    const niceName = name.charAt(0).toUpperCase() + name.slice(1);
-    label.textContent = data.id != null ? `X${data.id}_${niceName}` : niceName;
+    label.textContent = feetechNiceName(name, data.id);
     const value = document.createElement("span");
     value.textContent = data.error
       ? "błąd: " + data.error
@@ -60,7 +64,81 @@ function renderFeetech(feetechRaw) {
     div.appendChild(value);
     container.appendChild(div);
   }
+  renderFeetechJog(feetechRaw);
 }
+
+/* JOG dla osi FEETECH (temat L, etap 2) — ten sam wzorzec "martwego
+   człowieka" co X/Y/Z (app.js: startJog/jogLoop), ale osobny stan
+   (feetechJogHold) i wolniejszy takt: magistrala RS485 do serw jest
+   wyraźnie wolniejsza niż mostek Teknica (odczyt pozycji + zapis celu to
+   dwie rundy po termios, rzędu dziesiątek-set ms, nie ~1ms jak TCP do
+   mostka) — 50ms jak przy X/Y/Z zawaliłoby kolejkę żądań. Przyciski
+   budowane RAZ per zestaw osi (nie przy każdej aktualizacji statusu z
+   WebSocketu), żeby przytrzymanie nie gubiło się przy przerysowaniu. */
+const FEETECH_JOG_TICK_MS = 250;
+let feetechJogHold = null; // { axis, kierunek } | null
+let feetechJogBuiltFor = null; // ostatni zestaw nazw osi, dla których zbudowano przyciski
+
+async function feetechJogLoop(axis, kierunek) {
+  while (feetechJogHold && feetechJogHold.axis === axis && feetechJogHold.kierunek === kierunek) {
+    const tickStart = performance.now();
+    try {
+      await api("POST", "/api/machine/jog-feetech", { axis, kierunek });
+    } catch (e) {
+      showMsg($("ctrl-msg"), e.message);
+      feetechJogHold = null;
+      break;
+    }
+    const wait = FEETECH_JOG_TICK_MS - (performance.now() - tickStart);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  }
+}
+
+function startFeetechJog(axis, kierunek) {
+  if (feetechJogHold) return; // inny przycisk już trzymany
+  feetechJogHold = { axis, kierunek };
+  feetechJogLoop(axis, kierunek);
+}
+
+function stopFeetechJog() {
+  feetechJogHold = null;
+}
+
+function renderFeetechJog(feetechRaw) {
+  const names = Object.keys(feetechRaw).sort();
+  const key = names.join(",");
+  if (key === feetechJogBuiltFor) return; // te same osie — nie przerywaj trzymanego przycisku
+  feetechJogBuiltFor = key;
+
+  const container = $("feetech-jog");
+  container.innerHTML = "";
+  for (const name of names) {
+    const row = document.createElement("div");
+    row.className = "btn-row";
+    row.style.marginTop = "6px";
+    const label = document.createElement("span");
+    label.className = "muted";
+    label.style.marginRight = "8px";
+    label.textContent = feetechNiceName(name, feetechRaw[name].id) + ":";
+    row.appendChild(label);
+    for (const [kierunek, tekst] of [["ccw", "↺ przeciwnie"], ["cw", "↻ zgodnie"]]) {
+      const btn = document.createElement("button");
+      btn.className = "small";
+      btn.textContent = tekst;
+      btn.addEventListener("mousedown", () => startFeetechJog(name, kierunek));
+      btn.addEventListener("touchstart", (ev) => {
+        ev.preventDefault();
+        startFeetechJog(name, kierunek);
+      });
+      btn.addEventListener("mouseleave", stopFeetechJog);
+      btn.addEventListener("touchend", stopFeetechJog);
+      btn.addEventListener("touchcancel", stopFeetechJog);
+      row.appendChild(btn);
+    }
+    container.appendChild(row);
+  }
+}
+window.addEventListener("mouseup", stopFeetechJog);
 
 function applyStatus(st) {
   const stateEl = $("state");

@@ -226,6 +226,14 @@ def _page(request: Request, filename: str, required: str) -> Response:
 
 _zuzycie_was_running = False
 
+# Magistrala RS485 do serw FEETECH jest fizycznie WSPÓLNA i półdupleksowa —
+# _feetech_poll_loop (odczyt co ~1s) i /api/machine/jog-feetech (na żądanie)
+# muszą się wykluczać, inaczej dwie jednoczesne transakcje kolidują na
+# przewodzie (zaobserwowane fizycznie 2026-09-11: JOG na jednej osi +
+# odczyt statusu w tym samym momencie dał "brak odpowiedzi" na DRUGIEJ,
+# mimo że elektrycznie wszystko było w porządku).
+_feetech_lock = asyncio.Lock()
+
 
 async def _poll_loop() -> None:
     global _zuzycie_was_running, _zuzycie_alarm_status
@@ -283,6 +291,13 @@ def _read_feetech_status(feetech_ids: dict[str, int]) -> dict[str, dict]:
     return result
 
 
+def _feetech_jog(servo_id: int, counts_cw: int) -> int:
+    """Blokujące (termios) — wywoływać przez `asyncio.to_thread`, jak
+    `_read_feetech_status`. Zwraca docelową pozycję (jednostki rejestru)."""
+    with FeetekDriver(config.FEETECH_PORT, baud=config.FEETECH_BAUD) as driver:
+        return driver.move_relative_cw(servo_id, counts_cw)
+
+
 async def _feetech_poll_loop() -> None:
     """Odpytuje magistralę Feetech co ~1s — osobno od `_poll_loop` (X/Y/Z),
     wolniej (odczyt po termios jest rzędu 0,1-0,3s na oś, nie mieści się w
@@ -297,9 +312,10 @@ async def _feetech_poll_loop() -> None:
         if not feetech_ids or not config.FEETECH_PORT:
             continue
         try:
-            machine.status.feetech_raw = await asyncio.to_thread(
-                _read_feetech_status, feetech_ids
-            )
+            async with _feetech_lock:
+                machine.status.feetech_raw = await asyncio.to_thread(
+                    _read_feetech_status, feetech_ids
+                )
         except Exception:
             pass  # magistrala niedostępna teraz — spróbuj ponownie za 1s
 
@@ -319,6 +335,15 @@ class JogRequest(BaseModel):
     distance: float
     # brak wartości = użyj prędkości JOG skonfigurowanej dla osi (/axes)
     feed: float | None = None
+
+
+class JogFeetechRequest(BaseModel):
+    """JOG dla osi FEETECH (temat L, etap 2) — kierunek zgodny/przeciwny do
+    zegara (`DIRECTION_SIGN_CW`), NIE mm/+-, bo kierunek mm jeszcze nie jest
+    potwierdzony fizycznie (serwa niezamontowane do mechanizmu)."""
+
+    axis: str
+    kierunek: str = Field(..., pattern="^(cw|ccw)$")
 
 
 class ReleaseRequest(BaseModel):
@@ -1225,6 +1250,33 @@ async def machine_jog(req: JogRequest, user=Depends(require_operator)):
     except MachineError as exc:
         raise HTTPException(409, str(exc))
     return {"ok": True}
+
+
+@app.post("/api/machine/jog-feetech")
+async def machine_jog_feetech(req: JogFeetechRequest, user=Depends(require_operator)):
+    """JOG dla osi FEETECH (temat L, etap 2) — niezależne od `Machine.jog()`
+    (ścieżka X/Y/Z przez Teknika zostaje nietknięta, zgodnie z decyzją
+    „Feetech obok, nie w środku" z docs/architektura-wielu-drajwerow-osi.md).
+
+    Kierunek zgodny/przeciwny do zegara (`DIRECTION_SIGN_CW`, zmierzone
+    fizycznie 2026-09-10), NIE mm — ten endpoint istnieje właśnie po to,
+    żeby dało się ruszać serwami PRZED zamontowaniem, kiedy przelicznik na
+    mm jeszcze nie ma sensu.
+    """
+    axis = req.axis.lower()
+    feetech_ids = axes.feetech_axes(machine.axes)
+    if axis not in feetech_ids:
+        raise HTTPException(404, f"oś '{axis}' nie jest skonfigurowana jako FEETECH")
+    if not config.FEETECH_PORT:
+        raise HTTPException(409, "FEETECH_PORT nieskonfigurowany — magistrala niedostępna")
+    servo_id = feetech_ids[axis]
+    counts = config.FEETECH_JOG_STEP if req.kierunek == "cw" else -config.FEETECH_JOG_STEP
+    try:
+        async with _feetech_lock:
+            target = await asyncio.to_thread(_feetech_jog, servo_id, counts)
+    except (FeetekError, KeyError) as exc:
+        raise HTTPException(409, str(exc))
+    return {"ok": True, "position": target}
 
 
 @app.post("/api/machine/release")

@@ -336,8 +336,16 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       odpytuje `docisk`/`podajnik` (`config/axes.json`: `driver: feetech`,
       `feetech_id`), `GET /api/status` zwraca pozycję/obciążenie (jednostki
       rejestru, nie mm — kalibracja to etap 2). Osobna pętla, niezależna od
-      X/Y/Z, zweryfikowana end-to-end na sprzęcie. Panel jeszcze nie
-      pokazuje tych danych wizualnie. Szczegóły: `zmiany/status-osi-feetech.md`.
+      X/Y/Z, zweryfikowana end-to-end na sprzęcie. **Panel pokazuje to
+      wizualnie** (dopisane tego samego dnia — poprawka stale'j notatki
+      wyżej). Szczegóły: `zmiany/status-osi-feetech.md`.
+- [x] **Etap 2 — JOG bez mm, zrobiony 2026-09-11** (decyzja: „robimy
+      serwa bez montowania na maszynie"): `POST /api/machine/jog-feetech`
+      + przyciski na panelu, ruch w kierunku zgodnym/przeciwnym do zegara
+      (nie mm — to wciąż niewiadome, wymaga zamontowania). Przy okazji
+      naprawiony błąd współbieżności (magistrala RS485 współdzielona
+      z pętlą statusu, teraz `_feetech_lock`iem). Zweryfikowane fizycznie,
+      oba serwa, oba kierunki. Szczegóły: `zmiany/jog-feetech.md`.
 - [ ] **Zostaje:** etapy 2-5 z `architektura-wielu-drajwerow-osi.md` (JOG,
       bazowanie, cykl maszyny, ew. program technologa) — JOG (etap 2)
       wymaga kalibracji, czy CW = rosnące czy malejące mm per oś, dopiero

@@ -245,5 +245,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   `/zuzycie` (temat M, krok 3-4): podsumowanie bieżącej doby, wykresy
   trendu per oś, definicje alarmów zużycia + ich ocena (bez wysyłki
   powiadomień — to robi wMES). Dziś tylko X/Y/Z.
+- [zmiany/jog-feetech.md](zmiany/jog-feetech.md) — JOG dla osi FEETECH
+  (temat L, etap 2 częściowy): ruch zgodny/przeciwny do zegara, bez
+  przeliczenia na mm (serwa niezamontowane). Naprawiony błąd
+  współbieżności na współdzielonej magistrali RS485.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.
