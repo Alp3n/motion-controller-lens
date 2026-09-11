@@ -17,6 +17,7 @@
     "/smart": "admin",
     "/sila": "admin",
     "/diagnostics": "admin",
+    "/io-modbus": "admin",
   };
 
   function wystarcza(rola, wymagana) {

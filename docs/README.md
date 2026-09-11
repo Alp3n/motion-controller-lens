@@ -261,5 +261,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   standardowy moduł do korzystania z I/O Waveshare w aplikacji: nazwane
   kanały DO/DI/AI, pętla w tle, API odczytu/zapisu po nazwie, watchdog
   diagnostyczny (nie bezpieczeństwa) dla wejścia pulsującego.
+- [zmiany/ekran-io-modbus.md](zmiany/ekran-io-modbus.md) — ekran
+  `/io-modbus`: podgląd na żywo DI/DO/AI, status watchdogu, ręczne
+  przełączanie wyjść, edycja etykiet kanałów i ustawień watchdogu.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

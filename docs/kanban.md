@@ -379,8 +379,12 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       konkretnych kanałów DO/DI/AI to na razie założenie kolejności, nie
       potwierdzone okablowanie** — do weryfikacji przy podłączeniu.
       Watchdog domyślnie wyłączony, nie testowany jeszcze na prawdziwym
-      sygnale. Brak jeszcze ekranu (tylko API). Szczegóły:
-      `zmiany/io-modbus-nazwane-kanaly.md`.
+      sygnale. Szczegóły: `zmiany/io-modbus-nazwane-kanaly.md`.
+- [x] **Ekran `/io-modbus`, zbudowany 2026-09-11** (zamówienie: „zbuduj
+      ekran do podglądu I/O"): podgląd na żywo DI/DO/AI (odpytywanie co
+      1s), status watchdogu, ręczne przełączanie wyjść, edycja etykiet
+      kanałów i ustawień watchdogu (jeden zapis). `ROLE_ADMIN` jak
+      `/zuzycie`. Szczegóły: `zmiany/ekran-io-modbus.md`.
 
 ### M. Analiza zużycia osi/narzędzia i powiadomienia o incydentach
 - [x] **Krok 1-2 zaimplementowane 2026-09-10:** zbieranie zużycia osi

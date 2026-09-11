@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>I/O Modbus — maszyna do odcinania wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>I/O Modbus (Waveshare)</h1>
+    <a href="/">← Panel operatora</a>
+    <a href="/diagnostics">Diagnostyka</a>
+    <a href="/zuzycie">Zużycie osi</a>
+  </header>
+
+  <main>
+    <section class="panel" id="scope-warn">
+      <h2>Zakres tego ekranu</h2>
+      <p class="muted" style="margin:0; white-space:pre-line">Podgląd i konfiguracja dwóch modułów Waveshare Modbus RTU (SKU 26244
+cyfrowy — 8 wejść/8 wyjść, SKU 25821 analogowy — 8 wejść) na tej samej
+magistrali RS485 co serwa FEETECH osi docisk/podajnik.
+
+Przypisanie nazw sygnałów do kanałów (LG, osłona_1, Start...) niżej to
+ZAŁOŻENIE kolejności, nie potwierdzone fizyczne okablowanie — do
+skorygowania w sekcji „Konfiguracja kanałów", jeśli nie zgadza się
+z rzeczywistością. Watchdog impulsów drzwi to diagnostyka (heartbeat),
+NIE certyfikowana funkcja bezpieczeństwa — realnym zabezpieczeniem
+pozostaje sprzętowy E-stop/Global Stop.</p>
+      <p id="port-warn" class="msg warn" style="display:none">
+        MODBUS_IO_PORT nieskonfigurowany na serwerze — magistrala niedostępna,
+        wartości poniżej nie będą się odświeżać.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Watchdog impulsów drzwi</h2>
+      <div id="watchdog-status" class="msg" style="display:block"></div>
+    </section>
+
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Wejścia cyfrowe (DI)</h2>
+        <table><thead><tr><th>Kanał</th><th>Etykieta</th><th>Stan</th></tr></thead>
+          <tbody id="di-tabela"></tbody>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Wyjścia cyfrowe (DO)</h2>
+        <table><thead><tr><th>Kanał</th><th>Etykieta</th><th>Stan</th><th></th></tr></thead>
+          <tbody id="do-tabela"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h2>Wejścia analogowe (AI)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Surowa wartość rejestru modułu — bez przeliczenia na jednostkę
+        fizyczną (°C, A); skalowanie nieustalone.
+      </p>
+      <table><thead><tr><th>Kanał</th><th>Etykieta</th><th>Wartość (surowa)</th></tr></thead>
+        <tbody id="ai-tabela"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Konfiguracja kanałów i watchdogu</h2>
+      <p class="muted" style="margin-top:-6px">
+        Etykiety kanałów i ustawienia watchdogu — jeden zapis dla całości.
+      </p>
+      <div class="grid-2">
+        <div>
+          <h3>Etykiety DI</h3>
+          <table class="kv"><tbody id="cfg-di"></tbody></table>
+          <h3>Etykiety AI</h3>
+          <table class="kv"><tbody id="cfg-ai"></tbody></table>
+        </div>
+        <div>
+          <h3>Etykiety DO</h3>
+          <table class="kv"><tbody id="cfg-do"></tbody></table>
+          <h3>Watchdog</h3>
+          <div class="field">
+            <label><input type="checkbox" id="cfg-wd-enabled"> włączony</label>
+          </div>
+          <div class="field">
+            <label>Kanał impulsów (DI)</label>
+            <select id="cfg-wd-pulse"></select>
+          </div>
+          <div class="field">
+            <label>Kanał osłony (DI)</label>
+            <select id="cfg-wd-guard"></select>
+          </div>
+          <div class="field">
+            <label>Okres sprawdzania [s]</label>
+            <input type="number" id="cfg-wd-interval" step="0.1" min="0.2">
+          </div>
+          <div class="field">
+            <label>Zastały po [s]</label>
+            <input type="number" id="cfg-wd-stale" step="0.1" min="0.2">
+          </div>
+        </div>
+      </div>
+      <button id="btn-zapisz-cfg">Zapisz konfigurację</button>
+      <p id="cfg-msg" class="msg"></p>
+    </section>
+  </main>
+
+  <script src="/static/io-modbus.js"></script>
+  <script src="/static/sesja.js"></script>
+</body>
+</html>

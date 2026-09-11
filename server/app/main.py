@@ -1693,4 +1693,11 @@ async def zuzycie_page(request: Request):
     return _page(request, "zuzycie.html", users.ROLE_ADMIN)
 
 
+@app.get("/io-modbus", include_in_schema=False)
+async def io_modbus_page(request: Request):
+    # ROLE_ADMIN jak /zuzycie — ekran ma też edycję etykiet/watchdogu
+    # (PUT /api/io-modbus wymaga admina), nie tylko podgląd.
+    return _page(request, "io-modbus.html", users.ROLE_ADMIN)
+
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
