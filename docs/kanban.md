@@ -369,10 +369,11 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       procesu (nietrwały). **Bez wysyłki powiadomień** — to robi wMES.
       Zweryfikowane end-to-end na produkcji (zapis/odczyt/sprzątanie przez
       `curl`), 23 nowe testy. Szczegóły: `zmiany/ekran-zuzycia-osi.md`.
-- [ ] **Zostaje:** krok 5 — sposób, w jaki wMES odczyta stan alarmów
-      (dokładny kształt nieustalony; dziś widoczny tylko na ekranie, nie
-      trwały). Ewentualnie: rozszerzenie zbierania zużycia o osie FEETECH
-      (nieustalone, nie w pierwotnym planie kroków).
+- [ ] **Krok 5 odłożony 2026-09-11 (decyzja operatora):** integracja z
+      wMES czeka na ustalenie dostępu/wymagań z tamtą stroną — nie do
+      zgadnięcia bez tej rozmowy. `GET /api/zuzycie/alarmy` już istnieje
+      jako częściowy fundament. Ewentualnie osobno: rozszerzenie zbierania
+      zużycia o osie FEETECH (nieustalone, nie w pierwotnym planie kroków).
 
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`

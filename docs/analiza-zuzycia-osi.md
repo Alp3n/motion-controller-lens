@@ -156,9 +156,10 @@ faktycznie poszedł).
    2026-09-10**, `app/zuzycie_alarmy.py`, CRUD na ekranie `/zuzycie`
    (`zmiany/ekran-zuzycia-osi.md`). Ocena po każdym przebiegu, w tym samym
    miejscu co zapis danych. Stan tylko w pamięci procesu — nietrwały.
-5. **Następny krok:** udostępnienie alarmów systemowi MES do odczytu
-   (endpoint `GET /api/zuzycie/alarmy` już istnieje i zwraca definicje —
-   do ustalenia, czy to wystarczy wMES, czy potrzebny osobny format/trwałość
-   stanu; wMES sam wysyła e-mail/FAP) — ostatni krok, bo najmniej pilny
-   przy dzisiejszej decyzji o podziale
+5. **Odłożone 2026-09-11 (decyzja operatora):** udostępnienie alarmów
+   systemowi MES do odczytu — czeka na ustalenie z MES/integratorem, jaki
+   dostęp i jakie dane są w ogóle potrzebne (adres, uwierzytelnienie,
+   format). `GET /api/zuzycie/alarmy` już istnieje i zwraca definicje —
+   fundament częściowo gotowy, ale kształt kontraktu z wMES nieustalony,
+   nie do zgadnięcia bez rozmowy z tamtą stroną; wMES sam wysyła e-mail/FAP
    odpowiedzialności.
