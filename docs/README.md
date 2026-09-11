@@ -110,6 +110,10 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/poprawka-podgladu-pozycji.md](zmiany/poprawka-podgladu-pozycji.md) —
   błąd JS zatrzymywał skrypt panelu, przez co nie działał WebSocket i podgląd
   pozycji.
+- [zmiany/podglad-pozycji-odbicie-osi-y.md](zmiany/podglad-pozycji-odbicie-osi-y.md) —
+  poprawka: rysunek XY podglądu pozycji był odwrócony góra-dół względem
+  fizycznej maszyny (oś Y mapowana standardową konwencją matematyczną
+  zamiast tego, co widzi operator).
 - [zmiany/dodawanie-osi-ekran.md](zmiany/dodawanie-osi-ekran.md) — ekran
   `/axes` pozwala dopisać oś ponad X/Y/Z, oznaczoną jako „tylko
   konfiguracja” (bez wsparcia mostka).

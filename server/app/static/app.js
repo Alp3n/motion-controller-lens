@@ -531,7 +531,16 @@ function drawView(st) {
   const ox = pad + (plotW - spanX * s) / 2;
   const oy = pad + (plotH - spanY * s) / 2;
   const X = (mx) => ox + (mx - area.x_min) * s;
-  const Y = (my) => oy + (area.y_max - my) * s; // oś Y rośnie w górę
+  // Y rośnie W DÓŁ na ekranie — zgłoszenie 2026-09-11: przy poprzednim
+  // mapowaniu (Y rosło w górę, standardowa matematyczna konwencja) podgląd
+  // był odwrócony góra-dół względem fizycznej maszyny widzianej przez
+  // operatora. Odwrócone tu świadomie, żeby ekran odpowiadał rzeczywistości,
+  // nie podręcznikowi geometrii.
+  const Y = (my) => oy + (my - area.y_min) * s;
+  // górna/dolna krawędź obszaru na EKRANIE — nie zakładać, że to y_min/y_max
+  // w tej kolejności, bo Y() wyżej jest teraz odwrócone względem matematyki
+  const yTop = Math.min(Y(area.y_min), Y(area.y_max));
+  const yBot = Math.max(Y(area.y_min), Y(area.y_max));
 
   // siatka co 10 mm (rzadsza, gdy obszar duży)
   const step = spanX > 300 ? 50 : spanX > 120 ? 20 : 10;
@@ -561,11 +570,11 @@ function drawView(st) {
 
   // obrys obszaru roboczego
   ctx.strokeStyle = muted;
-  ctx.strokeRect(X(area.x_min), Y(area.y_max), spanX * s, spanY * s);
+  ctx.strokeRect(X(area.x_min), yTop, spanX * s, spanY * s);
   ctx.fillStyle = muted;
   ctx.font = "11px system-ui, sans-serif";
-  ctx.fillText(`${area.x_min}`, X(area.x_min), Y(area.y_min) + 14);
-  ctx.fillText(`${area.x_max}`, X(area.x_max) - 20, Y(area.y_min) + 14);
+  ctx.fillText(`${area.x_min}`, X(area.x_min), yBot + 14);
+  ctx.fillText(`${area.x_max}`, X(area.x_max) - 20, yBot + 14);
   ctx.fillText(`${area.y_max}`, X(area.x_min) - 22, Y(area.y_max) + 4);
   ctx.fillText(`${area.y_min}`, X(area.x_min) - 22, Y(area.y_min) + 4);
 
