@@ -482,6 +482,20 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       jako częściowy fundament. Ewentualnie osobno: rozszerzenie zbierania
       zużycia o osie FEETECH (nieustalone, nie w pierwotnym planie kroków).
 
+### N. Ekran pomocy (HELP) dla operatora
+- [x] **Zbudowany 2026-09-12** (zamówienie: „instrukcja dla mojego
+      współpracownika z opisem wszystkich naszych funkcji, żeby mógł
+      korzystać z tej maszyny"). Ekran `/help`, sekcja per ekran panelu,
+      zbiorcza sekcja bezpieczeństwa. Link „Pomoc" dokładany do nagłówka
+      każdego ekranu (`sesja.js`), dla każdej roli. Szczegóły:
+      `zmiany/ekran-help.md`.
+- [ ] **STANDING TASK, nie do odhaczenia raz na zawsze:** operator
+      poprosił wprost „aktualizuj tą instrukcję po naszych kolejnych
+      zmianach" — zapisane w pamięci projektu
+      (`feedback_utrzymuj_ekran_pomocy.md`). Każda kolejna zmiana widoczna
+      dla operatora (nowy ekran, przycisk, zmienione zachowanie) ma
+      dostać aktualizację `/help` PRZED uznaniem zadania za zakończone.
+
 ### I. Odłożone
 - [ ] `LUK`/`OKRAG`/`POLILINIA` w `.prg`
 - [ ] GRBL/G-code jako alternatywa

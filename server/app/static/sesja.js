@@ -42,6 +42,19 @@
     header.appendChild(a);
   }
 
+  /* Instrukcja obsługi (2026-09-12) — dostępna z KAŻDEGO ekranu, dla
+     każdej roli (nawet bez logowania), więc dokładana od razu, bez
+     czekania na /api/auth/me. Nie ma jej w statycznym HTML żadnej
+     strony — jedno miejsce zamiast czternastu kopii tego samego linku. */
+  function dodajLinkPomocy(header) {
+    if (location.pathname === "/help") return;
+    if (header.querySelector('a[href="/help"]')) return;
+    const a = document.createElement("a");
+    a.href = "/help";
+    a.textContent = "Pomoc";
+    header.appendChild(a);
+  }
+
   function pasek(header, data) {
     const box = document.createElement("div");
     box.className = "user-box";
@@ -68,6 +81,8 @@
 
   const header = document.querySelector("header");
   if (!header) return;
+
+  dodajLinkPomocy(header);
 
   fetch("/api/auth/me")
     .then((r) => r.json())

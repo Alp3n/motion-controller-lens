@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pomoc — maszyna do odcinania wlewków</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Pomoc — instrukcja obsługi</h1>
+    <a href="/">← Panel operatora</a>
+  </header>
+
+  <main>
+    <section class="panel">
+      <p class="muted" style="margin:0">
+        Ta strona opisuje, co robi każdy ekran maszyny i jak z niego
+        korzystać — po polsku, bez żargonu programistycznego. Jest
+        aktualizowana po każdej zmianie w panelu, więc to jedyne miejsce,
+        które trzeba znać, żeby obsługiwać maszynę. Jeśli czegoś tu nie
+        ma albo opis nie zgadza się z tym, co widzisz na ekranie — zgłoś
+        to, to znaczy że instrukcja została w tym miejscu w tyle.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Spis treści</h2>
+      <ul style="margin:0; padding-left:18px; line-height:1.9; columns:2">
+        <li><a href="#role">Role i logowanie</a></li>
+        <li><a href="#panel">Panel operatora (ekran główny)</a></li>
+        <li><a href="#editor">Edytor technologa — programy</a></li>
+        <li><a href="#cykl">Cykl maszyny</a></li>
+        <li><a href="#osie">Konfiguracja osi</a></li>
+        <li><a href="#bazowanie">Bazowanie</a></li>
+        <li><a href="#profile">Profile parametrów</a></li>
+        <li><a href="#smart">Funkcje SMART</a></li>
+        <li><a href="#sila">Kontrola siły i kalibracja</a></li>
+        <li><a href="#zuzycie">Zużycie osi</a></li>
+        <li><a href="#iomodbus">I/O Modbus</a></li>
+        <li><a href="#punkty">Punkty PTP</a></li>
+        <li><a href="#nauczanie">Prowadzenie za rękę</a></li>
+        <li><a href="#diagnostyka">Diagnostyka</a></li>
+        <li><a href="#bezpieczenstwo">Czego żaden ekran nie robi (bezpieczeństwo)</a></li>
+      </ul>
+    </section>
+
+    <section class="panel" id="role">
+      <h2>Role i logowanie</h2>
+      <p class="muted" style="margin-top:-6px">
+        Trzy role, jedna wyżej widzi wszystko, co widzi niższa, i więcej:
+      </p>
+      <ul class="muted" style="margin:0; padding-left:18px; line-height:1.8">
+        <li><b>operator</b> — panel główny (start/stop, ruch ręczny, bazowanie).</li>
+        <li><b>technolog</b> — jak operator + edytor programów (.prg).</li>
+        <li><b>admin</b> — wszystko: konfiguracja osi, bazowania, profili,
+          cyklu, SMART, siły, zużycia, I/O, punktów, prowadzenia za rękę,
+          diagnostyki.</li>
+      </ul>
+      <p class="muted">
+        Jeśli nikt jeszcze nie założył żadnego konta, logowanie jest
+        <b>wyłączone</b> i wszystkie ekrany są dostępne bez hasła — pasek
+        na górze każdego ekranu pokaże wtedy „logowanie wyłączone" zamiast
+        Twojego imienia. Odnośniki do ekranów, do których Twoja rola nie
+        ma dostępu, po zalogowaniu po prostu nie pojawiają się w nagłówku
+        — to wygoda, nie zabezpieczenie (dostępu i tak pilnuje serwer).
+      </p>
+    </section>
+
+    <section class="panel" id="panel">
+      <h2>Panel operatora (ekran główny, <code>/</code>)</h2>
+      <p class="muted" style="margin-top:-6px">To, co widzisz od razu po zalogowaniu — codzienna obsługa.</p>
+      <ul class="muted" style="margin:0; padding-left:18px; line-height:1.9">
+        <li><b>Stan maszyny</b> — kolorowy znaczek (READY/RUNNING/PAUSED/ALARM/HOMING/
+          NOT_HOMED) i sygnał zezwolenia (zielony = maszyna gotowa na komendę
+          ruchu; czerwony = ruch zablokowany, np. brak zbazowania albo
+          Global Stop wciśnięty).</li>
+        <li><b>Zlecenie / program</b> — numer zlecenia i programu (12 cyfr)
+          wybranego przez system MES. Pola „Symulacja wyboru zlecenia" są
+          do testów bez podłączonego MES — normalnie MES robi to sam.</li>
+        <li><b>Pozycja osi</b> — bieżące X/Y/Z w milimetrach, stan wrzeciona
+          i wyjść cyfrowych.</li>
+        <li><b>Obciążenie osi</b> — moment silnika w % dla X/Y/Z, i (jeśli
+          skonfigurowane) osi dodatkowych FEETECH (docisk, podajnik) —
+          pozycja w mm liczona przez skok śruby serwa, obok w nawiasie
+          surowy odczyt rejestru. Przyciski pod nimi kręcą serwem płynnie:
+          <b>trzymaj, żeby jechać, puść, żeby zatrzymać</b>. Zatrzymuje się
+          też sam, jeśli dojedzie do limitu osi albo połączenie z
+          przeglądarką się zerwie.</li>
+        <li><b>Podgląd pozycji</b> — rysunek z operacjami programu (szare
+          punkty/linie), aktualną pozycją narzędzia (kolorowy krzyż) i
+          przebytym torem (niebieska linia).</li>
+        <li><b>START / STOP</b> — START rusza cykl albo załadowany program;
+          STOP zatrzymuje w każdym stanie, <b>działa nawet bez
+          logowania</b> (świadomie — wygasła sesja nie może odebrać
+          możliwości zatrzymania).</li>
+        <li><b>Bazowanie</b> — przycisk „Bazowanie" (dojazd do zera każdej
+          osi po kolei, wg ustawień z ekranu <a href="#bazowanie">Bazowanie</a>);
+          „JEDŹ DO ZERA" to sam dojazd do pozycji zerowej BEZ ponownego
+          bazowania (zakłada, że maszyna jest już zbazowana) — najpierw
+          jedzie oś Z, potem X/Y.</li>
+        <li><b>Kasuj alarm</b> — czyści stan ALARM po usunięciu przyczyny
+          (np. przekroczony limit, błąd kroku cyklu).</li>
+        <li><b>Ruch ręczny (JOG)</b> — przytrzymaj przycisk osi, ruch trwa,
+          puszczenie zatrzymuje; krok z listy to tylko odstęp siatki
+          pomocniczej na wykresie, nie długość jednego kliknięcia.</li>
+        <li><b>Luzowanie osi</b> — zdejmuje moment z serwa, żeby dało się
+          przestawić oś ręcznie. <b>Oś pionowa bez hamulca opadnie pod
+          własnym ciężarem</b> po zluzowaniu — uważaj.</li>
+      </ul>
+    </section>
+
+    <section class="panel" id="editor">
+      <h2>Edytor technologa (<code>/editor</code>)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Tu powstają programy detalu (plik <code>.prg</code>, numer = 12
+        cyfr, ten sam, po którym MES ładuje program). Program ma nagłówek
+        (nazwa, materiał, autor, obroty frezu, posuwy, wysokość
+        bezpieczna Z) i listę operacji wykonywanych po kolei.
+      </p>
+      <p class="muted"><b>Rodzaje operacji:</b></p>
+      <ul class="muted" style="margin:0; padding-left:18px; line-height:1.8">
+        <li><b>PUNKT</b> — dojazd do X/Y/Z (można wybrać z listy nazwanych
+          punktów — patrz <a href="#punkty">Punkty PTP</a>).</li>
+        <li><b>LINIA</b> — przejazd po linii od bieżącego punktu do X2/Y2.</li>
+        <li><b>PROSTOKAT</b> — obrys prostokąta między dwoma narożnikami.</li>
+        <li><b>SZYBKI</b> — szybki dojazd X/Y bez cięcia (bez Z).</li>
+        <li><b>WRZECIONO</b> — załącza/wyłącza wrzeciono z podanymi obrotami
+          (0 = wyłącz).</li>
+        <li><b>SMART</b> — ruch z kontrolą siły wg nazwanej definicji z
+          ekranu <a href="#smart">Funkcje SMART</a>; rusza z miejsca, w
+          którym aktualnie stoi narzędzie, na dystans z definicji.</li>
+        <li><b>PAUZA</b> — zatrzymanie do potwierdzenia przyciskiem START.</li>
+      </ul>
+      <p class="muted">
+        Posuw, moment (siła) i głębokość przejść można ustawić per operacja
+        — puste pole bierze wartość z nagłówka programu albo z aktywnego
+        profilu parametrów. Podgląd toru rysuje zawartość tabeli na żywo,
+        także przed zapisem.
+      </p>
+    </section>
+
+    <section class="panel" id="cykl">
+      <h2>Cykl maszyny (<code>/cycle</code>)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Program technologa opisuje <b>co wyciąć w detalu</b>. Cykl opisuje
+        <b>co maszyna robi wokół tego</b>: podanie detalu, docisk, wywołanie
+        programu, wyrzut — sekwencja kroków wykonywanych po kolei, w kółko
+        (przycisk pętli) albo raz.
+      </p>
+      <p class="muted"><b>Rodzaje kroków:</b></p>
+      <ul class="muted" style="margin:0; padding-left:18px; line-height:1.8">
+        <li><b>RUCH</b> — przejazd do zadanych pozycji, dowolnej kombinacji
+          osi: X/Y/Z <b>i</b> osi dodatkowych ze sterownikiem FEETECH
+          (docisk, podajnik — kolumny w tabeli, jeśli są skonfigurowane).
+          Oś zostawiona pusta nie rusza się. Oś FEETECH w kroku CZEKA na
+          koniec swojego ruchu, zanim krok przejdzie dalej. Pozycja poza
+          limitem programowym zatrzymuje cykl alarmem.</li>
+        <li><b>PROGRAM</b> — wywołanie programu detalu wybranego przez MES
+          (skok do edytora technologa); po zakończeniu cykl idzie dalej.</li>
+        <li><b>WYJSCIE</b> — załączenie/wyłączenie wyjścia cyfrowego: dwóch
+          stałych wyjść Teknica (<code>wyjscie_0</code>/<code>wyjscie_1</code>)
+          <b>albo</b> dowolnego kanału modułu I/O Modbus (lampy, wrzeciono_OUT
+          i inne z ekranu <a href="#iomodbus">I/O Modbus</a>) — jedna lista
+          wyboru, oba rodzaje w tym samym kroku.</li>
+        <li><b>SMART</b> — jak operacja SMART w programie, ta sama definicja.</li>
+        <li><b>PAUZA</b> — zatrzymanie do potwierdzenia przyciskiem START.</li>
+      </ul>
+      <p class="muted">
+        Krok może wskazać inny <b>profil parametrów</b> na swój czas — po
+        kroku wraca profil, który był aktywny wcześniej, nawet przy błędzie.
+        Nie ma jeszcze kroku „czekaj na wejście" (maszyna nie ma dziś
+        żadnego czytelnego wejścia poza Global Stop).
+      </p>
+    </section>
+
+    <section class="panel" id="osie">
+      <h2>Konfiguracja osi (<code>/axes</code>)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Długość fizyczna, punkt bazowania (gdzie po bazowaniu leży zero),
+        limity programowe, przełożenie (mm na obrót silnika) i prędkość
+        JOG — dla X/Y/Z i osi dodatkowych. Zakres fizyczny wylicza się
+        sam z długości i punktu bazowania; limity programowe muszą się w
+        nim mieścić i to one ograniczają maszynę na co dzień.
+      </p>
+      <p class="muted">
+        Osie dodatkowe (docisk, podajnik) ze sterownikiem <b>FEETECH</b>
+        mają dwie dodatkowe kolumny widoczne tylko dla nich: <b>prędkość</b>
+        (jednostki rejestru serwa, używana przez JOG i przez krok RUCH
+        cyklu) i <b>przyspieszenie</b>. Trzecia, <b>limit obciążenia</b>,
+        to zabezpieczenie AWARYJNE dla kroku RUCH — puste (domyślnie) =
+        wyłączony, krok zawsze dojeżdża do pozycji; ustawiony próg
+        przerywa ruch i daje ALARM tylko przy realnym przeciążeniu (np.
+        zablokowany mechanizm), nie jest normalnym sposobem zatrzymania.
+        Nowa oś dodana z tego ekranu domyślnie NIE ma sterownika FEETECH i
+        fizycznie nie rusza, dopóki ktoś nie ustawi go w pliku konfiguracji.
+      </p>
+    </section>
+
+    <section class="panel" id="bazowanie">
+      <h2>Bazowanie (<code>/homing</code>)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Kolejność i sposób bazowania osi X/Y/Z. Osie z tym samym numerem
+        kolejności bazują się razem, grupy jedna po drugiej, kolejność 0 =
+        oś nie jest bazowana. Bazowanie realizuje wbudowana funkcja serwa
+        (dojazd do mechanicznego ogranicznika z ograniczonym momentem) —
+        <b>samo ustawienie trybu/limitu momentu/offsetu robi się w
+        ClearView</b> (program na komputerze z Windows), ten ekran to tylko
+        zapis „co ma tam być wpisane", dokumentacja dla osoby przy ClearView.
+      </p>
+      <p class="muted">
+        Zanim ruszy cokolwiek w płaszczyźnie XY, oś Z zawsze najpierw
+        odjeżdża na wysokość bezpieczną, niezależnie od ustawionej
+        kolejności. Kolejność/prędkość z tego ekranu działa dziś tylko w
+        symulatorze — na sprzęcie mostek dostaje jedną komendę i całą
+        sekwencję wykonuje samo serwo.
+      </p>
+    </section>
+
+    <section class="panel" id="profile">
+      <h2>Profile parametrów (<code>/profiles</code>)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Trzy nazwane zestawy parametrów ruchu (prędkość maksymalna,
+        przyspieszenie/hamowanie, limit momentu), po jednym komplecie na
+        oś. Krok cyklu może włączyć inny profil na czas swojego wykonania
+        — po kroku wraca profil aktywny wcześniej, nawet przy błędzie.
+        Prędkość maksymalna realnie ogranicza ruch, także na sprzęcie;
+        limit momentu działa dziś tylko w symulatorze.
+      </p>
+    </section>
+
+    <section class="panel" id="smart">
+      <h2>Funkcje SMART (<code>/smart</code>)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Nazwane zestawy parametrów procedur, które podczas ruchu reagują na
+        moment silnika (zwalniają, cofają, wykrywają kolizję/opór). Program
+        technologa i cykl wskazują definicję po nazwie — zmiana parametrów
+        w jednym miejscu działa wszędzie, gdzie ta nazwa jest użyta. Próg
+        siły to procent momentu silnika, nie niutony — dobiera się
+        doświadczalnie, zaczynając od małej wartości, na odpadzie, nie na
+        dobrym detalu. To nie jest funkcja bezpieczeństwa.
+      </p>
+    </section>
+
+    <section class="panel" id="sila">
+      <h2>Kontrola siły i kalibracja (<code>/sila</code>)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Podgląd obciążenia osi na żywo, przebieg momentu/prędkości
+        <b>ostatniego</b> uruchomienia (zostaje widoczny po zakończeniu, żeby
+        dało się go przejrzeć spokojnie — moment zmienia się za szybko, żeby
+        ocenić go z samych liczb na żywo) i ręczna kalibracja moment→siła:
+        dociśnij narzędzie do siłomierza (JOG na panelu), odczytaj moment,
+        wpisz parę (moment %, siła N). Kilka par w różnych punktach daje
+        przelicznik <b>zmierzony</b> na tej konkretnej maszynie, przydatny
+        do dobierania progów w SMART i profilach. To pomoc, nie funkcja
+        bezpieczeństwa.
+      </p>
+    </section>
+
+    <section class="panel" id="zuzycie">
+      <h2>Zużycie osi (<code>/zuzycie</code>)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Dziś tylko X/Y/Z. Tabela „dzisiaj" — liczba przebiegów, dystans,
+        moment śr./maks. z bieżącej doby; wykresy trendu — jedna wartość
+        per oś per dzień, bez limitu czasowego, do wypatrzenia narastającego
+        zużycia (np. wzrost momentu = rosnący opór osi). Sekcja alarmów
+        zużycia: definiujesz oś + metrykę (dystans albo moment maks.) +
+        okres (dzień/tydzień) + próg — po przekroczeniu widać to na tym
+        ekranie. <b>Wysyłkę powiadomień (e-mail, zgłoszenie do MES) robi
+        wMES, nie ten ekran</b> — integracja czeka na ustalenia z tamtą
+        stroną.
+      </p>
+    </section>
+
+    <section class="panel" id="iomodbus">
+      <h2>I/O Modbus (<code>/io-modbus</code>)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Podgląd na żywo (odświeżanie ~1s) dwóch modułów Waveshare na
+        magistrali RS485: 8 wejść cyfrowych (DI), 8 wyjść cyfrowych (DO) i
+        8 wejść analogowych (AI). Każdy kanał ma etykietę (np. „LG",
+        „wrzeciono_OUT", „osłona_1") edytowalną na tym samym ekranie —
+        <b>przypisanie etykiet do fizycznych zacisków to dziś założenie
+        kolejności, do potwierdzenia/poprawienia przy realnym okablowaniu.</b>
+        Przyciski „przełącz" ręcznie ustawiają jedno wyjście. Te same
+        kanały DO są dostępne w kroku WYJSCIE cyklu — patrz
+        <a href="#cykl">Cykl maszyny</a>.
+      </p>
+      <p class="muted">
+        <b>Watchdog</b> (domyślnie wyłączony, włącza się w konfiguracji na
+        tym ekranie) obserwuje, czy wejście „drzwi_impulsy" w ogóle się
+        zmienia w czasie, i pokazuje status (OK/zastały) — to diagnostyka
+        (czy czujnik żyje), <b>nie certyfikowana funkcja bezpieczeństwa</b>.
+      </p>
+    </section>
+
+    <section class="panel" id="punkty">
+      <h2>Punkty PTP (<code>/punkty</code>)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Nazwane pozycje X/Y/Z do wygodnego wypełniania operacji PUNKT w
+        edytorze programu (wybór z listy). Punkty definiuje się tu ręcznie
+        liczbami albo na ekranie <a href="#nauczanie">Prowadzenie za rękę</a>.
+        Późniejsza zmiana punktu w tej bazie <b>nie zmienia</b> współrzędnych
+        już zapisanych w istniejących programach — to dane pomocnicze do
+        edycji, nie parametr bezpieczeństwa.
+      </p>
+    </section>
+
+    <section class="panel" id="nauczanie">
+      <h2>Prowadzenie za rękę (<code>/nauczanie</code>)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Sposób na fizyczne ustawienie pozycji i zapisanie jej jako nazwany
+        punkt, bez wpisywania liczb. Silnik zostaje na normalnym momencie
+        (nic się nie osłabia) — program pamięta odczyt momentu w spoczynku
+        i wyłapuje jego małą zmianę, którą wywołuje Twój nacisk ręką. Jedno
+        wykryte naciśnięcie = jeden krok ruchu; żeby zrobić kolejny krok,
+        trzeba <b>puścić</b> i nacisnąć znowu. To przybliżenie, nie
+        prawdziwy tryb podatny sprzętu. <b>Otwieraj ten ekran w jednej
+        karcie przeglądarki naraz</b> — dwie karty prowadzące jednocześnie
+        powodują błędy.
+      </p>
+    </section>
+
+    <section class="panel" id="diagnostyka">
+      <h2>Diagnostyka (<code>/diagnostics</code>, tylko admin)</h2>
+      <p class="muted" style="margin-top:-6px">
+        Wszystko w jednym miejscu do szybkiej oceny stanu maszyny: stan i
+        sygnał zezwolenia, lista tego, czego funkcje bezpieczeństwa NIE
+        realizują (patrz sekcja niżej), skrót do ruchu ręcznego/cyklu/STOP,
+        podsumowanie konfiguracji osi/bazowania/profili/cyklu z
+        ostrzeżeniami, lista kont i sesji, i dziennik zmian konfiguracji
+        (kto, kiedy, co zmienił) — pomocniczy, nie odporny na manipulację.
+      </p>
+    </section>
+
+    <section class="panel" id="bezpieczenstwo">
+      <h2>Czego żaden ekran nie robi (bezpieczeństwo)</h2>
+      <p class="muted" style="margin-top:-6px">
+        To się powtarza na wielu ekranach, więc raz, jasno, w jednym
+        miejscu:
+      </p>
+      <ul class="muted" style="margin:0; padding-left:18px; line-height:1.9">
+        <li><b>Jedyną certyfikowaną funkcją bezpieczeństwa jest sprzętowy
+          E-stop / Global Stop</b> — niezależny obwód, nic w tym panelu go
+          nie zastępuje i nie omija.</li>
+        <li>Limity momentu przy bazowaniu, w profilach i w definicjach
+          SMART chronią <b>mechanikę</b> (przed przeciążeniem/kolizją),
+          nie ludzi.</li>
+        <li>Watchdog wejść I/O Modbus to diagnostyka (czy czujnik żyje),
+          nie funkcja bezpieczeństwa.</li>
+        <li>Limit obciążenia FEETECH w kroku RUCH to zabezpieczenie
+          mechanizmu (np. przed zablokowaniem), nie funkcja bezpieczeństwa.</li>
+        <li><b>STOP na panelu działa nawet bez zalogowania</b> — świadomie,
+          żeby wygasła sesja nie mogła nikomu odebrać możliwości
+          zatrzymania maszyny.</li>
+        <li>Zluzowanie osi zdejmuje moment z serwa — oś pionowa bez
+          hamulca <b>opadnie pod własnym ciężarem</b>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="/static/sesja.js"></script>
+</body>
+</html>

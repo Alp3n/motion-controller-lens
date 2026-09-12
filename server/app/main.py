@@ -1954,4 +1954,12 @@ async def io_modbus_page(request: Request):
     return _page(request, "io-modbus.html", users.ROLE_ADMIN)
 
 
+@app.get("/help", include_in_schema=False)
+async def help_page(request: Request):
+    # ROLE_OPERATOR — instrukcja obsługi (zamówienie 2026-09-12) ma być
+    # czytelna dla każdego zalogowanego, nie tylko admina; treść sama
+    # opisuje, które ekrany są admin-only.
+    return _page(request, "help.html", users.ROLE_OPERATOR)
+
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

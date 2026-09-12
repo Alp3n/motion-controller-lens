@@ -294,5 +294,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/ekran-io-modbus.md](zmiany/ekran-io-modbus.md) — ekran
   `/io-modbus`: podgląd na żywo DI/DO/AI, status watchdogu, ręczne
   przełączanie wyjść, edycja etykiet kanałów i ustawień watchdogu.
+- [zmiany/ekran-help.md](zmiany/ekran-help.md) — ekran `/help`:
+  instrukcja obsługi dla operatora, po jednej sekcji na ekran panelu.
+  **Żywy dokument** — standing task w pamięci projektu: aktualizować po
+  każdej zmianie widocznej dla operatora.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

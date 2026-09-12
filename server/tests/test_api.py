@@ -262,3 +262,15 @@ def test_hand_guide_tick_bez_startu_zwraca_409(client):
 
 def test_hand_guide_stop_bez_startu_nie_jest_bledem(client):
     assert client.post("/api/machine/hand-guide/stop").status_code == 200
+
+
+def test_help_page_is_served(client):
+    """Instrukcja obsługi (zamówienie 2026-09-12) — dostępna dla każdej
+    roli (ROLE_OPERATOR), patrz docs/zmiany/ekran-help.md."""
+    res = client.get("/help")
+    assert res.status_code == 200
+    assert "Pomoc" in res.text
+    # sekcje kluczowych ekranów mają się znaleźć — regresja przeciw
+    # przypadkowemu wyczyszczeniu treści przy kolejnej edycji
+    for anchor in ("panel", "cykl", "osie", "iomodbus", "bezpieczenstwo"):
+        assert f'id="{anchor}"' in res.text
