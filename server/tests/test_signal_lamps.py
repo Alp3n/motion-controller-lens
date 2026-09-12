@@ -58,12 +58,31 @@ def _with_state(state, fn):
 
 
 def test_lr_wlaczona_w_alarmie():
-    assert main._signal_lamp_targets(MachineState.ALARM) == {"LR": True}
+    assert main._signal_lamp_targets(MachineState.ALARM)["LR"] is True
 
 
 def test_lr_wylaczona_poza_alarmem():
     for state in (MachineState.READY, MachineState.RUNNING, MachineState.PAUSED):
-        assert main._signal_lamp_targets(state) == {"LR": False}
+        assert main._signal_lamp_targets(state)["LR"] is False
+
+
+def test_lg_wlaczona_gdy_gotowa():
+    """Dopełnienie zamówienia 2026-09-12: "zielona lampa powinna włączyć
+    się, jeśli maszyna jest gotowa"."""
+    assert main._signal_lamp_targets(MachineState.READY)["LG"] is True
+
+
+def test_lg_wylaczona_poza_gotowa():
+    for state in (MachineState.ALARM, MachineState.RUNNING, MachineState.PAUSED, MachineState.HOMING):
+        assert main._signal_lamp_targets(state)["LG"] is False
+
+
+def test_lr_i_lg_nigdy_jednoczesnie():
+    """Stany ALARM i READY się wykluczają — obie lampy nigdy nie powinny
+    wypadać 'włączone' dla tego samego stanu."""
+    for state in MachineState:
+        targets = main._signal_lamp_targets(state)
+        assert not (targets["LR"] and targets["LG"])
 
 
 # --- _apply_signal_lamps ----------------------------------------------------
@@ -73,8 +92,15 @@ def test_apply_zapala_lr_w_alarmie(monkeypatch):
     calls = []
     monkeypatch.setattr(main, "ModbusDriver", lambda *a, **k: _FakeModbusDriver(calls))
     monkeypatch.setattr(main.config, "MODBUS_IO_PORT", "/dev/ttyUSB0")
-    # LR (etykieta domyślna do1) odczytana jako zgaszona — niezgodna z ALARM
-    result = {"do": {"do1": {"label": "LR", "value": False}}}
+    # LR (etykieta domyślna do1) odczytana jako zgaszona — niezgodna z ALARM;
+    # LG (do0) już zgaszona — zgodna ze stanem ALARM (LG tylko w READY), bez
+    # zapisu, żeby test skupiał się wyłącznie na LR
+    result = {
+        "do": {
+            "do0": {"label": "LG", "value": False},
+            "do1": {"label": "LR", "value": False},
+        }
+    }
 
     def run():
         _with_state(MachineState.ALARM, lambda: asyncio.run(main._apply_signal_lamps(result)))
@@ -88,7 +114,13 @@ def test_apply_gasi_lr_poza_alarmem(monkeypatch):
     calls = []
     monkeypatch.setattr(main, "ModbusDriver", lambda *a, **k: _FakeModbusDriver(calls))
     monkeypatch.setattr(main.config, "MODBUS_IO_PORT", "/dev/ttyUSB0")
-    result = {"do": {"do1": {"label": "LR", "value": True}}}
+    # stan READY: LG już zapalona (zgodna), LR zapalona (niezgodna, ma zgasnąć)
+    result = {
+        "do": {
+            "do0": {"label": "LG", "value": True},
+            "do1": {"label": "LR", "value": True},
+        }
+    }
 
     def run():
         _with_state(MachineState.READY, lambda: asyncio.run(main._apply_signal_lamps(result)))
@@ -98,6 +130,26 @@ def test_apply_gasi_lr_poza_alarmem(monkeypatch):
     assert calls == [(io_modbus.DIGITAL_MODULE_ADDRESS, 1, False)]
 
 
+def test_apply_zapala_lg_gdy_gotowa(monkeypatch):
+    """Dopełnienie zamówienia 2026-09-12: zielona lampa przy READY."""
+    calls = []
+    monkeypatch.setattr(main, "ModbusDriver", lambda *a, **k: _FakeModbusDriver(calls))
+    monkeypatch.setattr(main.config, "MODBUS_IO_PORT", "/dev/ttyUSB0")
+    result = {
+        "do": {
+            "do0": {"label": "LG", "value": False},
+            "do1": {"label": "LR", "value": False},
+        }
+    }
+
+    def run():
+        _with_state(MachineState.READY, lambda: asyncio.run(main._apply_signal_lamps(result)))
+
+    _with_io_cfg(io_modbus.default_io(), run)
+
+    assert calls == [(io_modbus.DIGITAL_MODULE_ADDRESS, 0, True)]
+
+
 def test_apply_nic_nie_pisze_gdy_juz_zgadza_sie_z_odczytem(monkeypatch):
     """Samonaprawiający się mechanizm (patrz docstring main._apply_signal_
     lamps) nie generuje zbędnych zapisów, gdy odczytana wartość już
@@ -105,7 +157,12 @@ def test_apply_nic_nie_pisze_gdy_juz_zgadza_sie_z_odczytem(monkeypatch):
     calls = []
     monkeypatch.setattr(main, "ModbusDriver", lambda *a, **k: _FakeModbusDriver(calls))
     monkeypatch.setattr(main.config, "MODBUS_IO_PORT", "/dev/ttyUSB0")
-    result = {"do": {"do1": {"label": "LR", "value": True}}}
+    result = {
+        "do": {
+            "do0": {"label": "LG", "value": False},
+            "do1": {"label": "LR", "value": True},
+        }
+    }
 
     def run():
         _with_state(MachineState.ALARM, lambda: asyncio.run(main._apply_signal_lamps(result)))
@@ -115,13 +172,14 @@ def test_apply_nic_nie_pisze_gdy_juz_zgadza_sie_z_odczytem(monkeypatch):
     assert calls == []
 
 
-def test_apply_pomija_nieskonfigurowana_etykiete(monkeypatch):
-    """Brak kanału z etykietą 'LR' w konfiguracji nie jest błędem — po
+def test_apply_pomija_nieskonfigurowane_etykiety(monkeypatch):
+    """Brak kanału z daną etykietą w konfiguracji nie jest błędem — po
     prostu nic się nie dzieje (lampa 'jeszcze nie podłączona/nazwana')."""
     calls = []
     monkeypatch.setattr(main, "ModbusDriver", lambda *a, **k: _FakeModbusDriver(calls))
     monkeypatch.setattr(main.config, "MODBUS_IO_PORT", "/dev/ttyUSB0")
     cfg = io_modbus.default_io()
+    cfg.do["do0"].label = ""  # żadny kanał nie nosi etykiety "LG"
     cfg.do["do1"].label = ""  # żadny kanał nie nosi etykiety "LR"
 
     def run():

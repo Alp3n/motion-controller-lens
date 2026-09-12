@@ -28,13 +28,15 @@ z rzeczywistością. Watchdog impulsów drzwi to diagnostyka (heartbeat),
 NIE certyfikowana funkcja bezpieczeństwa — realnym zabezpieczeniem
 pozostaje sprzętowy E-stop/Global Stop.
 
-Kanał z etykietą „LR" jest od 2026-09-12 sterowany AUTOMATYCZNIE —
-świeci, gdy maszyna jest w stanie ALARM, gaśnie w każdym innym stanie.
-Pętla w tle (co ~1s) sama doprowadza go do właściwego stanu, więc ręczne
-przełączenie albo krok WYJSCIE cyklu na tym samym kanale zostanie
-przywrócone w ciągu jednego obiegu pętli — jeśli etykieta „LR" zostanie
-przeniesiona na inny kanał albo usunięta, automat po prostu przestaje
-mieć czym sterować (bez błędu).</p>
+Kanały z etykietami „LR" i „LG" są od 2026-09-12 sterowane AUTOMATYCZNIE:
+LR świeci w stanie ALARM, LG świeci w stanie READY (gotowa na START) —
+w każdym innym stanie obie gaszą się. Pętla w tle (co ~1s) sama
+doprowadza je do właściwego stanu, więc ręczne przełączenie albo krok
+WYJSCIE cyklu na tym samym kanale zostanie przywrócone w ciągu jednego
+obiegu pętli — jeśli etykieta zostanie przeniesiona na inny kanał albo
+usunięta, automat po prostu przestaje mieć czym sterować (bez błędu).
+LY (żółta) nie ma jeszcze automatycznej roli — steruje nią wyłącznie
+krok WYJSCIE cyklu.</p>
       <p id="port-warn" class="msg warn" style="display:none">
         MODBUS_IO_PORT nieskonfigurowany na serwerze — magistrala niedostępna,
         wartości poniżej nie będą się odświeżać.

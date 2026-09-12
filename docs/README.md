@@ -298,8 +298,8 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   instrukcja obsługi dla operatora, po jednej sekcji na ekran panelu.
   **Żywy dokument** — standing task w pamięci projektu: aktualizować po
   każdej zmianie widocznej dla operatora.
-- [zmiany/lampa-czerwona-automatyczna.md](zmiany/lampa-czerwona-automatyczna.md) —
-  kanał I/O Modbus z etykietą LR świeci się sam w stanie ALARM, gaśnie
-  sam poza nim — samonaprawiające się porównanie z odczytem, nie z pamięcią.
+- [zmiany/lampy-sygnalizacyjne-automatyczne.md](zmiany/lampy-sygnalizacyjne-automatyczne.md) —
+  kanały I/O Modbus LR (stan ALARM) i LG (stan READY) świecą się same —
+  samonaprawiające się porównanie z odczytem, nie z pamięcią.
 
 PDF-y dokumentacji: [`pdf/`](pdf/) — generowane skryptem `tools/docs-pdf.py`.

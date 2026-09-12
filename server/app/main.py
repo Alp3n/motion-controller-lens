@@ -547,16 +547,29 @@ def _read_io_modbus(cfg: io_modbus.IoConfig) -> dict:
 
 def _signal_lamp_targets(state: MachineState) -> dict[str, bool]:
     """Lampy sygnalizacyjne sterowane AUTOMATYCZNIE wg stanu maszyny
-    (zamówienie 2026-09-12: „LR ma się włączać adekwatnie do swojej roli").
+    (zamówienie 2026-09-12: „LR ma się włączać adekwatnie do swojej roli";
+    dopełnione tego samego dnia: „zielona lampa powinna włączyć się, jeśli
+    maszyna jest gotowa").
 
     Słownik etykieta (jak w `io_modbus.py`) -> stan. Etykieta, której nie
     ma w konfiguracji kanałów, jest po prostu pomijana przez
     `_apply_signal_lamps` — to nie jest błąd, tylko „ta lampa nie jest
     jeszcze podłączona/nazwana".
 
-    Czerwona (LR) = maszyna w stanie ALARM — jedyna rola przypisana na
-    razie; zielona/żółta zostają do ustalenia, jeśli operator zechce."""
-    return {"LR": state == MachineState.ALARM}
+    - Czerwona (LR) = maszyna w stanie ALARM.
+    - Zielona (LG) = maszyna w stanie READY (gotowa na START). Operator
+      ZAMIERZONO steruje tym samym kanałem (do0) też z kroków WYJSCIE
+      cyklu (gaśnie na starcie cyklu, zapala po jego zakończeniu) — to
+      naturalnie zgodne z regułą niżej (RUNNING nie jest READY, koniec
+      cyklu wraca do READY), redundantne, ale nie sprzeczne; krótkie
+      miganie jest możliwe, jeśli pętla dogania stan w wąskim oknie tuż
+      przed przejściem RUNNING->READY.
+    - Żółta (LY) zostaje do ustalenia, jeśli operator zechce — dziś
+      steruje nią wyłącznie krok WYJSCIE cyklu (bez automatu)."""
+    return {
+        "LR": state == MachineState.ALARM,
+        "LG": state == MachineState.READY,
+    }
 
 
 async def _apply_signal_lamps(result: dict) -> None:

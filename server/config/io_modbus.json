@@ -1,0 +1,87 @@
+{
+  "do": {
+    "do0": {
+      "label": "LG"
+    },
+    "do1": {
+      "label": "LR"
+    },
+    "do2": {
+      "label": "LY"
+    },
+    "do3": {
+      "label": "Buzer"
+    },
+    "do4": {
+      "label": "wrzeciono_start"
+    },
+    "do5": {
+      "label": "wrzeciono-stop"
+    },
+    "do6": {
+      "label": ""
+    },
+    "do7": {
+      "label": ""
+    }
+  },
+  "di": {
+    "di0": {
+      "label": "osłona_1"
+    },
+    "di1": {
+      "label": "drzwi_podajnika"
+    },
+    "di2": {
+      "label": "Start"
+    },
+    "di3": {
+      "label": "Stop"
+    },
+    "di4": {
+      "label": "drzwi_impulsy"
+    },
+    "di5": {
+      "label": ""
+    },
+    "di6": {
+      "label": ""
+    },
+    "di7": {
+      "label": ""
+    }
+  },
+  "ai": {
+    "ai0": {
+      "label": "temperatura_wrzeciona"
+    },
+    "ai1": {
+      "label": "prąd_wrzeciona"
+    },
+    "ai2": {
+      "label": ""
+    },
+    "ai3": {
+      "label": ""
+    },
+    "ai4": {
+      "label": ""
+    },
+    "ai5": {
+      "label": ""
+    },
+    "ai6": {
+      "label": ""
+    },
+    "ai7": {
+      "label": ""
+    }
+  },
+  "watchdog": {
+    "enabled": false,
+    "pulse_channel": "di4",
+    "guard_channel": "di0",
+    "interval_s": 1.0,
+    "stale_after_s": 3.0
+  }
+}

@@ -7,13 +7,24 @@
       "profile": null,
       "targets": {},
       "feed": null,
-      "output": "wyjscie_0",
-      "output_on": true,
+      "output": "do0",
+      "output_on": false,
       "smart": null,
-      "note": "out1"
+      "note": "Lampa zielona OFF"
     },
     {
       "lp": 2,
+      "kind": "WYJSCIE",
+      "profile": null,
+      "targets": {},
+      "feed": null,
+      "output": "do2",
+      "output_on": true,
+      "smart": null,
+      "note": "Lamoa żółta ON"
+    },
+    {
+      "lp": 3,
       "kind": "RUCH",
       "profile": "cykl",
       "targets": {
@@ -29,7 +40,18 @@
       "note": "góra"
     },
     {
-      "lp": 3,
+      "lp": 4,
+      "kind": "WYJSCIE",
+      "profile": null,
+      "targets": {},
+      "feed": null,
+      "output": "wyjscie_0",
+      "output_on": true,
+      "smart": null,
+      "note": "out1"
+    },
+    {
+      "lp": 5,
       "kind": "RUCH",
       "profile": "cykl",
       "targets": {
@@ -45,7 +67,7 @@
       "note": "srodek"
     },
     {
-      "lp": 4,
+      "lp": 6,
       "kind": "PROGRAM",
       "profile": "globalny",
       "targets": {},
@@ -56,7 +78,7 @@
       "note": "tech"
     },
     {
-      "lp": 5,
+      "lp": 7,
       "kind": "RUCH",
       "profile": "cykl",
       "targets": {
@@ -71,7 +93,7 @@
       "note": "wyrzut"
     },
     {
-      "lp": 6,
+      "lp": 8,
       "kind": "RUCH",
       "profile": "globalny",
       "targets": {
@@ -84,6 +106,28 @@
       "output_on": null,
       "smart": null,
       "note": "zero"
+    },
+    {
+      "lp": 9,
+      "kind": "WYJSCIE",
+      "profile": "globalny",
+      "targets": {},
+      "feed": null,
+      "output": "do2",
+      "output_on": false,
+      "smart": null,
+      "note": "Lampa żółta OFF"
+    },
+    {
+      "lp": 10,
+      "kind": "WYJSCIE",
+      "profile": "globalny",
+      "targets": {},
+      "feed": null,
+      "output": "do0",
+      "output_on": true,
+      "smart": null,
+      "note": "Lampa zielona ON"
     }
   ]
 }
