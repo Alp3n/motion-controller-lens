@@ -249,6 +249,9 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
   `/zuzycie` (temat M, krok 3-4): podsumowanie bieżącej doby, wykresy
   trendu per oś, definicje alarmów zużycia + ich ocena (bez wysyłki
   powiadomień — to robi wMES). Dziś tylko X/Y/Z.
+- [zmiany/uwagi-alarmu-w-ocenie.md](zmiany/uwagi-alarmu-w-ocenie.md) —
+  pole „Uwagi" alarmu zużycia (komunikat/sugestia dla operatora) pokazuje
+  się teraz też w tabeli oceny na żywo, nie tylko w definicjach.
 - [zmiany/jog-feetech.md](zmiany/jog-feetech.md) — JOG dla osi FEETECH
   (temat L, etap 2 częściowy): ruch zgodny/przeciwny do zegara. Naprawiony
   błąd współbieżności na współdzielonej magistrali RS485.

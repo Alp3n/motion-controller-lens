@@ -196,6 +196,7 @@ function renderAlarmyStatus(alarmy) {
         <td>${fmt(a.prog)}</td>
         <td>${fmt(a.wartosc)}</td>
         <td style="color:${stanKolor}; font-weight:600">${stanTekst}</td>
+        <td${a.przekroczony ? ' style="color:' + err + '; font-weight:600"' : ""}>${a.note || ""}</td>
       </tr>`;
     })
     .join("");

@@ -7,6 +7,14 @@
       "prog": 3000.0,
       "aktywny": true,
       "note": "X max dzienny"
+    },
+    "Y_max_dzienne": {
+      "os": "x",
+      "metryka": "dystans_mm_suma",
+      "okres": "dzien",
+      "prog": 10000.0,
+      "aktywny": true,
+      "note": ""
     }
   }
 }

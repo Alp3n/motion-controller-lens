@@ -495,6 +495,15 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       zgadnięcia bez tej rozmowy. `GET /api/zuzycie/alarmy` już istnieje
       jako częściowy fundament. Ewentualnie osobno: rozszerzenie zbierania
       zużycia o osie FEETECH (nieustalone, nie w pierwotnym planie kroków).
+- [x] **Potwierdzone 2026-09-12:** alarmy zużycia zostają WYŁĄCZNIE po
+      stronie wMES (odpowiedź na pytanie o lampę LR: „zużycie osi moim
+      zdaniem — tylko przez wMES") — nie dostają automatycznej lampy
+      sygnalizacyjnej na tej maszynie.
+- [x] **Naprawiony brak 2026-09-12: pole „Uwagi" alarmu (komunikat dla
+      operatora, np. sugestia przesmarowania) nie było widoczne przy
+      ocenie na żywo** — istniało w danych (`AlarmStatus.note`), ale
+      ekran pokazywał je tylko w definicjach. Teraz widoczne w obu
+      miejscach. Szczegóły: `zmiany/uwagi-alarmu-w-ocenie.md`.
 
 ### N. Ekran pomocy (HELP) dla operatora
 - [x] **Zbudowany 2026-09-12** (zamówienie: „instrukcja dla mojego
