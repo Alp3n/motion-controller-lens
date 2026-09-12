@@ -291,6 +291,13 @@
         zmienia w czasie, i pokazuje status (OK/zastały) — to diagnostyka
         (czy czujnik żyje), <b>nie certyfikowana funkcja bezpieczeństwa</b>.
       </p>
+      <p class="muted">
+        <b>Lampa czerwona (etykieta „LR") świeci się sama</b>, gdy maszyna
+        jest w stanie ALARM, i gaśnie sama w każdym innym stanie — nie
+        trzeba jej przełączać ręcznie. Jeśli spróbujesz ją przełączyć
+        ręcznie albo krokiem WYJSCIE cyklu, automat przywróci jej właściwy
+        stan w ciągu ok. 1 sekundy.
+      </p>
     </section>
 
     <section class="panel" id="punkty">
@@ -349,6 +356,9 @@
           nie funkcja bezpieczeństwa.</li>
         <li>Limit obciążenia FEETECH w kroku RUCH to zabezpieczenie
           mechanizmu (np. przed zablokowaniem), nie funkcja bezpieczeństwa.</li>
+        <li>Automatyczna lampa czerwona (LR) to sygnalizacja dla
+          otoczenia, że maszyna jest w stanie ALARM — informuje, nie
+          zatrzymuje niczego i nie zastępuje E-stop/Global Stop.</li>
         <li><b>STOP na panelu działa nawet bez zalogowania</b> — świadomie,
           żeby wygasła sesja nie mogła nikomu odebrać możliwości
           zatrzymania maszyny.</li>

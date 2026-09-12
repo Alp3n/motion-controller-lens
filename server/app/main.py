@@ -545,6 +545,43 @@ def _read_io_modbus(cfg: io_modbus.IoConfig) -> dict:
     return result
 
 
+def _signal_lamp_targets(state: MachineState) -> dict[str, bool]:
+    """Lampy sygnalizacyjne sterowane AUTOMATYCZNIE wg stanu maszyny
+    (zamówienie 2026-09-12: „LR ma się włączać adekwatnie do swojej roli").
+
+    Słownik etykieta (jak w `io_modbus.py`) -> stan. Etykieta, której nie
+    ma w konfiguracji kanałów, jest po prostu pomijana przez
+    `_apply_signal_lamps` — to nie jest błąd, tylko „ta lampa nie jest
+    jeszcze podłączona/nazwana".
+
+    Czerwona (LR) = maszyna w stanie ALARM — jedyna rola przypisana na
+    razie; zielona/żółta zostają do ustalenia, jeśli operator zechce."""
+    return {"LR": state == MachineState.ALARM}
+
+
+async def _apply_signal_lamps(result: dict) -> None:
+    """Dogania stan lamp sygnalizacyjnych do `_signal_lamp_targets()`.
+
+    Porównuje z ODCZYTANĄ wartością (`result`, z tego samego obiegu pętli
+    co odczyt DI/DO/AI), nie z jakimś zapamiętanym „co my ostatnio
+    ustawiliśmy" — dzięki temu samo się naprawia, jeśli ktoś zmieni ten
+    kanał ręcznie albo krokiem WYJSCIE cyklu (patrz
+    docs/zmiany/io-modbus-w-cyklu-maszyny.md: ten sam kanał nie powinien
+    być jednocześnie „czyjąś" lampą i ręcznie/programowo przełączany —
+    automat i tak przywróci go do stanu wynikającego z alarmu w ciągu
+    jednego obiegu pętli)."""
+    for label, desired in _signal_lamp_targets(machine.status.state).items():
+        try:
+            channel = _resolve_io_modbus_channel(label)
+        except KeyError:
+            continue  # lampa o tej etykiecie nieskonfigurowana — nic do zrobienia
+        current = result.get("do", {}).get(channel, {}).get("value")
+        if current == desired:
+            continue
+        with contextlib.suppress(ModbusError):
+            await asyncio.to_thread(_io_modbus_write, channel, desired)
+
+
 async def _io_modbus_poll_loop() -> None:
     """Odpytuje moduły I/O Waveshare co ~1s (albo `watchdog.interval_s`,
     jeśli watchdog jest włączony) — osobno od pętli serw, ale pod tym
@@ -566,6 +603,7 @@ async def _io_modbus_poll_loop() -> None:
         try:
             async with _feetech_lock:
                 result = await asyncio.to_thread(_read_io_modbus, io_modbus_cfg)
+                await _apply_signal_lamps(result)
         except Exception:
             continue
 

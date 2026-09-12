@@ -416,6 +416,15 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       wyżej. `Machine.io_modbus_write` — wstrzyknięty callback, ten sam
       wzorzec co `feetech_move`. Szczegóły:
       `zmiany/io-modbus-w-cyklu-maszyny.md`.
+- [x] **Lampa czerwona (LR) automatyczna wg stanu maszyny, 2026-09-12**
+      (zamówienie: „LR ma się włączać adekwatnie do swojej roli").
+      Kanał I/O Modbus z etykietą `LR` świeci sam w stanie ALARM, gaśnie
+      sam poza nim — `_apply_signal_lamps()` w `_io_modbus_poll_loop`,
+      porównanie z odczytem (samonaprawiające się, nie z pamięcią).
+      **Role LG/LY nieustalone** — zgłoszenie dotyczyło tylko czerwonej;
+      „alarmy..." w zgłoszeniu urwane, możliwe że operator miał na myśli
+      coś szerszego (alarmy zużycia, temat M) — do wyjaśnienia. Szczegóły:
+      `zmiany/lampa-czerwona-automatyczna.md`.
 - [ ] **Zostaje z etapów FEETECH:** bazowanie (etap 3), ew. program
       technologa (etap 5) — patrz `architektura-wielu-drajwerow-osi.md`.
 - [x] **Moduły I/O Modbus RTU Waveshare — oba moduły zweryfikowane
