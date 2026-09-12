@@ -75,7 +75,7 @@ def test_cycle_without_program_step():
         ({"lp": 1, "kind": "RUCH"}, "wymaga co najmniej jednej osi"),
         ({"lp": 1, "kind": "RUCH", "targets": {"x": 1}, "feed": 0}, "posuw"),
         ({"lp": 1, "kind": "PAUZA", "targets": {"x": 1}}, "nie przyjmuje pozycji"),
-        ({"lp": 1, "kind": "WYJSCIE", "output_on": True}, "nieznane wyjście"),
+        ({"lp": 1, "kind": "WYJSCIE", "output_on": True}, "wymaga wskazania wyjścia"),
         ({"lp": 1, "kind": "WYJSCIE", "output": "wyjscie_0"}, "wymaga stanu"),
         (
             {"lp": 1, "kind": "PAUZA", "output": "wyjscie_0", "output_on": True},
@@ -108,6 +108,32 @@ def test_warnings_flag_unknown_profile_and_axis():
     out = cycle.warnings(c, ["globalny"], ["x", "y", "z"])
     assert any("nie istnieje" in w for w in out)
     assert any("nieskonfigurowane" in w for w in out)
+
+
+def test_warnings_flag_unknown_output():
+    """Domyślny output_names to tylko dwa wyjścia Teknica — kanał Modbus
+    bez przekazania pełnego zbioru wygląda jak nieznany."""
+    c = cycle.parse_cycle(
+        {"steps": [{"lp": 1, "kind": "WYJSCIE", "output": "do3", "output_on": True}]}
+    )
+    assert any("nie istnieje" in w for w in cycle.warnings(c, [], []))
+    assert cycle.warnings(c, [], [], output_names={"do3"}) == []
+
+
+def test_wyjscie_akceptuje_kanal_modbus_bez_bledu_parsowania():
+    """Zamówienie 2026-09-12: WYJSCIE steruje też kanałami I/O Modbus, nie
+    tylko dwoma wyjściami Teknica — cycle.py nie zna ich z nazwy, więc
+    parsowanie (w przeciwieństwie do dawnego zachowania) nie odrzuca tego
+    jako 'nieznane wyjście'."""
+    c = cycle.parse_cycle(
+        {"steps": [{"lp": 1, "kind": "WYJSCIE", "output": "do3", "output_on": True}]}
+    )
+    assert c.steps[0].output == "do3"
+
+
+def test_wyjscie_bez_nazwy_wyjscia_jest_odrzucone():
+    with pytest.raises(cycle.CycleError, match="wskazania wyjścia"):
+        cycle.parse_cycle({"steps": [{"lp": 1, "kind": "WYJSCIE", "output_on": True}]})
 
 
 # --- plik -----------------------------------------------------------------
@@ -224,6 +250,53 @@ def test_output_step_sets_output():
     asyncio.run(_drive(m))
     assert m.status.outputs["wyjscie_1"] is True
     assert m.status.state == MachineState.READY
+
+
+# --- WYJSCIE na kanale I/O Modbus (zamówienie 2026-09-12) ------------------
+
+
+def test_output_step_rusza_kanal_modbus_przez_wstrzykniety_callback():
+    calls = []
+
+    async def fake_io_modbus_write(channel, on):
+        calls.append((channel, on))
+
+    m = _machine_with_cycle(
+        [{"lp": 1, "kind": "WYJSCIE", "output": "do3", "output_on": True}]
+    )
+    m.io_modbus_write = fake_io_modbus_write
+    asyncio.run(_drive(m))
+    assert m.status.state == MachineState.READY
+    assert calls == [("do3", True)]
+    # kanał Modbus nie trafia do m.status.outputs (to osobny system stanu,
+    # patrz _io_modbus_poll_loop w main.py) — tylko dwa wyjścia Teknica tam są
+    assert "do3" not in m.status.outputs
+
+
+def test_output_step_modbus_bez_wstrzykniecia_daje_alarm():
+    m = _machine_with_cycle(
+        [{"lp": 1, "kind": "WYJSCIE", "output": "do3", "output_on": True}]
+    )
+    asyncio.run(_drive(m))
+    assert m.status.state == MachineState.ALARM
+    assert "RS485" in m.status.alarm_message
+
+
+def test_output_step_teknic_nie_wola_callbacku_modbus():
+    """wyjscie_0/wyjscie_1 zostają obsłużone jak dawniej — callback Modbus
+    nie jest wołany dla nich wcale."""
+    calls = []
+
+    async def fake_io_modbus_write(channel, on):
+        calls.append((channel, on))
+
+    m = _machine_with_cycle(
+        [{"lp": 1, "kind": "WYJSCIE", "output": "wyjscie_0", "output_on": True}]
+    )
+    m.io_modbus_write = fake_io_modbus_write
+    asyncio.run(_drive(m))
+    assert m.status.outputs["wyjscie_0"] is True
+    assert calls == []
 
 
 def test_program_step_nie_wraca_do_zera():

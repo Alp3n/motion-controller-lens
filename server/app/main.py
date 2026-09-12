@@ -124,6 +124,20 @@ punkty_cfg = punkty.load(config.PUNKTY_FILE)
 cycle_cfg = cycle.load(config.CYCLE_FILE)
 machine.apply_cycle(cycle_cfg)
 
+
+def _cycle_output_names() -> set[str]:
+    """Wyjścia dostępne krokowi WYJSCIE cyklu: dwa stałe wyjścia Teknica
+    (`cycle.OUTPUT_NAMES`) + kanały DO modułu Waveshare, po nazwie kanału
+    (`do0`) ALBO etykiecie (`LG`) — jak `POST /api/machine/io-modbus/write`.
+    Czyta `io_modbus_cfg` na żywo (global), więc zawsze aktualne po
+    `PUT /api/io-modbus`, bez potrzeby odświeżania przy każdym wywołaniu."""
+    names = set(cycle.OUTPUT_NAMES)
+    for name, ch in io_modbus_cfg.do.items():
+        names.add(name)
+        if ch.label:
+            names.add(ch.label)
+    return names
+
 # Wyjścia cyfrowe (BRAKE_0/BRAKE_1) — do czego służą i co się z nimi dzieje
 # przy STOP. Błędny plik przerywa start; powód w app/outputs.py.
 outputs_cfg = outputs.load(config.OUTPUTS_FILE)
@@ -1321,7 +1335,9 @@ async def put_smart(req: SmartRequest, user=Depends(require_admin)):
         # ostrzeżenia o cyklu też, bo zmiana nazwy definicji może osierocić
         # krok SMART, a admin zobaczyłby to dopiero przy starcie cyklu
         "warnings": smart.warnings(new_defs, config.MACHINE_MODE)
-        + cycle.warnings(cycle_cfg, profiles_cfg.keys(), axes_cfg.keys(), new_defs.keys()),
+        + cycle.warnings(
+            cycle_cfg, profiles_cfg.keys(), axes_cfg.keys(), new_defs.keys(), _cycle_output_names()
+        ),
     }
 
 
@@ -1394,12 +1410,16 @@ async def get_cycle(user=Depends(require_operator)):
     return {
         "cycle": cycle_cfg.to_dict(),
         "step_kinds": list(cycle.STEP_KINDS),
-        "outputs": list(cycle.OUTPUT_NAMES),
+        # dwa wyjścia Teknica + kanały DO modułu Waveshare PO NAZWIE kanału
+        # (stabilny identyfikator, np. "do3" — nie etykieta, która może się
+        # zmienić z ekranu /io-modbus). Etykiety ekran dociąga z GET
+        # /api/io-modbus, do samego wyświetlania w liście wyboru.
+        "outputs": sorted(cycle.OUTPUT_NAMES) + sorted(io_modbus_cfg.do.keys()),
         # nazwy definicji SMART — ekran cyklu buduje z nich listę wyboru
         "smart": sorted(smart_cfg),
         "file": str(config.CYCLE_FILE),
         "warnings": cycle.warnings(
-            cycle_cfg, profiles_cfg.keys(), axes_cfg.keys(), smart_cfg.keys()
+            cycle_cfg, profiles_cfg.keys(), axes_cfg.keys(), smart_cfg.keys(), _cycle_output_names()
         ),
     }
 
@@ -1416,7 +1436,7 @@ async def put_cycle(req: CycleRequest, user=Depends(require_admin)):
         raise HTTPException(422, str(exc))
 
     result = cycle.warnings(
-        new_cycle, profiles_cfg.keys(), axes_cfg.keys(), smart_cfg.keys()
+        new_cycle, profiles_cfg.keys(), axes_cfg.keys(), smart_cfg.keys(), _cycle_output_names()
     )
     try:
         cycle.save(config.CYCLE_FILE, new_cycle)
@@ -1598,6 +1618,44 @@ def _io_modbus_write(channel_name: str, on: bool) -> None:
         driver.write_digital_output(io_modbus.DIGITAL_MODULE_ADDRESS, int(channel_name[2:]), on)
 
 
+def _resolve_io_modbus_channel(channel: str) -> str:
+    """Nazwa kanału (`do0`) albo etykieta (`LG`) -> nazwa kanału. Rzuca
+    `KeyError`, jeśli nieznany — wywołujący decyduje, jak to zgłosić
+    (HTTPException 404 z endpointu, MachineError z kroku cyklu)."""
+    if channel in io_modbus_cfg.do:
+        return channel
+    found = io_modbus_cfg.channel_by_label(io_modbus_cfg.do, channel)
+    if found is None:
+        raise KeyError(channel)
+    return found
+
+
+async def _io_modbus_cycle_write(channel: str, on: bool) -> None:
+    """Wstrzyknięte do `Machine.io_modbus_write` (zamówienie 2026-09-12:
+    „dodać nowe I/O do wykorzystania w cyklu maszyny, zostaw dwa
+    istniejące" — krok WYJSCIE steruje teraz też kanałami DO modułu
+    Waveshare, OBOK dwóch dotychczasowych wyjść Teknica). Patrz komentarz
+    przy `self.io_modbus_write` w `machine.py` — ten sam powód co
+    `feetech_move`: Machine nie zna ModbusDriver/RS485 wprost."""
+    try:
+        resolved = _resolve_io_modbus_channel(channel)
+    except KeyError:
+        raise MachineError(f"nieznany kanał wyjścia I/O Modbus '{channel}'")
+    if not config.MODBUS_IO_PORT:
+        raise MachineError("MODBUS_IO_PORT nieskonfigurowany — magistrala RS485 niedostępna")
+    try:
+        async with _feetech_lock:
+            await asyncio.to_thread(_io_modbus_write, resolved, on)
+    except ModbusError as exc:
+        raise MachineError(f"wyjście '{channel}' (I/O Modbus): {exc}")
+
+
+# Wstrzyknięcie — patrz komentarz przy `Machine.io_modbus_write` w
+# machine.py. Bezwarunkowe, jak `machine.feetech_move`: RS485 to osobny
+# fizyczny kanał, niezależny od MACHINE_MODE.
+machine.io_modbus_write = _io_modbus_cycle_write
+
+
 @app.get("/api/io-modbus")
 async def get_io_modbus(user=Depends(require_technolog)):
     """Bieżące wartości (z ostatniego odpytania pętli, nie na żywo przy
@@ -1626,12 +1684,10 @@ async def machine_io_modbus_write(req: IoModbusWriteRequest, user=Depends(requir
     """Zapis jednego wyjścia — po nazwie kanału (`do0`) albo etykiecie
     (`LG`). Tylko moduł cyfrowy ma wyjścia — moduł analogowy to same
     wejścia pomiarowe."""
-    channel = req.channel
-    if channel not in io_modbus_cfg.do:
-        found = io_modbus_cfg.channel_by_label(io_modbus_cfg.do, channel)
-        if found is None:
-            raise HTTPException(404, f"nieznany kanał wyjścia '{channel}'")
-        channel = found
+    try:
+        channel = _resolve_io_modbus_channel(req.channel)
+    except KeyError:
+        raise HTTPException(404, f"nieznany kanał wyjścia '{req.channel}'")
     if not config.MODBUS_IO_PORT:
         raise HTTPException(409, "MODBUS_IO_PORT nieskonfigurowany — magistrala niedostępna")
     try:
@@ -1786,7 +1842,7 @@ async def get_diagnostics(user=Depends(require_admin)):
             "profile_warnings": _profile_warnings(profiles_cfg),
             "cycle": cycle_cfg.to_dict(),
             "cycle_warnings": cycle.warnings(
-                cycle_cfg, profiles_cfg.keys(), axes_cfg.keys()
+                cycle_cfg, profiles_cfg.keys(), axes_cfg.keys(), output_names=_cycle_output_names()
             ),
             "spindle": _spindle_payload(spindle_cfg),
             "outputs": _outputs_payload(outputs_cfg),

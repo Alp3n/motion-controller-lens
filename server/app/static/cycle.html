@@ -47,7 +47,7 @@
               <th title="pozycja docelowa osi Y [mm]">Y</th>
               <th title="pozycja docelowa osi Z [mm]">Z</th>
               <th id="th-feed" title="posuw przejazdu [mm/min] — tylko X/Y/Z; osie dodatkowe (FEETECH) jadą własną skonfigurowaną prędkością, patrz ekran /axes">Posuw</th>
-              <th title="wyjście cyfrowe maszyny">Wyjście</th>
+              <th title="wyjście cyfrowe maszyny — dwa wyjścia Teknica (wyjscie_0/1) lub kanał DO modułu I/O Modbus (np. lampa, wrzeciono_OUT)">Wyjście</th>
               <th title="stan wyjścia">Stan</th>
               <th title="definicja SMART — tylko krok SMART; parametry (próg siły, prędkości) są w definicji, ekran „Funkcje SMART”">SMART</th>
               <th>Uwagi</th>
@@ -166,8 +166,12 @@
         <li><b>PROGRAM</b> — wywołanie programu detalu wybranego w MES
           (skok do podprogramu technologa). Po jego zakończeniu cykl idzie
           dalej.</li>
-        <li><b>WYJSCIE</b> — załączenie lub wyłączenie wyjścia cyfrowego
-          (podajnik, wyrzutnik, lampka).</li>
+        <li><b>WYJSCIE</b> — załączenie lub wyłączenie wyjścia cyfrowego:
+          dwóch stałych wyjść Teknica (<code>wyjscie_0</code>/<code>wyjscie_1</code>)
+          <b>albo</b> dowolnego kanału DO modułu I/O Modbus Waveshare (lampy
+          sygnalizacyjne, wrzeciono_OUT i inne skonfigurowane na ekranie
+          <a href="/io-modbus">/io-modbus</a>) — jedna lista wyboru, obie
+          magistrale obsłużone tym samym krokiem.</li>
         <li><b>SMART</b> — ruch reagujący na siłę, opisany definicją
           z ekranu „Funkcje SMART" (te same definicje, których używa program
           technologa). <b>Działa dziś tylko w symulatorze i tylko pozornie:</b>

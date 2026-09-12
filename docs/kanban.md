@@ -407,6 +407,15 @@ Dwa ryzyka z etapu 2 (ekran `/sila`):
       X/Y/Z i FEETECH razem. `cycle.js`: `AXES`/kolumny tabeli budowane
       dynamicznie z `/api/axes`. Szczegóły:
       `zmiany/ekran-cyklu-osie-dodatkowe.md`.
+- [x] **Nowe I/O (Modbus) w kroku WYJSCIE cyklu, 2026-09-12** (zamówienie:
+      „dodać nowe I/O do wykorzystania w cyklu maszyny, zostaw dwa
+      istniejące"). Krok WYJSCIE steruje teraz OBOK `wyjscie_0`/`wyjscie_1`
+      też dowolnym kanałem DO modułu I/O Modbus — ten sam krok, nie nowy
+      rodzaj. Rozważona i odrzucona alternatywa operatora: osobny ekran +
+      krok „skocz i wróć" — niepotrzebne, analogicznie do osi dodatkowych
+      wyżej. `Machine.io_modbus_write` — wstrzyknięty callback, ten sam
+      wzorzec co `feetech_move`. Szczegóły:
+      `zmiany/io-modbus-w-cyklu-maszyny.md`.
 - [ ] **Zostaje z etapów FEETECH:** bazowanie (etap 3), ew. program
       technologa (etap 5) — patrz `architektura-wielu-drajwerow-osi.md`.
 - [x] **Moduły I/O Modbus RTU Waveshare — oba moduły zweryfikowane

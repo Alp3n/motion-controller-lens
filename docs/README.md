@@ -275,6 +275,10 @@ nazwa od zmiany. Konwencja: [`../CLAUDE.md`](../CLAUDE.md).
 - [zmiany/ekran-cyklu-osie-dodatkowe.md](zmiany/ekran-cyklu-osie-dodatkowe.md) —
   ekran `/cycle` dostał kolumny dla osi dodatkowych (docisk, podajnik) w
   kroku RUCH — backend to już umiał, brakowało pól do wypełnienia.
+- [zmiany/io-modbus-w-cyklu-maszyny.md](zmiany/io-modbus-w-cyklu-maszyny.md) —
+  krok WYJSCIE cyklu steruje teraz też kanałami DO modułu I/O Modbus,
+  obok dwóch dotychczasowych wyjść Teknica — `Machine.io_modbus_write`,
+  ten sam wzorzec wstrzykiwanego callbacku co `feetech_move`.
 - [zmiany/modbus-io-waveshare.md](zmiany/modbus-io-waveshare.md) —
   sterownik Modbus RTU dla modułów I/O Waveshare (SKU 26244 cyfrowy, SKU
   25821 analogowy) na tej samej magistrali co serwa. Oba moduły (cyfrowy

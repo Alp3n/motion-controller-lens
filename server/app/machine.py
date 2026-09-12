@@ -256,6 +256,14 @@ class Machine:
         # RUCH z celem na osi feetech wtedy rzuca czytelny błąd zamiast
         # cichego pominięcia.
         self.feetech_move: Callable[[str, float], Awaitable[None]] | None = None
+        # Callback wstrzykiwany przez main.py (zamówienie 2026-09-12: "dodać
+        # nowe I/O do wykorzystania w cyklu maszyny, zostaw dwa istniejące")
+        # — ustawia kanał DO modułu Waveshare (po nazwie kanału "do0" albo
+        # etykiecie, jak POST /api/machine/io-modbus/write). Ten sam powód co
+        # `feetech_move`: Machine nie zna ModbusDriver/RS485 wprost. Dwa
+        # dotychczasowe wyjścia Teknica (cycle.OUTPUT_NAMES) zostają
+        # obsługiwane jak dawniej, osobno od tego callbacku.
+        self.io_modbus_write: Callable[[str, bool], Awaitable[None]] | None = None
 
     # --- konfiguracja wyjść (wspólna) -------------------------------------
 
@@ -584,6 +592,25 @@ class Machine:
             self._check_soft_limit(axis, value)
             target[axis] = value
         return target
+
+    async def _write_cycle_output_if_modbus(self, step: CycleStep) -> bool:
+        """Krok WYJSCIE na kanale I/O Modbus (zamówienie 2026-09-12 — nowe
+        I/O w cyklu, OBOK dwóch dotychczasowych wyjść Teknica, nie w ich
+        miejsce). Zwraca `True`, jeśli `step.output` nie jest jednym z
+        `OUTPUT_NAMES` i zostało obsłużone tutaj (przez `self.io_modbus_
+        write` — Machine nie zna ModbusDriver/RS485 wprost, ten sam powód
+        co `feetech_move`). `False` oznacza „to jedno z dwóch wyjść Teknica,
+        obsłuż je sam" — wywołująca metoda robi to po swojemu (symulator:
+        tylko status; mostek: komenda OUTPUT)."""
+        if step.output in OUTPUT_NAMES:
+            return False
+        if self.io_modbus_write is None:
+            raise MachineError(
+                f"krok {step.lp}: wyjście '{step.output}' (I/O Modbus) — "
+                "magistrala RS485 niedostępna (MODBUS_IO_PORT nieskonfigurowany)"
+            )
+        await self.io_modbus_write(step.output, bool(step.output_on))
+        return True
 
     # --- ładowanie programu (wspólne) -------------------------------------
 
@@ -1064,6 +1091,8 @@ class SimulatedMachine(Machine):
             return
 
         if step.kind == STEP_OUTPUT:
+            if await self._write_cycle_output_if_modbus(step):
+                return
             self.status.outputs[step.output] = bool(step.output_on)
             return
 
@@ -1841,6 +1870,8 @@ class SC4HubMachine(Machine):
             return
 
         if step.kind == STEP_OUTPUT:
+            if await self._write_cycle_output_if_modbus(step):
+                return
             # Wyjście przełącza się fizycznie: mostek dostał komendę OUTPUT
             # (BRAKE_0/BRAKE_1 na SC4-Hub). Stan w statusie ustawiamy dopiero
             # po potwierdzeniu przez mostek — inaczej ekran pokazywałby

@@ -19,7 +19,8 @@
       "targets": {
         "x": 0.0,
         "y": 80.0,
-        "z": 0.0
+        "z": 0.0,
+        "podajnik": -25.0
       },
       "feed": 4000.0,
       "output": null,
@@ -34,7 +35,8 @@
       "targets": {
         "x": 0.0,
         "y": 0.0,
-        "z": 0.0
+        "z": 0.0,
+        "docisk": -3.0
       },
       "feed": 1000.0,
       "output": null,

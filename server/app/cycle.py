@@ -188,12 +188,13 @@ class CycleStep:
                 raise CycleError(f"{self.kind} nie przyjmuje posuwu", self.lp)
 
         if self.kind == STEP_OUTPUT:
-            if self.output not in OUTPUT_NAMES:
-                raise CycleError(
-                    f"nieznane wyjście '{self.output}' — dozwolone: "
-                    + ", ".join(OUTPUT_NAMES),
-                    self.lp,
-                )
+            # Nazwa NIE jest tu sprawdzana względem zamkniętej listy — od
+            # 2026-09-12 krok WYJSCIE steruje też kanałami I/O Modbus
+            # (`app/io_modbus.py`), których cycle.py nie zna (konfiguracja
+            # żyje w main.py). Istnienie nazwy sprawdza `warnings()`
+            # (ten sam wzorzec co nieznana oś w kroku RUCH), nie to miejsce.
+            if not self.output:
+                raise CycleError("WYJSCIE wymaga wskazania wyjścia", self.lp)
             if self.output_on is None:
                 raise CycleError("WYJSCIE wymaga stanu (output_on)", self.lp)
         elif self.output is not None or self.output_on is not None:
@@ -280,12 +281,20 @@ def save(path: Path, cycle: Cycle) -> None:
     tmp.replace(path)
 
 
-def warnings(cycle: Cycle, profile_names, axis_names, smart_names=()) -> list[str]:
-    """Rzeczy poprawne składniowo, ale które nie zadziałają tak, jak wygląda."""
+def warnings(
+    cycle: Cycle, profile_names, axis_names, smart_names=(), output_names=OUTPUT_NAMES
+) -> list[str]:
+    """Rzeczy poprawne składniowo, ale które nie zadziałają tak, jak wygląda.
+
+    `output_names` domyślnie to tylko dwa wyjścia Teknica (`OUTPUT_NAMES`) —
+    wywołujący z main.py przekazuje pełny zbiór (Teknic + kanały I/O
+    Modbus po nazwie/etykiecie), żeby nieznane wyjście było tu złapane,
+    tak jak nieznana oś w kroku RUCH niżej."""
     out: list[str] = []
     profile_names = set(profile_names)
     axis_names = set(axis_names)
     smart_names = set(smart_names)
+    output_names = set(output_names)
     for step in cycle.steps:
         if step.kind == STEP_SMART and step.smart not in smart_names:
             out.append(
@@ -296,6 +305,11 @@ def warnings(cycle: Cycle, profile_names, axis_names, smart_names=()) -> list[st
             out.append(
                 f"krok {step.lp}: profil '{step.profile}' nie istnieje — "
                 "krok wykona się na profilu aktywnym"
+            )
+        if step.kind == STEP_OUTPUT and step.output not in output_names:
+            out.append(
+                f"krok {step.lp}: wyjście '{step.output}' nie istnieje — "
+                "cykl zatrzyma się na tym kroku, dopóki go nie dodasz"
             )
         unknown = sorted(a for a in step.targets if a not in axis_names)
         if unknown:

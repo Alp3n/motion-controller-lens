@@ -443,11 +443,23 @@ async function pollState() {
 let outputsCfg = null;
 let spindleOutput = null; // wyjście zajęte przez wrzeciono, albo null
 
+/* Kanały DO modułu I/O Modbus (temat L, zamówienie 2026-09-12: "dodać
+   nowe I/O do wykorzystania w cyklu maszyny, zostaw dwa istniejące") —
+   dostępne w kroku WYJSCIE OBOK wyjscie_0/wyjscie_1, po nazwie kanału
+   ("do3", stabilny identyfikator zapisywany w step.output — etykieta
+   ("wrzeciono_OUT") może się zmienić z ekranu /io-modbus, więc służy
+   tylko do wyświetlania, jak label/purpose dla wyjść Teknica). */
+let ioModbusDo = null;
+
 function outputLabel(name) {
   const cfg = outputsCfg && outputsCfg[name];
-  if (!cfg) return name;
-  const opis = cfg.label || (cfg.purpose !== "nieuzywane" ? cfg.purpose : "");
-  return opis ? `${name} — ${opis}` : name;
+  if (cfg) {
+    const opis = cfg.label || (cfg.purpose !== "nieuzywane" ? cfg.purpose : "");
+    return opis ? `${name} — ${opis}` : name;
+  }
+  const ch = ioModbusDo && ioModbusDo[name];
+  if (ch && ch.label) return `${name} — ${ch.label}`;
+  return name;
 }
 
 function applyOutputs(data) {
@@ -582,12 +594,14 @@ Promise.all([
   api("GET", "/api/cycle"),
   api("GET", "/api/profiles"),
   api("GET", "/api/axes"),
+  api("GET", "/api/io-modbus"),
 ])
-  .then(([cyc, prof, ax]) => {
+  .then(([cyc, prof, ax, io]) => {
     profileNames = Object.keys(prof.profiles || {});
     outputNames = cyc.outputs || [];
     smartNames = cyc.smart || [];
     axesCfg = ax.axes || null;
+    ioModbusDo = (io.config && io.config.do) || null;
     updateAxesFromConfig();
     applyCycle(cyc);
   })

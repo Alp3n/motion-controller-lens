@@ -194,6 +194,23 @@ def test_cycle_output_step_sends_bridge_command():
     assert m.calls == ["OUTPUT 0 1", "SPINDLE 0"]
 
 
+def test_cycle_output_step_modbus_nie_wysyla_komendy_mostka(monkeypatch):
+    """Kanał I/O Modbus (zamówienie 2026-09-12) NIE jedzie przez mostek
+    Teknica (komenda OUTPUT) — tylko przez wstrzyknięty `io_modbus_write`."""
+    calls = []
+
+    async def fake_io_modbus_write(channel, on):
+        calls.append((channel, on))
+
+    m = _cycle_machine(
+        [{"lp": 1, "kind": "WYJSCIE", "output": "do3", "output_on": True}]
+    )
+    m.io_modbus_write = fake_io_modbus_write
+    asyncio.run(_drive(m))
+    assert calls == [("do3", True)]
+    assert "OUTPUT" not in " ".join(m.calls)
+
+
 def test_cycle_pause_step_sends_spindle_off_and_waits_for_resume():
     m = _cycle_machine([{"lp": 1, "kind": "PAUZA"}])
 
