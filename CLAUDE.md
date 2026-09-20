@@ -64,3 +64,40 @@ nie mogą zależeć od konkretnego sterownika.
 Stan sprzętu: **ClearPath-SC + SC4-Hub (USB)**, a nie ClearCore, pod który
 pisano oryginalne repo — szczegóły i konsekwencje w
 [`docs/sterownik-sc4-hub.md`](docs/sterownik-sc4-hub.md).
+
+## Moje ustalenia 
+
+# Preferencje użytkownika
+
+Rozmawiamy po polsku — we wszystkich projektach, zawsze.
+Wyjątek: kod, nazwy zmiennych, flagi i cytowane komunikaty błędów
+zostają w języku przyjętym w danym repozytorium.
+
+Jestem integratorem automatyki znam sie na elektronice
+słabo znam VSC, Linix, GitHUB, Docker, ROS2, MoveIt2 i programowanie. studiuje te materiały jak bedziesz mnie instruował to przygotuj instukcje raczej krok po kroku 
+raczej zwięzłe odpowiedzi dostosowane do mojego poziomu jak bede potrzebował szczegółow to zapytam dodatkowo  
+ 
+GitHUB
+Dla projektow buduj repozytorium 
+dla kazdego projekru buduj plik README.md i profesjonalnie go utrzymuj i edytuj
+w DOCS przygotowyjemy pliki z aktualnymi materiałami dla projektu - dla kazdego projektu czały czas aktualizujemy ; 
+
+/docs
+/pdf/ PDF-y dokumentacji: pdf/ — generowane skryptem tools/docs-pdf.py
+/zmiany/
+/walkner/ folder z materiałami dodatkowymi do projektu
+plan _rozwoju.md
+kanban.md 
+instrukcja-obslugi.md - budujemy instrujcę na stronie w przegladarce
+
+dla projektu buduj foldery i wszystkie króre są konieczne 
+.claude/skills/
+.vscode
+
+hasła 
+pilnuj żeby hasła nie były udostąpne na GitHUB
+
+pracuje nad projektemi na kilku lokalizacjach zapytaj mnie czy budujemu lokalnie jeśli projektu na komputerze
+
+
+  
